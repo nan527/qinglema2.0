@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理员操作中心</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        
+        .header {
+            background-color: #165DFF;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .logout-btn {
+            background-color: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .logout-btn:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        
+        .page-title {
+            margin-bottom: 2rem;
+            color: #165DFF;
+            border-bottom: 2px solid #165DFF;
+            padding-bottom: 0.5rem;
+        }
+        
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .menu-card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+            text-align: center;
+        }
+        
+        .menu-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .menu-icon {
+            font-size: 2rem;
+            color: #165DFF;
+            margin-bottom: 1rem;
+        }
+        
+        .menu-title {
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding: 1rem;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        /* 表格样式 */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        
+        .data-table th, .data-table td {
+            padding: 0.8rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .data-table th {
+            background-color: #f5f7fa;
+            font-weight: 500;
+        }
+        
+        .data-table tr:hover {
+            background-color: #f9f9f9;
+        }
+
+        /* 表单样式 */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #555;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 0.7rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #165DFF;
+            box-shadow: 0 0 0 2px rgba(22, 93, 255, 0.2);
+        }
+        
+        .btn {
+            padding: 0.7rem 1.2rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s;
+        }
+        
+        .btn-primary {
+            background-color: #165DFF;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #0E42D2;
+        }
+        
+        .btn-danger {
+            background-color: #f5222d;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background-color: #d91e2a;
+        }
+        
+        .btn-group {
+            margin-top: 1.5rem;
+            display: flex;
+            gap: 1rem;
+        }
+
+        /* 消息提示样式 */
+        .message {
+            padding: 0.8rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+        
+        .message-success {
+            background-color: #f6ffed;
+            color: #52c41a;
+            display: block;
+        }
+        
+        .message-error {
+            background-color: #fff1f0;
+            color: #cf1322;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">学生信息管理系统</div>
+        <div class="user-info">
+            <span id="userName"></span>
+            <button class="logout-btn" id="logoutBtn">退出登录</button>
+        </div>
+    </header>
+    
+    <div class="container">
+        <h2 class="page-title">管理员操作中心</h2>
+        
+        <div class="menu-grid">
+            <div class="menu-card" data-action="view-students">
+                <div class="menu-icon">🎓</div>
+                <div class="menu-title">查看学生信息</div>
+            </div>
+            <div class="menu-card" data-action="view-teachers">
+                <div class="menu-icon">👨‍🏫</div>
+                <div class="menu-title">查看教师信息</div>
+            </div>
+            <div class="menu-card" data-action="view-counselors">
+                <div class="menu-icon">👨‍💼</div>
+                <div class="menu-title">查看辅导员信息</div>
+            </div>
+            <div class="menu-card" data-action="view-admins">
+                <div class="menu-icon">🔑</div>
+                <div class="menu-title">查看管理员信息</div>
+            </div>
+            <div class="menu-card" data-action="add-user">
+                <div class="menu-icon">➕</div>
+                <div class="menu-title">新增用户</div>
+            </div>
+            <div class="menu-card" data-action="update-user">
+                <div class="menu-icon">✏️</div>
+                <div class="menu-title">修改用户信息</div>
+            </div>
+            <div class="menu-card" data-action="delete-user">
+                <div class="menu-icon">🗑️</div>
+                <div class="menu-title">删除用户</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 操作模态框 -->
+    <div class="modal" id="actionModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">操作窗口</h3>
+                <button class="close-btn" id="closeModal">&times;</button>
+            </div>
+            <div id="modalBody">
+                <!-- 这里将根据选择的操作动态加载内容 -->
+                加载中...
+            </div>
+        </div>
+    </div>
+    
+    <footer class="footer">
+        学生信息管理系统 &copy; 2023
+    </footer>
+
+    <script>
+        // 页面加载时获取用户信息
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const response = await fetch('/api/check_login');
+                const result = await response.json();
+                
+                if (!result.logged_in || result.user_info.role_name !== '管理员') {
+                    window.location.href = '/login';
+                    return;
+                }
+                
+                // 显示用户名
+                document.getElementById('userName').textContent = 
+                    `${result.user_info.user_name}（管理员）`;
+                
+                // 绑定菜单点击事件
+                document.querySelectorAll('.menu-card').forEach(card => {
+                    card.addEventListener('click', function() {
+                        const action = this.getAttribute('data-action');
+                        showActionModal(action);
+                    });
+                });
+                
+                // 绑定退出登录事件
+                document.getElementById('logoutBtn').addEventListener('click', async function() {
+                    if (confirm('确定要退出登录吗？')) {
+                        await fetch('/api/logout', { method: 'POST' });
+                        window.location.href = '/login';
+                    }
+                });
+                
+                // 绑定关闭模态框事件
+                document.getElementById('closeModal').addEventListener('click', function() {
+                    document.getElementById('actionModal').style.display = 'none';
+                });
+                
+                // 点击模态框外部关闭
+                window.addEventListener('click', function(event) {
+                    const modal = document.getElementById('actionModal');
+                    if (event.target === modal) {
+                        modal.style.display = 'none';
+                    }
+                });
+                
+            } catch (error) {
+                console.error('获取用户信息失败:', error);
+                alert('会话已过期，请重新登录');
+                window.location.href = '/login';
+            }
+        });
+        
+        // 显示操作模态框
+        async function showActionModal(action) {
+            const modal = document.getElementById('actionModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+            
+            // 清空之前的消息
+            modalBody.innerHTML = '<div class="message"></div>加载中...';
+            
+            // 根据不同操作设置标题和内容
+            switch(action) {
+                case 'view-students':
+                    modalTitle.textContent = '查看学生信息';
+                    await loadUserData(modalBody, 'student');
+                    break;
+                case 'view-teachers':
+                    modalTitle.textContent = '查看教师信息';
+                    await loadUserData(modalBody, 'teacher');
+                    break;
+                case 'view-counselors':
+                    modalTitle.textContent = '查看辅导员信息';
+                    await loadUserData(modalBody, 'counselor');
+                    break;
+                case 'view-admins':
+                    modalTitle.textContent = '查看管理员信息';
+                    await loadUserData(modalBody, 'admin');
+                    break;
+                case 'add-user':
+                    modalTitle.textContent = '新增用户';
+                    modalBody.innerHTML = `
+                        <div class="message"></div>
+                        <form id="addUserForm">
+                            <div class="form-group">
+                                <label for="addUserType">用户类型</label>
+                                <select id="addUserType" class="form-control" required>
+                                    <option value="student">学生</option>
+                                    <option value="teacher">教师</option>
+                                    <option value="counselor">辅导员</option>
+                                    <option value="admin">管理员</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="addAccount">账号</label>
+                                <input type="text" id="addAccount" class="form-control" placeholder="请输入账号" required>
+                                <small>规则：4位(管理员)/8位(辅导员)/9位(讲师)/12位(学生)</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="addName">姓名</label>
+                                <input type="text" id="addName" class="form-control" placeholder="请输入姓名" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="addPassword">密码</label>
+                                <input type="password" id="addPassword" class="form-control" placeholder="请输入密码" required>
+                            </div>
+                            <div class="btn-group">
+                                <button type="submit" class="btn btn-primary">确认新增</button>
+                            </div>
+                        </form>
+                    `;
+                    // 绑定新增用户表单提交事件
+                    document.getElementById('addUserForm').addEventListener('submit', async function(e) {
+                        e.preventDefault();
+                        const userType = document.getElementById('addUserType').value;
+                        const account = document.getElementById('addAccount').value;
+                        const name = document.getElementById('addName').value;
+                        const password = document.getElementById('addPassword').value;
+                        
+                        // 角色类型映射 (1=学生，2=辅导员，3=讲师，4=管理员)
+                        const roleMap = {
+                            'student': 1,
+                            'counselor': 2,
+                            'teacher': 3,
+                            'admin': 4
+                        };
+                        
+                        try {
+                            const response = await fetch('/api/admin/users', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    account,
+                                    user_name: name,
+                                    password,
+                                    role_type: roleMap[userType]
+                                })
+                            });
+                            
+                            const result = await response.json();
+                            const messageEl = modalBody.querySelector('.message');
+                            
+                            if (result.success) {
+                                messageEl.textContent = result.message;
+                                messageEl.className = 'message message-success';
+                                // 清空表单
+                                this.reset();
+                            } else {
+                                messageEl.textContent = result.message;
+                                messageEl.className = 'message message-error';
+                            }
+                        } catch (error) {
+                            console.error('新增用户失败:', error);
+                            modalBody.querySelector('.message').textContent = '网络错误，请重试';
+                            modalBody.querySelector('.message').className = 'message message-error';
+                        }
+                    });
+                    break;
+                case 'update-user':
+                    modalTitle.textContent = '修改用户信息';
+                    modalBody.innerHTML = `
+                        <div class="message"></div>
+                        <form id="updateUserForm">
+                            <div class="form-group">
+                                <label for="updateAccount">账号</label>
+                                <input type="text" id="updateAccount" class="form-control" placeholder="请输入要修改的账号" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="updateUserType">新用户类型（可选）</label>
+                                <select id="updateUserType" class="form-control">
+                                    <option value="">不修改</option>
+                                    <option value="student">学生</option>
+                                    <option value="teacher">教师</option>
+                                    <option value="counselor">辅导员</option>
+                                    <option value="admin">管理员</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="updateName">新姓名（可选）</label>
+                                <input type="text" id="updateName" class="form-control" placeholder="请输入新姓名">
+                            </div>
+                            <div class="form-group">
+                                <label for="updatePassword">新密码（可选）</label>
+                                <input type="password" id="updatePassword" class="form-control" placeholder="请输入新密码">
+                            </div>
+                            <div class="btn-group">
+                                <button type="submit" class="btn btn-primary">确认修改</button>
+                            </div>
+                        </form>
+                    `;
+                    // 绑定修改用户表单提交事件
+                    document.getElementById('updateUserForm').addEventListener('submit', async function(e) {
+                        e.preventDefault();
+                        const account = document.getElementById('updateAccount').value;
+                        const userType = document.getElementById('updateUserType').value;
+                        const newName = document.getElementById('updateName').value;
+                        const newPassword = document.getElementById('updatePassword').value;
+                        
+                        // 角色类型映射
+                        const roleMap = {
+                            'student': 1,
+                            'counselor': 2,
+                            'teacher': 3,
+                            'admin': 4
+                        };
+                        
+                        try {
+                            const response = await fetch(`/api/admin/users/${account}`, {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    new_name: newName || undefined,
+                                    new_password: newPassword || undefined,
+                                    new_role: userType ? roleMap[userType] : undefined
+                                })
+                            });
+                            
+                            const result = await response.json();
+                            const messageEl = modalBody.querySelector('.message');
+                            
+                            if (result.success) {
+                                messageEl.textContent = result.message;
+                                messageEl.className = 'message message-success';
+                            } else {
+                                messageEl.textContent = result.message;
+                                messageEl.className = 'message message-error';
+                            }
+                        } catch (error) {
+                            console.error('修改用户失败:', error);
+                            modalBody.querySelector('.message').textContent = '网络错误，请重试';
+                            modalBody.querySelector('.message').className = 'message message-error';
+                        }
+                    });
+                    break;
+                case 'delete-user':
+                    modalTitle.textContent = '删除用户';
+                    modalBody.innerHTML = `
+                        <div class="message"></div>
+                        <form id="deleteUserForm">
+                            <div class="form-group">
+                                <label for="deleteAccount">账号</label>
+                                <input type="text" id="deleteAccount" class="form-control" placeholder="请输入要删除的账号" required>
+                            </div>
+                            <p class="text-danger">警告：删除操作不可恢复，请谨慎操作！</p>
+                            <div class="btn-group">
+                                <button type="submit" class="btn btn-danger">确认删除</button>
+                            </div>
+                        </form>
+                    `;
+                    // 绑定删除用户表单提交事件
+                    document.getElementById('deleteUserForm').addEventListener('submit', async function(e) {
+                        e.preventDefault();
+                        const account = document.getElementById('deleteAccount').value;
+                        
+                        if (!confirm(`确定要删除账号为 ${account} 的用户吗？`)) {
+                            return;
+                        }
+                        
+                        try {
+                            const response = await fetch(`/api/admin/users/${account}`, {
+                                method: 'DELETE'
+                            });
+                            
+                            const result = await response.json();
+                            const messageEl = modalBody.querySelector('.message');
+                            
+                            if (result.success) {
+                                messageEl.textContent = result.message;
+                                messageEl.className = 'message message-success';
+                                // 清空表单
+                                this.reset();
+                            } else {
+                                messageEl.textContent = result.message;
+                                messageEl.className = 'message message-error';
+                            }
+                        } catch (error) {
+                            console.error('删除用户失败:', error);
+                            modalBody.querySelector('.message').textContent = '网络错误，请重试';
+                            modalBody.querySelector('.message').className = 'message message-error';
+                        }
+                    });
+                    break;
+                default:
+                    modalTitle.textContent = '操作窗口';
+                    modalBody.innerHTML = '<p>未知操作</p>';
+            }
+            
+            // 显示模态框
+            modal.style.display = 'flex';
+        }
+        
+        // 加载用户数据
+        async function loadUserData(modalBody, userType) {
+            try {
+                const response = await fetch('/api/admin/users');
+                const result = await response.json();
+                
+                if (!result.success) {
+                    modalBody.innerHTML = `<p class="message message-error">${result.message}</p>`;
+                    return;
+                }
+                
+                // 角色类型映射
+                const roleTypeMap = {
+                    1: 'student',
+                    2: 'counselor',
+                    3: 'teacher',
+                    4: 'admin'
+                };
+                
+                // 角色名称映射
+                const roleNameMap = {
+                    1: '学生',
+                    2: '辅导员',
+                    3: '教师',
+                    4: '管理员'
+                };
+                
+                // 筛选指定类型的用户
+                const filteredUsers = result.data.filter(user => 
+                    roleTypeMap[user.role_type] === userType
+                );
+                
+                if (filteredUsers.length === 0) {
+                    modalBody.innerHTML = '<p>暂无该类型用户数据</p>';
+                    return;
+                }
+                
+                // 生成表格
+                let tableHtml = `
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>账号</th>
+                                <th>姓名</th>
+                                <th>角色</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                filteredUsers.forEach(user => {
+                    tableHtml += `
+                        <tr>
+                            <td>${user.user_account}</td>
+                            <td>${user.user_name}</td>
+                            <td>${roleNameMap[user.role_type]}</td>
+                        </tr>
+                    `;
+                });
+                
+                tableHtml += `
+                        </tbody>
+                    </table>
+                `;
+                
+                modalBody.innerHTML = tableHtml;
+                
+            } catch (error) {
+                console.error('加载用户数据失败:', error);
+                modalBody.innerHTML = '<p class="message message-error">加载数据失败，请重试</p>';
+            }
+        }
+    </script>
+</body>
+</html>

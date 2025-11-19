@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生信息管理系统 - 登录</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        .login-container {
+            background-color: white;
+            padding: 2.5rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .system-title {
+            text-align: center;
+            color: #165DFF;
+            margin-bottom: 2rem;
+            font-size: 1.8rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #165DFF;
+            box-shadow: 0 0 0 2px rgba(22, 93, 255, 0.2);
+        }
+        
+        .login-btn {
+            width: 100%;
+            padding: 0.8rem;
+            background-color: #165DFF;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1.1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 1rem;
+        }
+        
+        .login-btn:hover {
+            background-color: #0E42D2;
+        }
+        
+        .message {
+            padding: 0.8rem;
+            border-radius: 6px;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            display: none;
+        }
+        
+        .message.error {
+            background-color: #fff1f0;
+            color: #cf1322;
+            display: block;
+        }
+        
+        .message.success {
+            background-color: #f6ffed;
+            color: #52c41a;
+            display: block;
+        }
+        
+        .account-rule {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 0.3rem;
+            padding-left: 0.2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1 class="system-title">学生信息管理系统</h1>
+        
+        <!-- 消息提示框 -->
+        <div class="message" id="message"></div>
+        
+        <!-- 登录表单 -->
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="account">账号</label>
+                <input type="text" id="account" class="form-control" placeholder="请输入账号" required>
+                <div class="account-rule">
+                    账号规则：4位(管理员)/8位(辅导员)/9位(教师)/12位(学生)
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="password" id="password" class="form-control" placeholder="请输入密码" required>
+            </div>
+            
+            <button type="submit" class="login-btn">登录</button>
+        </form>
+    </div>
+
+    <script>
+        // 登录表单提交事件
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const account = document.getElementById('account').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const messageEl = document.getElementById('message');
+            
+            // 前端基础验证
+            if (!account || !password) {
+                messageEl.textContent = '请填写完整信息';
+                messageEl.className = 'message error';
+                return;
+            }
+            
+            // 验证账号长度（与后端规则一致）
+            const validLengths = [4, 8, 9, 12];
+            if (!validLengths.includes(account.length)) {
+                messageEl.textContent = '账号长度不符合规则（4位/8位/9位/12位）';
+                messageEl.className = 'message error';
+                return;
+            }
+            
+            try {
+                // 发送登录请求
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ account, password })
+                });
+                
+                const result = await response.json();
+                
+                // 处理登录结果
+                if (result.status === 'success') {
+                    messageEl.textContent = result.message;
+                    messageEl.className = 'message success';
+                    
+                    // 根据后端返回的角色自动跳转
+                    setTimeout(() => {
+                        if (result.role === '管理员') {
+                            window.location.href = '/admin';
+                        } else if (result.role === '学生') {
+                            window.location.href = '/student';
+                        } else if (result.role === '辅导员') {
+                            window.location.href = '/counselor';
+                        } else if (result.role === '讲师') {
+                            window.location.href = '/teacher';
+                        }
+                    }, 1000);
+                } else {
+                    messageEl.textContent = result.message;
+                    messageEl.className = 'message error';
+                }
+            } catch (error) {
+                console.error('登录请求失败:', error);
+                messageEl.textContent = '网络错误，请重试';
+                messageEl.className = 'message error';
+            }
+        });
+    </script>
+</body>
+</html>

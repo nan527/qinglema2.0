@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>用户注册</title>
+  <!-- 引入Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 引入Font Awesome图标 -->
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  
+  <!-- 配置Tailwind自定义颜色和字体 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#4F46E5', // 深紫色作为主色调，更具现代感
+            success: '#10B981',
+            warning: '#F59E0B',
+            danger: '#EF4444',
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .input-focus {
+        @apply focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none;
+      }
+      .btn-hover {
+        @apply hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300;
+      }
+      .password-strength-bar {
+        @apply h-1 rounded-full transition-all duration-300;
+      }
+      .card-shadow {
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+      }
+      .card-hover {
+        @apply hover:shadow-xl transition-all duration-500;
+      }
+    }
+  </style>
+</head>
+<body class="font-inter bg-gradient-to-br from-indigo-50 to-purple-50 min-h-screen flex items-center justify-center p-4">
+  <!-- 装饰元素 -->
+  <div class="fixed -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl"></div>
+  <div class="fixed -bottom-32 -left-32 w-80 h-80 bg-primary/5 rounded-full blur-3xl"></div>
+  
+  <!-- 注册卡片 -->
+  <div class="w-full max-w-md relative bg-white rounded-2xl overflow-hidden card-shadow card-hover z-10">
+    <!-- 卡片头部装饰 -->
+    <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary to-purple-400"></div>
+    
+    <!-- 卡片头部 -->
+    <div class="p-8 text-center pt-10">
+      <div class="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+        <i class="fa fa-user-plus text-2xl text-primary"></i>
+      </div>
+      <h1 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-gray-800">创建账号</h1>
+      <p class="text-gray-500 mt-2">填写信息完成注册</p>
+    </div>
+    
+    <!-- 注册表单 -->
+    <div class="px-8 pb-8">
+      <form id="registerForm" class="space-y-6">
+        <!-- 用户名输入 -->
+        <div class="space-y-2">
+          <label for="username" class="block text-sm font-medium text-gray-700">用户名</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <i class="fa fa-user text-gray-400 transition-colors duration-300 group-hover:text-primary"></i>
+            </div>
+            <input type="text" id="username" name="username" 
+                  class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg input-focus transition duration-300"
+                  placeholder="请设置用户名" required>
+          </div>
+          <p id="usernameHint" class="text-xs text-gray-500 hidden">用户名长度应在3-20个字符之间</p>
+        </div>
+        
+        <!-- 密码输入 -->
+        <div class="space-y-2">
+          <label for="password" class="block text-sm font-medium text-gray-700">密码</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <i class="fa fa-lock text-gray-400 transition-colors duration-300"></i>
+            </div>
+            <input type="password" id="password" name="password" 
+                  class="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg input-focus transition duration-300"
+                  placeholder="请设置密码" required>
+            <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-primary transition-colors">
+              <i class="fa fa-eye-slash"></i>
+            </button>
+          </div>
+          
+          <!-- 密码强度指示器 -->
+          <div class="space-y-1">
+            <div class="flex gap-1">
+              <div id="strength1" class="password-strength-bar w-1/4 bg-gray-200"></div>
+              <div id="strength2" class="password-strength-bar w-1/4 bg-gray-200"></div>
+              <div id="strength3" class="password-strength-bar w-1/4 bg-gray-200"></div>
+              <div id="strength4" class="password-strength-bar w-1/4 bg-gray-200"></div>
+            </div>
+            <p id="passwordStrengthText" class="text-xs text-gray-500">密码强度：未输入</p>
+          </div>
+          <p class="text-xs text-gray-500">密码至少8位，包含字母和数字</p>
+        </div>
+  
+        <!-- 确认密码 -->
+        <div class="space-y-2">
+          <label for="confirmPassword" class="block text-sm font-medium text-gray-700">确认密码</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <i class="fa fa-lock text-gray-400 transition-colors duration-300"></i>
+            </div>
+            <input type="password" id="confirmPassword" name="confirmPassword" 
+                  class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg input-focus transition duration-300"
+                  placeholder="请再次输入密码" required>
+          </div>
+          <p id="passwordMatchHint" class="text-xs hidden"></p>
+        </div>
+        
+        <!-- 同意条款 -->
+        <div class="flex items-start">
+          <div class="flex items-center h-5">
+            <input id="terms" name="terms" type="checkbox" class="w-4 h-4 border border-gray-300 rounded focus:ring-primary/30 focus:ring-2 transition-all duration-200" required>
+          </div>
+          <div class="ml-3 text-sm">
+            <label for="terms" class="text-gray-600">我已阅读并同意<a href="#" class="text-primary hover:underline transition-colors">服务条款</a>和<a href="#" class="text-primary hover:underline transition-colors">隐私政策</a></label>
+          </div>
+        </div>
+        
+        <!-- 注册按钮 -->
+        <button type="submit" class="w-full bg-primary text-white font-medium py-3 px-4 rounded-lg btn-hover active:translate-y-0 active:shadow-md focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 transition-all duration-300">
+          注册账号
+        </button>
+        
+        <!-- 注册页面中的登录链接 -->
+<div class="text-center text-sm text-gray-600 pt-2">
+  已有账号? <a href="admin.html" class="text-primary font-medium hover:text-primary/80 transition-colors relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 hover:after:w-full after:bg-primary after:transition-all after:duration-300">立即登录</a>
+</div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // 密码显示/隐藏切换
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+    
+    togglePassword.addEventListener('click', () => {
+      // 切换密码可见性
+      const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+      passwordInput.setAttribute('type', type);
+      
+      // 切换图标
+      const icon = togglePassword.querySelector('i');
+      icon.classList.toggle('fa-eye');
+      icon.classList.toggle('fa-eye-slash');
+    });
+    
+    // 密码强度检测
+    const passwordStrengthText = document.getElementById('passwordStrengthText');
+    const strengthBars = [
+      document.getElementById('strength1'),
+      document.getElementById('strength2'),
+      document.getElementById('strength3'),
+      document.getElementById('strength4')
+    ];
+    
+    passwordInput.addEventListener('input', () => {
+      const password = passwordInput.value;
+      let strength = 0;
+      
+      // 基本长度检查
+      if (password.length >= 8) strength++;
+      // 包含小写字母或大写字母
+      if (/[A-Za-z]/.test(password)) strength++;
+      // 包含数字
+      if (/[0-9]/.test(password)) strength++;
+      // 包含特殊字符
+      if (/[^A-Za-z0-9]/.test(password)) strength++;
+      
+      // 更新强度指示器
+      strengthBars.forEach((bar, index) => {
+        if (index < strength) {
+          bar.classList.remove('bg-gray-200', 'bg-danger', 'bg-warning', 'bg-success');
+          if (strength === 1) bar.classList.add('bg-danger');
+          else if (strength === 2) bar.classList.add('bg-warning');
+          else if (strength >= 3) bar.classList.add('bg-success');
+        } else {
+          bar.className = 'password-strength-bar w-1/4 bg-gray-200';
+        }
+      });
+      
+      // 更新强度文本
+      const strengthTexts = ['未输入', '弱', '中', '强', '极强'];
+      passwordStrengthText.textContent = `密码强度：${strengthTexts[strength]}`;
+      
+      // 检查密码匹配
+      checkPasswordMatch();
+    });
+    
+    // 检查密码匹配
+    const confirmPasswordInput = document.getElementById('confirmPassword');
+    const passwordMatchHint = document.getElementById('passwordMatchHint');
+    
+    confirmPasswordInput.addEventListener('input', checkPasswordMatch);
+    
+    function checkPasswordMatch() {
+      const password = passwordInput.value;
+      const confirmPassword = confirmPasswordInput.value;
+      
+      if (confirmPassword) {
+        if (password === confirmPassword) {
+          passwordMatchHint.textContent = '密码匹配';
+          passwordMatchHint.className = 'text-xs text-success';
+          confirmPasswordInput.classList.remove('border-danger');
+          confirmPasswordInput.classList.add('border-success');
+        } else {
+          passwordMatchHint.textContent = '密码不匹配';
+          passwordMatchHint.className = 'text-xs text-danger';
+          confirmPasswordInput.classList.remove('border-success');
+          confirmPasswordInput.classList.add('border-danger');
+        }
+        passwordMatchHint.classList.remove('hidden');
+      } else {
+        passwordMatchHint.classList.add('hidden');
+        confirmPasswordInput.classList.remove('border-success', 'border-danger');
+      }
+    }
+    
+    // 用户名验证
+    const usernameInput = document.getElementById('username');
+    const usernameHint = document.getElementById('usernameHint');
+    
+    usernameInput.addEventListener('input', () => {
+      const username = usernameInput.value;
+      if (username.length > 0) {
+        usernameHint.classList.remove('hidden');
+        if (username.length < 3 || username.length > 20) {
+          usernameHint.textContent = '用户名长度应在3-20个字符之间';
+          usernameHint.className = 'text-xs text-danger';
+        } else {
+          usernameHint.textContent = '用户名可用';
+          usernameHint.className = 'text-xs text-success';
+        }
+      } else {
+        usernameHint.classList.add('hidden');
+      }
+    });
+    
+    // 表单提交处理
+    const registerForm = document.getElementById('registerForm');
+    registerForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      // 获取表单数据
+      const username = usernameInput.value;
+      const password = passwordInput.value;
+      const confirmPassword = confirmPasswordInput.value;
+      
+      // 验证用户名
+      if (username.length < 3 || username.length > 20) {
+        alert('用户名长度应在3-20个字符之间');
+        usernameInput.focus();
+        return;
+      }
+      
+      // 验证密码
+      if (password.length < 8) {
+        alert('密码长度至少为8位');
+        passwordInput.focus();
+        return;
+      }
+      
+      // 验证密码匹配
+      if (password !== confirmPassword) {
+        alert('两次输入的密码不匹配');
+        confirmPasswordInput.focus();
+        return;
+      }
+      
+      // 模拟注册成功
+      alert(`注册成功!\n用户名: ${username}`);
+      registerForm.reset();
+      
+      // 重置状态
+      strengthBars.forEach(bar => {
+        bar.className = 'password-strength-bar w-1/4 bg-gray-200';
+      });
+      passwordStrengthText.textContent = '密码强度：未输入';
+      passwordMatchHint.classList.add('hidden');
+      usernameHint.classList.add('hidden');
+      confirmPasswordInput.classList.remove('border-success', 'border-danger');
+    });
+  </script>
+</body>
+</html>

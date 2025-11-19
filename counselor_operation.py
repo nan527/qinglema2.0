@@ -5,9 +5,9 @@ from datetime import datetime
 class CounselorOperation:
     def __init__(self, counselor_id, counselor_name, responsible_grade):
         """初始化：接收辅导员ID、姓名、负责年级"""
-        self.counselor_id = counselor_id  # 审批人ID
-        self.counselor_name = counselor_name  # 审批人姓名
-        self.responsible_grade = responsible_grade  # 负责年级（如2023）
+        self.counselor_id = counselor_id  # 辅导员工号（主键）
+        self.counselor_name = counselor_name  # 辅导员姓名
+        self.responsible_grade = responsible_grade  # 负责年级
         self.conn = None
         self.cursor = None
         self._connect_db()
@@ -30,15 +30,16 @@ class CounselorOperation:
             self.conn.close()
 
     def show_menu(self):
-        """辅导员操作菜单（新增“修改密码”选项）"""
+        """辅导员操作菜单（新增“查看个人信息”选项）"""
         while True:
-            print(f"\n===== 辅导员操作中心（欢迎 {self.counselor_name} 老师，负责年级：{self.responsible_grade}级）=====")
+            print(f"\n===== 辅导员操作中心（欢迎 {self.counselor_name} 老师）=====")
             print("1. 查看负责年级待审批请假记录")
             print("2. 查看负责年级所有请假记录")
             print("3. 审批请假申请")
-            print("4. 修改个人密码")  # 新增选项
-            print("5. 退出系统")
-            choice = input("请选择操作(1-5)：").strip()
+            print("4. 修改个人密码")
+            print("5. 查看个人信息")  # 新增选项：查看个人信息
+            print("6. 退出系统")
+            choice = input("请选择操作(1-6)：").strip()
 
             if choice == "1":
                 self._show_pending_leaves()
@@ -47,15 +48,57 @@ class CounselorOperation:
             elif choice == "3":
                 self._approve_leave()
             elif choice == "4":
-                self._change_password()  # 新增方法
+                self._change_password()
             elif choice == "5":
+                self._show_personal_info()  # 新增方法：显示个人信息
+            elif choice == "6":
                 print("👋 退出辅导员系统")
                 self._close_db()
                 break
             else:
-                print("❌ 无效操作，请重新输入1-5")
+                print("❌ 无效操作，请重新输入1-6")
 
-    # ---------------------------- 查看待审批请假记录 ----------------------------
+    # ---------------------------- 新增：查看个人信息 ----------------------------
+    def _show_personal_info(self):
+        """从counselor_info表读取并显示所有个人信息"""
+        try:
+            # 查询counselor_info表中当前辅导员的所有字段
+            sql = """
+                SELECT counselor_id, password, counselor_name, dept, 
+                       responsible_grade, responsible_major, contact,
+                       create_time, update_time
+                FROM counselor_info
+                WHERE counselor_id = %s
+            """
+            self.cursor.execute(sql, (self.counselor_id,))
+            info = self.cursor.fetchone()
+
+            if not info:
+                print("❌ 未查询到个人信息")
+                return
+
+            # 解析查询结果（对应表中所有字段）
+            counselor_id, password, counselor_name, dept, \
+            responsible_grade, responsible_major, contact, \
+            create_time, update_time = info
+
+            # 格式化显示（密码显示为***保护隐私）
+            print("\n===== 个人信息详情 =====")
+            print(f"辅导员工号：{counselor_id}")
+            print(f"登录密码：{'*' * len(password)}（已加密显示）")
+            print(f"姓名：{counselor_name}")
+            print(f"所属部门：{dept}")
+            print(f"负责年级：{responsible_grade}级")
+            print(f"负责专业：{responsible_major}")
+            print(f"联系方式：{contact}")
+            print(f"记录创建时间：{create_time}")
+            print(f"最后更新时间：{update_time}")
+            print("=======================")
+
+        except pymysql.MySQLError as e:
+            print(f"❌ 查询个人信息失败：{e}")
+
+    # ---------------------------- 原有功能：查看待审批请假记录 ----------------------------
     def _show_pending_leaves(self):
         """查看负责年级中状态为“待审批”的请假记录"""
         try:
@@ -82,7 +125,7 @@ class CounselorOperation:
         except pymysql.MySQLError as e:
             print(f"❌ 查询失败：{e}")
 
-    # ---------------------------- 查看所有请假记录 ----------------------------
+    # ---------------------------- 原有功能：查看所有请假记录 ----------------------------
     def _show_all_leaves(self):
         """查看负责年级所有请假记录（含已批准/已拒绝）"""
         try:
@@ -111,7 +154,7 @@ class CounselorOperation:
         except pymysql.MySQLError as e:
             print(f"❌ 查询失败：{e}")
 
-    # ---------------------------- 审批请假申请（新增次数超5次警告） ----------------------------
+    # ---------------------------- 原有功能：审批请假申请 ----------------------------
     def _approve_leave(self):
         """审批请假申请：仅“同意”时增加学生times；学生times≥5时弹出警告"""
         try:
@@ -188,7 +231,7 @@ class CounselorOperation:
             self.conn.rollback()
             print(f"❌ 审批失败：{e}")
 
-    # ---------------------------- 新增：修改个人密码 ----------------------------
+    # ---------------------------- 原有功能：修改个人密码 ----------------------------
     def _change_password(self):
         """修改辅导员个人密码"""
         try:
@@ -216,7 +259,7 @@ class CounselorOperation:
                 print("❌ 两次输入的密码不一致，修改失败")
                 return
 
-            # 3. 更新密码
+            # 3. 更新密码（同时更新update_time）
             update_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             sql_update = """
                 UPDATE counselor_info

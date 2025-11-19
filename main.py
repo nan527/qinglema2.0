@@ -1,8 +1,9 @@
 # 学生信息管理系统主入口（整合所有角色）
 from login import login
-from admin_operation_terminal import AdminOperation
-from student_operation_terminal import StudentOperation
-from counselor_operation_terminal import CounselorOperation
+# 导入整合后的管理员操作类（替换原来的admin_operation_terminal）
+from admin_operation import AdminOperation  # 修改这里的导入路径
+from student_operation import StudentOperation
+from counselor_operation import CounselorOperation
 
 def main():
     """主程序循环：支持所有角色登录和操作"""
@@ -26,7 +27,7 @@ def main():
         
         if role_name == "管理员":
             print("\n🔑 检测到管理员权限，进入管理界面...")
-            admin = AdminOperation()
+            admin = AdminOperation()  # 这里使用的就是整合后的类
             admin.show_menu()
             
         elif role_name == "学生":

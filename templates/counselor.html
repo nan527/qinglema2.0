@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>导师审批系统</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  
+  <!-- 配置Tailwind主题 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#3b82f6',
+            neutral: '#f8fafc'
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .card-shadow {
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+      }
+      .hover-lift {
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+      .hover-lift:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div class="container mx-auto px-4 py-8 max-w-5xl">
+    <!-- 页面标题和用户信息 -->
+    <header class="mb-8 flex flex-col md:flex-row justify-between items-center">
+      <div class="text-center md:text-left mb-4 md:mb-0">
+        <h1 class="text-2xl md:text-3xl font-bold text-gray-800">导师审批平台</h1>
+        <p class="text-gray-500 mt-2">便捷处理申请与电子签字</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span id="userName" class="text-gray-600">欢迎，辅导员</span>
+        <button id="logoutBtn" class="bg-gray-100 text-gray-700 py-1.5 px-3 rounded-lg text-sm hover:bg-gray-200 transition">
+          <i class="fa fa-sign-out mr-1"></i>退出登录
+        </button>
+      </div>
+    </header>
+    
+    <!-- 主内容区：审批与签字两栏布局 -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <!-- 审批区域 -->
+      <div class="bg-white rounded-xl p-6 card-shadow hover-lift">
+        <div class="flex items-center justify-between mb-5">
+          <h2 class="text-xl font-semibold text-gray-800">审批</h2>
+          <span class="bg-blue-50 text-primary text-xs px-2.5 py-1 rounded-full">待处理</span>
+        </div>
+        
+        <!-- 申请信息 -->
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-500 mb-1">申请标题</label>
+            <input type="text" value="关于毕业论文选题的申请" 
+                  class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none text-gray-800 text-sm">
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-500 mb-1">申请人</label>
+            <input type="text" value="李明" 
+                  class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none text-gray-800 text-sm">
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-500 mb-1">申请日期</label>
+            <input type="date" value="2023-11-12" 
+                  class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none text-gray-800 text-sm">
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-500 mb-1">审批意见</label>
+            <textarea rows="3" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none text-gray-800 text-sm"
+                    placeholder="请输入审批意见..."></textarea>
+          </div>
+        </div>
+        
+        <!-- 审批按钮 -->
+        <div class="flex gap-3 mt-6">
+          <button class="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition">
+            驳回
+          </button>
+          <button class="flex-1 bg-primary text-white py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition">
+            批准
+          </button>
+        </div>
+      </div>
+      
+      <!-- 签字区域 -->
+      <div class="bg-white rounded-xl p-6 card-shadow hover-lift">
+        <div class="flex items-center justify-between mb-5">
+          <h2 class="text-xl font-semibold text-gray-800">签字</h2>
+          <span id="signatureStatus" class="bg-amber-50 text-amber-600 text-xs px-2.5 py-1 rounded-full">未完成</span>
+        </div>
+        
+        <!-- 签字画布展示区 -->
+        <div class="border-2 border-dashed border-gray-200 rounded-lg p-3 mb-4">
+          <div id="signatureDisplay" class="w-full h-32 bg-gray-50 rounded-md flex items-center justify-center text-gray-400 text-sm">
+            签字区域
+          </div>
+        </div>
+        
+        <!-- 签字控制按钮 -->
+        <div class="flex justify-end gap-3 mb-6">
+          <button class="text-gray-600 py-1.5 px-3 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 transition" id="clearSignatureBtn">
+            <i class="fa fa-eraser mr-1"></i>清除
+          </button>
+          <!-- 修正：跳转路径改为后端路由 -->
+          <button class="text-white bg-primary py-1.5 px-3 rounded-lg text-sm hover:bg-primary/90 transition" 
+                  onclick="window.location.href='/qianzi'">
+            <i class="fa fa-pencil mr-1"></i>开始签字
+          </button>
+        </div>
+        
+        <!-- 签字信息 -->
+        <div>
+          <label class="block text-sm font-medium text-gray-500 mb-1">签字日期</label>
+          <input type="date" value="2023-11-12" 
+                class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none text-gray-800 text-sm">
+        </div>
+        
+        <!-- 保存按钮 -->
+        <button class="w-full mt-6 bg-primary text-white py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition" id="saveSignatureBtn">
+          保存签字
+        </button>
+      </div>
+    </div>
+    
+    <!-- 最近记录 -->
+    <div class="mt-6 bg-white rounded-xl p-6 card-shadow">
+      <h3 class="text-base font-semibold text-gray-800 mb-4">最近审批记录</h3>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead>
+            <tr class="text-left text-gray-500 border-b border-gray-100">
+              <th class="pb-2 font-medium">申请标题</th>
+              <th class="pb-2 font-medium">申请人</th>
+              <th class="pb-2 font-medium">状态</th>
+              <th class="pb-2 font-medium">日期</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-b border-gray-50 hover:bg-gray-50">
+              <td class="py-3">实习单位确认申请</td>
+              <td class="py-3">张华</td>
+              <td class="py-3"><span class="text-green-600 text-xs">已批准</span></td>
+              <td class="py-3 text-gray-500">2023-11-05</td>
+            </tr>
+            <tr class="hover:bg-gray-50">
+              <td class="py-3">课程调整申请</td>
+              <td class="py-3">王芳</td>
+              <td class="py-3"><span class="text-green-600 text-xs">已批准</span></td>
+              <td class="py-3 text-gray-500">2023-11-01</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 页面加载时检查是否有签字图片
+    document.addEventListener('DOMContentLoaded', function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const signature = urlParams.get('signature');
+      
+      if (signature) {
+        // 显示签字预览
+        const signatureDisplay = document.getElementById('signatureDisplay');
+        const signatureStatus = document.getElementById('signatureStatus');
+        
+        signatureDisplay.innerHTML = `<img src="/qianzi/${signature}" alt="签字预览" class="max-w-full max-h-full">`;
+        signatureStatus.textContent = '已完成';
+        signatureStatus.className = 'bg-green-50 text-green-600 text-xs px-2.5 py-1 rounded-full';
+      }
+    });
+
+    // 退出登录功能
+    document.getElementById('logoutBtn').addEventListener('click', async function() {
+      if (confirm('确定要退出登录吗？')) {
+        try {
+          await fetch('/api/logout', { method: 'POST' });
+          window.location.href = '/login';
+        } catch (error) {
+          console.error('退出登录失败:', error);
+          alert('退出登录失败，请重试');
+        }
+      }
+    });
+
+    // 按钮交互
+    document.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const action = this.textContent.trim();
+        if (action.includes('批准')) {
+          const signatureStatus = document.getElementById('signatureStatus');
+          if (signatureStatus.textContent !== '已完成') {
+            alert('请先完成签字再批准');
+            return;
+          }
+          alert('已批准该申请');
+        } else if (action.includes('驳回')) {
+          alert('已驳回该申请');
+        } else if (action.includes('清除')) {
+          const signatureDisplay = document.getElementById('signatureDisplay');
+          const signatureStatus = document.getElementById('signatureStatus');
+          
+          signatureDisplay.innerHTML = '签字区域';
+          signatureStatus.textContent = '未完成';
+          signatureStatus.className = 'bg-amber-50 text-amber-600 text-xs px-2.5 py-1 rounded-full';
+        } else if (action.includes('保存签字')) {
+          alert('签字已保存');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

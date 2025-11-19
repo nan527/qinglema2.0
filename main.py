@@ -1,10 +1,11 @@
-# main.py（终端版入口，支持循环登录）
+# 学生信息管理系统主入口（整合所有角色）
 from login import login
 from admin_operation_terminal import AdminOperation
 from student_operation_terminal import StudentOperation
+from counselor_operation_terminal import CounselorOperation
 
 def main():
-    """主程序循环"""
+    """主程序循环：支持所有角色登录和操作"""
     while True:
         print("\n" + "=" * 50)
         print("            🎓 学生信息管理系统")
@@ -13,7 +14,7 @@ def main():
         # 1. 执行登录
         user_info = login()
         if not user_info:
-            # 如果登录返回None，询问是否继续
+            # 登录返回None时询问是否继续
             choice = input("\n是否继续登录？(y/n): ").strip().lower()
             if choice != 'y':
                 print("感谢使用，再见！")
@@ -27,20 +28,23 @@ def main():
             print("\n🔑 检测到管理员权限，进入管理界面...")
             admin = AdminOperation()
             admin.show_menu()
-            # 管理员界面退出后会自动回到登录界面
             
         elif role_name == "学生":
             print(f"\n🎓 检测到学生身份，进入学生界面...")
             student = StudentOperation(user_info["user_account"])
             student.show_menu()
-            # 学生界面退出后会自动回到登录界面
+            
+        elif role_name == "辅导员":
+            print(f"\n👨‍💼 检测到辅导员权限，进入{user_info['responsible_grade']}级管理界面...")
+            counselor = CounselorOperation(
+                counselor_id=user_info["user_account"],
+                counselor_name=user_info["user_name"],
+                responsible_grade=user_info["responsible_grade"]
+            )
+            counselor.show_menu()
             
         elif role_name == "讲师":
             print(f"\n👨‍🏫 您是{role_name}，当前版本暂未开发讲师功能界面")
-            input("按回车键返回登录界面...")
-            
-        elif role_name == "辅导员":
-            print(f"\n👨‍💼 您是{role_name}，当前版本暂未开发辅导员功能界面")
             input("按回车键返回登录界面...")
             
         else:

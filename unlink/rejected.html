@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>已驳回假条 - 任课老师工作平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4F46E5',
+                        secondary: '#EEF2FF',
+                        success: '#10B981',
+                        warning: '#F59E0B',
+                        danger: '#EF4444',
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                },
+            }
+        }
+    </script>
+
+    <style type="text/tailwindcss">
+        @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .card-shadow {
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+      }
+      .card-hover {
+        @apply hover:shadow-xl transition-all duration-300;
+      }
+      .btn-hover {
+        @apply hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 active:translate-y-0;
+      }
+    }
+  </style>
+</head>
+
+<body class="font-inter bg-gray-50 min-h-screen text-gray-800">
+    <!-- 顶部导航 -->
+    <header class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <i class="fa fa-graduation-cap text-primary text-xl"></i>
+                </div>
+                <h1 class="text-xl font-semibold">任课老师工作平台</h1>
+            </div>
+            <div class="text-sm flex items-center space-x-4">
+                <span class="text-gray-600">欢迎，<span class="font-medium">王老师</span></span>
+                <button class="text-primary hover:text-primary/80 transition-colors flex items-center">
+                    <i class="fa fa-sign-out mr-1"></i>退出
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 导航面包屑 -->
+    <div class="bg-white border-b border-gray-100">
+        <div class="container mx-auto px-4 py-3">
+            <nav class="flex text-sm" aria-label="Breadcrumb">
+                <ol class="inline-flex items-center space-x-1 md:space-x-3">
+                    <li class="inline-flex items-center">
+                        <a href="index.html" class="text-gray-700 hover:text-primary">
+                            <i class="fa fa-home mr-1"></i>首页
+                        </a>
+                    </li>
+                    <li>
+                        <div class="flex items-center">
+                            <i class="fa fa-angle-right text-gray-400 mx-1"></i>
+                            <a href="index.html" class="text-gray-700 hover:text-primary">请假管理</a>
+                        </div>
+                    </li>
+                    <li aria-current="page">
+                        <div class="flex items-center">
+                            <i class="fa fa-angle-right text-gray-400 mx-1"></i>
+                            <span class="text-danger font-medium">已驳回假条</span>
+                        </div>
+                    </li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <!-- 主内容区 -->
+    <main class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- 页面标题 -->
+        <div class="mb-8">
+            <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold">已驳回假条</h2>
+            <p class="text-gray-500 mt-2">共有 <span class="text-danger font-medium">3</span> 条已驳回的假条记录</p>
+        </div>
+
+        <!-- 假条筛选 -->
+        <div class="bg-white rounded-xl p-6 card-shadow mb-6">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div class="flex flex-wrap gap-3">
+                    <a href="teacher.html"
+                        class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors btn-hover">全部假条</a>
+                    <a href="pending.html"
+                        class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors btn-hover">待审批</a>
+                    <a href="approved.html"
+                        class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors btn-hover">已批准</a>
+                    <button class="px-4 py-2 bg-danger text-white rounded-lg btn-hover">已驳回</button>
+                </div>
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <div class="relative flex-grow md:flex-grow-0">
+                        <input type="text" placeholder="搜索学生姓名/学号"
+                            class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none w-full md:w-64">
+                        <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    </div>
+                    <select
+                        class="px-4 py-2 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none">
+                        <option>所有课程</option>
+                        <option>Web前端开发</option>
+                        <option>数据结构与算法</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- 已驳回假条列表 -->
+        <div class="bg-white rounded-xl p-6 card-shadow mb-8">
+            <div class="space-y-6">
+                <!-- 假条1 -->
+                <div class="border border-gray-100 rounded-lg p-5 hover:border-danger/30 transition-all">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h4 class="font-medium text-lg">孙伟 - 数据结构与算法</h4>
+                            <p class="text-sm text-gray-500 mt-1">学号: 2022020203 | 请假类型: 事假</p>
+                            <p class="text-xs text-gray-400 mt-1">提交时间: 2023-11-12 09:15 | 审批时间: 2023-11-12 10:30</p>
+                        </div>
+                        <span class="bg-danger/10 text-danger text-xs px-2 py-1 rounded-full">已驳回</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <p class="text-xs text-gray-500">请假时间</p>
+                            <p class="text-sm mt-1">2023-11-13</p>
+                            <p class="text-xs text-gray-400 mt-1">共1天</p>
+                        </div>
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <p class="text-xs text-gray-500">请假课程</p>
+                            <p class="text-sm mt-1">数据结构与算法</p>
+                            <p class="text-xs text-gray-400 mt-1">共1门课程</p>
+                        </div>
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <p class="text-xs text-gray-500">审批人</p>
+                            <p class="text-sm mt-1">王老师 (数据结构与算法)</p>
+                            <p class="text-xs text-gray-400 mt-1">副教授</p>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <p class="text-xs text-gray-500 mb-2">请假理由</p>
+                        <div class="bg-gray-50 p-3 rounded-lg text-sm">
+                            <p>个人原因需要请假。</p>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <p class="text-xs text-gray-500 mb-2">驳回理由</p>
+                        <div class="bg-danger/5 p-3 rounded-lg text-sm border border-danger/20">
+                            <p>请假理由不充分，且当日有重要课程内容和随堂测验，不予批准。如需请假请提供具体原因。</p>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center pt-4 border-t border-gray-100">
+                        <div>
+                            <button class="text-xs text-primary hover:underline flex items-center">
+                                <i class="fa fa-eye mr-1"></i> 查看完整详情
+                            </button>
+                        </div>
+                        <div class="flex gap-3">
+                            <button
+                                class="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors btn-hover">
+                                <i class="fa fa-envelope mr-1"></i> 联系学生
+                            </button>
+                            <button
+                                class="text-sm bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors btn-hover">
+                                <i class="fa fa-history mr-1"></i> 重新审核
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 假条2 -->
+                <div class="border border-gray-100 rounded-lg p-5 hover:border-danger/30 transition-all">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h4 class="font-medium text-lg">周敏 - Web前端开发</h4>
+                            <p class="text-sm text-gray-500 mt-1">学号: 2021010106 | 请假类型: 事假</p>
+                            <p class="text-xs text-gray-400 mt-1">提交时间: 2023-11-09 14:20 | 审批时间: 2023-11-09 15:10</p>
+                        </div>
+                        <span class="bg-danger/10 text-danger text-xs px-2 py-1 rounded-full">已驳回</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <p class="text-xs text-gray-500">请假时间</p>
+                            <p class="text-sm mt-1">2023-11-10</p>
+                            <p class="text-xs text-gray-400 mt-1">共1天</p>
+                        </div>
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <p class="text-xs text-gray-500">请假课程</p>
+                            <p class="text-sm mt-1">Web前端开发、计算机网络</p>
+                            <p class="text-xs text-gray-400 mt-1">共2门课程</p>
+                        </div>
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <p class="text-xs text-gray-500">审批人</p>
+                            <p class="text-sm mt-1">王老师 (Web前端开发)</p>
+                            <p class="text-xs text-gray-400 mt-1">副教授</p>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <p class="text-xs text-gray-500 mb-2">请假理由</p>
+                        <div class="bg-gray-50 p-3 rounded-lg text-sm">
+                            <p>身体不适，需要休息。</p>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <p class="text-xs text-gray-500 mb-2">驳回理由</p>
+                        <div class="bg-danger/5 p-3 rounded-lg text-sm border border-danger/20">
+                            <p>请假理由过于笼统，且未提供任何医疗证明。当日有Web前端开发项目答辩，无法批准。如有身体不适请提供医院证明。</p>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center pt-4 border-t border-gray-100">
+                        <div>
+                            <button class="text-xs text-primary hover:underline flex items-center">
+                                <i class="fa fa-eye mr-1"></i> 查看完整详情
+                            </button>
+                        </div>
+                        <div class="flex gap-3">
+                            <button
+                                class="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors btn-hover">
+                                <i class="fa fa-envelope mr-1"></i> 联系学生
+                            </button>
+                            <button
+                                class="text-sm bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors btn-hover">
+                                <i class="fa fa-history mr-1"></i> 重新审核
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 假条3 -->
+                <div class="border border-gray-100 rounded-lg p-5 hover:border-danger/30 transition-all">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h4 class="font-medium text-lg">吴杰 - 数据结构与算法</h4>
+                            <p class="text-sm text-gray-500 mt-1">学号: 2022020205 | 请假类型: 病假</p>
+                            <p class="text-xs text-gray-400 mt-1">提交时间: 2023-11-07 16:30 | 审批时间: 2023-11-07 17:15</p>
+                        </div>
+                        <span class="bg-danger/10 text-danger text-xs px-2 py-1 rounded-full">已驳回</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <p class="text-xs text-gray-500">请假时间</p>
+                            <p class="text-sm mt-1">2023-11-08 至 2023-11-10</p>
+                            <p class="text-xs text-gray-400 mt-1">共3天</p>
+                        </div>
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <p class="text-xs text-gray-500">请假课程</p>
+                            <p class="text-sm mt-1">数据结构与算法、高等数学、大学物理</p>
+                            <p class="text-xs text-gray-400 mt-1">共3门课程</p>
+                        </div>
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <p class="text-xs text-gray-500">审批人</p>
+                            <p class="text-sm mt-1">王老师 (数据结构与算法)</p>
+                            <p class="text-xs text-gray-400 mt-1">副教授</p>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <p class="text-xs text-gray-500 mb-2">请假理由</p>
+                        <div class="bg-gray-50 p-3 rounded-lg text-sm">
+                            <p>感冒发烧，需要休息几天。</p>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <p class="text-xs text-gray-500 mb-2">驳回理由</p>
+                        <div class="bg-danger/5 p-3 rounded-lg text-sm border border-danger/20">
+                            <p>请假时间过长，且未提供医院诊断证明。如需请长假，请提供县级以上医院证明，并按照学校规定办理正式请假手续。</p>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center pt-4 border-t border-gray-100">
+                        <div>
+                            <button class="text-xs text-primary hover:underline flex items-center">
+                                <i class="fa fa-eye mr-1"></i> 查看完整详情
+                            </button>
+                        </div>
+                        <div class="flex gap-3">
+                            <button
+                                class="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors btn-hover">
+                                <i class="fa fa-envelope mr-1"></i> 联系学生
+                            </button>
+                            <button
+                                class="text-sm bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors btn-hover">
+                                <i class="fa fa-history mr-1"></i> 重新审核
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 分页 -->
+            <div class="mt-8 flex justify-center">
+                <div class="flex items-center space-x-2">
+                    <button
+                        class="px-3 py-1 border border-gray-300 rounded-lg text-gray-500 hover:bg-gray-50">上一页</button>
+                    <button class="px-3 py-1 border border-primary bg-primary text-white rounded-lg">1</button>
+                    <button
+                        class="px-3 py-1 border border-gray-300 rounded-lg text-gray-500 cursor-not-allowed">下一页</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 驳回原因统计 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="bg-white rounded-xl p-6 card-shadow">
+                <h3 class="text-lg font-semibold mb-4">驳回原因统计</h3>
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <span class="text-sm">理由不充分</span>
+                            <span class="text-sm font-medium">2 (66.7%)</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-danger h-2 rounded-full" style="width: 66.7%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <span class="text-sm">缺少证明材料</span>
+                            <span class="text-sm font-medium">2 (66.7%)</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-warning h-2 rounded-full" style="width: 66.7%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <span class="text-sm">请假时间过长</span>
+                            <span class="text-sm font-medium">1 (33.3%)</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-primary h-2 rounded-full" style="width: 33.3%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl p-6 card-shadow">
+                <h3 class="text-lg font-semibold mb-4">操作建议</h3>
+                <div class="space-y-3">
+                    <div class="flex items-start">
+                        <div class="mt-0.5 mr-3 text-primary">
+                            <i class="fa fa-lightbulb-o"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-medium text-sm">联系学生补充材料</h4>
+                            <p class="text-xs text-gray-500">对于缺少证明材料的请假申请，可以联系学生补充相关证明后重新审核。</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <div class="mt-0.5 mr-3 text-primary">
+                            <i class="fa fa-exclamation-circle"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-medium text-sm">重要事项提醒</h4>
+                            <p class="text-xs text-gray-500">已驳回的假条如需重新审核，请确保学生已补充完整材料并符合请假规定。</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <div class="mt-0.5 mr-3 text-primary">
+                            <i class="fa fa-file-text-o"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-medium text-sm">导出记录</h4>
+                            <p class="text-xs text-gray-500">可以导出已驳回假条记录，用于统计分析和学生管理。</p>
+                        </div>
+                    </div>
+                </div>
+                <button class="mt-4 w-full bg-primary text-white py-2 rounded-lg btn-hover">
+                    <i class="fa fa-download mr-1"></i> 导出驳回记录
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- 重新审核模态框 -->
+    <div id="reviewModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">重新审核假条</h3>
+                <button onclick="closeReviewModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+
+            <div>
+                <p class="text-sm text-gray-600 mb-4">请选择新的审批结果：</p>
+
+                <div class="mb-4">
+                    <div class="flex gap-4 mb-3">
+                        <button id="approveBtn"
+                            class="flex-1 py-2 bg-success text-white rounded-lg hover:bg-success/90 transition-colors">
+                            批准假条
+                        </button>
+                        <button id="rejectBtn"
+                            class="flex-1 py-2 bg-danger text-white rounded-lg hover:bg-danger/90 transition-colors">
+                            维持驳回
+                        </button>
+                    </div>
+
+                    <label class="block text-sm font-medium text-gray-700 mb-1">审批意见（可选）</label>
+                    <textarea id="reviewComment"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none min-h-[100px]"
+                        placeholder="输入审批意见..."></textarea>
+                </div>
+
+                <div class="flex justify-end">
+                    <button onclick="closeReviewModal()"
+                        class="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors mr-3">
+                        取消
+                    </button>
+                    <button id="confirmReviewBtn" onclick="confirmReview()"
+                        class="text-sm bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors">
+                        确认提交
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="bg-white border-t border-gray-100 mt-12">
+        <div class="container mx-auto px-4 py-6 text-center text-sm text-gray-500">
+            <p>© 2023 教学管理系统 - 任课老师工作平台 版权所有</p>
+        </div>
+    </footer>
+
+    <script>
+        // 打开重新审核模态框
+        document.querySelectorAll('[class*="重新审核"]').forEach(btn => {
+            btn.addEventListener('click', function () {
+                document.getElementById('reviewModal').classList.remove('hidden');
+            });
+        });
+
+        // 关闭重新审核模态框
+        function closeReviewModal() {
+            document.getElementById('reviewModal').classList.add('hidden');
+            document.getElementById('reviewComment').value = '';
+        }
+
+        // 确认重新审核
+        function confirmReview() {
+            closeReviewModal();
+
+            // 显示操作成功提示
+            const notification = document.createElement('div');
+            notification.className = 'bg-primary text-white px-4 py-2 rounded-lg shadow-lg z-50 fixed top-20 right-4 transform transition-all duration-500';
+            notification.textContent = '重新审核已提交';
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 500);
+            }, 3000);
+        }
+
+        // 选择审批结果
+        document.getElementById('approveBtn').addEventListener('click', function () {
+            this.classList.add('ring-2', 'ring-success');
+            document.getElementById('rejectBtn').classList.remove('ring-2', 'ring-danger');
+            document.getElementById('confirmReviewBtn').innerHTML = '<i class="fa fa-check mr-1"></i> 确认批准';
+        });
+
+        document.getElementById('rejectBtn').addEventListener('click', function () {
+            this.classList.add('ring-2', 'ring-danger');
+            document.getElementById('approveBtn').classList.remove('ring-2', 'ring-success');
+            document.getElementById('confirmReviewBtn').innerHTML = '<i class="fa fa-times mr-1"></i> 确认驳回';
+        });
+    </script>
+</body>
+
+</html>

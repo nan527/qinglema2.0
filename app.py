@@ -1,113 +1,284 @@
-# app.py（Flask Web服务，对接前端所有功能）
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-from login import login  # 导入修改后的login函数（接收参数版）
-from admin_operation_web import AdminOperationWeb  # 导入Web版管理员操作类
+import os
+import uuid
+import base64
+from datetime import datetime
+from flask import Flask, request, jsonify, session, redirect, url_for, render_template, send_from_directory
+from functools import wraps
+import pymysql
+from db_config import get_db_config  # 确保存在数据库配置文件
 
+# 初始化Flask应用
 app = Flask(__name__)
-CORS(app)  # 允许跨域请求（前端和后端不同端口时必需）
-admin_web = AdminOperationWeb()  # 初始化Web版管理员操作实例
+app.secret_key = 'your_secure_secret_key_123456'  # 生产环境需更换为随机安全密钥
+app.config['UPLOAD_FOLDER'] = 'qianzi'  # 签字图片保存目录
 
-# 1. 登录接口（对接前端登录页）
+# 确保签字文件夹存在
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+# 数据库连接工具函数
+def get_db_connection():
+    """获取数据库连接"""
+    config = get_db_config()
+    return pymysql.connect(** config)
+
+# 登录验证装饰器（带角色权限控制）
+def login_required(role=None):
+    """装饰器：验证登录状态和角色权限"""
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            # 未登录用户强制跳转登录页
+            if 'user_info' not in session:
+                return redirect(url_for('login_page'))
+            # 验证角色权限（如指定角色，仅允许该角色访问）
+            if role and session['user_info']['role_name'] != role:
+                return "没有访问权限", 403
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+# 页面路由
+@app.route('/')
+def index():
+    """首页：根据登录状态自动跳转"""
+    if 'user_info' in session:
+        role = session['user_info']['role_name']
+        if role == '学生':
+            return redirect('/student')
+        elif role == '管理员':
+            return redirect('/admin')
+        elif role == '辅导员':
+            return redirect('/counselor')
+        elif role == '讲师':
+            return redirect('/teacher')
+    return redirect('/login')
+
+@app.route('/login')
+def login_page():
+    """登录页面"""
+    if 'user_info' in session:
+        return redirect(url_for('index'))  # 已登录用户直接跳转
+    return render_template('login.html')
+
+@app.route('/admin')
+@login_required(role='管理员')
+def admin_page():
+    """管理员页面"""
+    return render_template('admin.html', user_info=session['user_info'])
+
+@app.route('/student')
+@login_required(role='学生')
+def student_page():
+    """学生页面"""
+    return render_template('student.html', user_info=session['user_info'])
+
+@app.route('/teacher')
+@login_required(role='讲师')
+def teacher_page():
+    """讲师页面"""
+    return render_template('teacher.html', user_info=session['user_info'])
+
+@app.route('/counselor')
+@login_required(role='辅导员')
+def counselor_page():
+    """辅导员页面（支持接收签字图片参数）"""
+    signature = request.args.get('signature', '')
+    return render_template(
+        'counselor.html', 
+        user_info=session['user_info'],
+        signature=signature
+    )
+
+@app.route('/qianzi')
+@login_required(role='辅导员')
+def qianzi_page():
+    """签字页面（仅辅导员可访问）"""
+    return render_template('qianzi.html')
+
+# API接口
 @app.route('/api/login', methods=['POST'])
-def api_login():
-    # 接收前端传递的JSON数据
-    data = request.get_json()
-    account = data.get('user_account')
-    password = data.get('user_password')
-    role_type = data.get('role_type')
+def login():
+    """用户登录接口"""
+    data = request.json
+    account = data.get('account', '').strip()
+    password = data.get('password', '').strip()
     
-    # 校验必填参数
-    if not all([account, password, role_type]):
+    if not account or not password:
+        return jsonify({"status": "error", "message": "账号和密码不能为空"})
+    
+    # 账号长度→身份映射（4位管理员/8位辅导员/9位讲师/12位学生）
+    account_len = len(account)
+    role_map = {
+        4: {
+            "table": "admin_info",
+            "account_field": "admin_id",
+            "pwd_field": "password",
+            "name_field": "admin_name",
+            "role_name": "管理员"
+        },
+        8: {
+            "table": "counselor_info",
+            "account_field": "counselor_id",
+            "pwd_field": "password",
+            "name_field": "counselor_name",
+            "role_name": "辅导员",
+            "extra_field": "responsible_grade"
+        },
+        9: {
+            "table": "teacher_info",
+            "account_field": "teacher_id",
+            "pwd_field": "password",
+            "name_field": "teacher_name",
+            "role_name": "讲师"
+        },
+        12: {
+            "table": "student_info",
+            "account_field": "student_id",
+            "pwd_field": "password",
+            "name_field": "student_name",
+            "role_name": "学生"
+        }
+    }
+    
+    if account_len not in role_map:
         return jsonify({
-            "success": False,
-            "message": "账号、密码、身份类型不能为空"
-        }), 400
+            "status": "error", 
+            "message": f"账号长度不符合规则（支持：4位/8位/9位/12位）"
+        })
     
-    # 调用login函数校验（login.py已修改为接收参数）
-    user_info = login(account, password, role_type)
-    if user_info:
-        # 登录成功，返回前端需要的token和用户信息
+    target = role_map[account_len]
+    conn = None
+    cursor = None
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 构建查询SQL
+        if target["role_name"] == "辅导员":
+            sql = f"""
+                SELECT {target['account_field']}, {target['pwd_field']}, {target['name_field']}, {target['extra_field']}
+                FROM {target['table']}
+                WHERE {target['account_field']} = %s
+            """
+        else:
+            sql = f"""
+                SELECT {target['account_field']}, {target['pwd_field']}, {target['name_field']}
+                FROM {target['table']}
+                WHERE {target['account_field']} = %s
+            """
+            
+        cursor.execute(sql, (account,))
+        user = cursor.fetchone()
+        
+        if not user:
+            return jsonify({"status": "error", "message": f"{target['role_name']}账号不存在"})
+        
+        # 解析查询结果
+        if target["role_name"] == "辅导员":
+            db_account, db_password, db_name, db_responsible_grade = user
+        else:
+            db_account, db_password, db_name = user
+            
+        if password != db_password:
+            return jsonify({"status": "error", "message": "密码错误"})
+        
+        # 登录成功，保存用户信息到session
+        session['user_info'] = {
+            "user_account": db_account,
+            "user_name": db_name,
+            "role_name": target['role_name']
+        }
+        
+        if target["role_name"] == "辅导员":
+            session['user_info']["responsible_grade"] = db_responsible_grade
+            
+        return jsonify({
+            "status": "success", 
+            "message": f"登录成功，欢迎回来，{db_name}",
+            "role": target['role_name']
+        })
+        
+    except pymysql.MySQLError as e:
+        return jsonify({"status": "error", "message": f"数据库错误：{str(e)}"})
+    finally:
+        if cursor:
+            cursor.close()
+        if conn and conn.open:
+            conn.close()
+
+@app.route('/api/check_login', methods=['GET'])
+def check_login():
+    """检查登录状态接口"""
+    if 'user_info' in session:
+        return jsonify({
+            "logged_in": True,
+            "user_info": session['user_info']
+        })
+    return jsonify({"logged_in": False})
+
+@app.route('/api/logout', methods=['POST'])
+def logout():
+    """退出登录接口"""
+    session.pop('user_info', None)
+    return jsonify({"status": "success", "message": "已成功登出"})
+
+@app.route('/api/save_signature', methods=['POST'])
+@login_required(role='辅导员')
+def save_signature():
+    """保存签字图片接口"""
+    try:
+        data = request.json
+        image_data = data.get('imageData', '').replace('data:image/png;base64,', '')
+        file_name = data.get('fileName', f"{uuid.uuid4().hex}_{datetime.now().strftime('%Y%m%d%H%M%S')}.png")
+        
+        if not image_data:
+            return jsonify({"success": False, "message": "未获取到签字数据"})
+        
+        # 解码并保存图片
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], file_name)
+        with open(file_path, 'wb') as f:
+            f.write(base64.b64decode(image_data))
+        
         return jsonify({
             "success": True,
-            "data": {
-                **user_info,
-                "token": f"admin_token_{account}"  # 简单生成token，实际可替换为JWT
-            },
-            "message": "登录成功"
+            "message": "签字保存成功",
+            "imagePath": file_name
         })
-    else:
-        return jsonify({
-            "success": False,
-            "message": "账号、密码或身份类型不匹配"
-        }), 401
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)})
 
-# 2. 获取所有用户接口（对接前端"查看所有用户"）
-@app.route('/api/users', methods=['GET'])
+# 签字图片访问路由
+@app.route('/qianzi/<path:filename>')
+@login_required(role='辅导员')
+def serve_signature(filename):
+    """提供签字图片访问"""
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+# 管理员专用接口示例
+@app.route('/api/admin/users', methods=['GET'])
+@login_required(role='管理员')
 def get_all_users():
-    result = admin_web.show_all_users()
-    return jsonify(result)
-
-# 3. 新增用户接口（对接前端"新增用户"）
-@app.route('/api/users', methods=['POST'])
-def add_new_user():
-    data = request.get_json()
-    account = data.get('user_account')
-    user_name = data.get('user_name')
-    password = data.get('user_password')
-    role_type = data.get('role_type')
-    
-    # 校验必填参数
-    if not all([account, user_name, password, role_type]):
-        return jsonify({
-            "success": False,
-            "message": "账号、用户名、密码、角色类型不能为空"
-        }), 400
-    
-    # 转换角色类型为整数
+    """获取所有用户（仅管理员）"""
     try:
-        role_type = int(role_type)
-    except ValueError:
-        return jsonify({
-            "success": False,
-            "message": "角色类型必须是数字"
-        }), 400
-    
-    result = admin_web.add_user(account, user_name, password, role_type)
-    return jsonify(result)
+        conn = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        cursor.execute("""
+            SELECT '管理员' as role, admin_id as id, admin_name as name FROM admin_info
+            UNION ALL
+            SELECT '辅导员' as role, counselor_id as id, counselor_name as name FROM counselor_info
+            UNION ALL
+            SELECT '讲师' as role, teacher_id as id, teacher_name as name FROM teacher_info
+            UNION ALL
+            SELECT '学生' as role, student_id as id, student_name as name FROM student_info
+        """)
+        users = cursor.fetchall()
+        conn.close()
+        return jsonify({"success": True, "data": users})
+    except pymysql.MySQLError as e:
+        return jsonify({"success": False, "message": f"查询失败：{str(e)}"})
 
-# 4. 修改用户接口（对接前端"编辑用户"）
-@app.route('/api/users/<account>', methods=['PUT'])
-def update_exist_user(account):
-    data = request.get_json()
-    new_name = data.get('user_name')
-    new_password = data.get('user_password')
-    new_role = data.get('role_type')
-    
-    # 转换角色类型（可选参数，存在时才转换）
-    if new_role is not None:
-        try:
-            new_role = int(new_role)
-        except ValueError:
-            return jsonify({
-                "success": False,
-                "message": "角色类型必须是数字"
-            }), 400
-    
-    result = admin_web.update_user(
-        account=account,
-        new_name=new_name,
-        new_password=new_password,
-        new_role=new_role
-    )
-    return jsonify(result)
-
-# 5. 删除用户接口（对接前端"删除用户"）
-@app.route('/api/users/<account>', methods=['DELETE'])
-def delete_exist_user(account):
-    result = admin_web.delete_user(account)
-    return jsonify(result)
-
-if __name__ == "__main__":
-    # 启动Flask服务，端口5000（前端api.js已指向该端口）
-    app.run(debug=True, port=5000, host='0.0.0.0')
+# 启动应用
+if __name__ == '__main__':
+    # 生产环境需设置debug=False，并配置合适的host和port
+    app.run(debug=True, host='0.0.0.0', port=5000)

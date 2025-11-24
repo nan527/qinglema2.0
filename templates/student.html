@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>学生请假管理系统</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  
+  <!-- 配置主题色 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#7B61FF', // 主色调（淡紫色）
+            secondary: '#F0EDFF', // 辅助色
+            neutral: '#F9FAFB', // 中性色
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .card-shadow {
+        box-shadow: 0 10px 30px rgba(123, 97, 255, 0.08);
+      }
+      .input-focus {
+        @apply focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-50 font-inter text-gray-700 min-h-screen">
+  <!-- 顶部导航 -->
+  <header class="bg-white shadow-sm sticky top-0 z-10">
+    <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center space-x-2">
+        <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+          <i class="fa fa-calendar-check-o text-primary text-xl"></i>
+        </div>
+        <h1 class="text-xl font-semibold text-gray-800">请了吗</h1>
+      </div>
+      <div class="text-sm text-gray-500">
+        <span class="mr-4">欢迎，学生用户</span>
+        <!-- 修改：为退出按钮添加点击事件 -->
+        <button class="text-primary hover:text-primary/80 transition-colors" onclick="handleLogout()">
+          <i class="fa fa-sign-out mr-1"></i>退出
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主内容区 -->
+  <main class="container mx-auto px-4 py-8">
+    <div class="max-w-5xl mx-auto">
+      <!-- 页面标题 -->
+      <div class="text-center mb-8">
+        <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-gray-800">学生请假与通知中心</h2>
+        <p class="text-gray-500 mt-2">便捷管理你的请假申请与查看校园通知</p>
+      </div>
+
+      <!-- 双栏卡片布局 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- 请假模块 -->
+        <div class="bg-white rounded-2xl p-6 card-shadow transition-all hover:shadow-lg">
+          <div class="flex items-center mb-5">
+            <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mr-3">
+              <i class="fa fa-pencil-square-o text-primary"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-800">请假申请</h3>
+          </div>
+          
+          <form class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-600 mb-1">姓名</label>
+              <div class="relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                  <i class="fa fa-user"></i>
+                </span>
+                <input type="text" class="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 input-focus transition-all" placeholder="请输入姓名">
+              </div>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-600 mb-1">学号</label>
+              <div class="relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                  <i class="fa fa-users"></i>
+                </span>
+                <input type="text" class="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 input-focus transition-all" placeholder="请输入学号">
+              </div>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-600 mb-1">请假时间</label>
+              <div class="grid grid-cols-2 gap-3">
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                    <i class="fa fa-calendar"></i>
+                  </span>
+                  <input type="date" class="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 input-focus transition-all">
+                </div>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                    <i class="fa fa-calendar"></i>
+                  </span>
+                  <input type="date" class="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 input-focus transition-all">
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-600 mb-1">请假事由</label>
+              <textarea class="w-full px-4 py-2.5 rounded-lg border border-gray-200 input-focus transition-all min-h-[100px]" placeholder="请简要说明请假原因"></textarea>
+            </div>
+            
+            <button type="submit" class="w-full bg-primary hover:bg-primary/90 text-white font-medium py-2.5 px-4 rounded-lg transition-all flex items-center justify-center">
+              <i class="fa fa-paper-plane mr-2"></i>提交请假申请
+            </button>
+          </form>
+        </div>
+
+        <!-- 通知模块 -->
+        <div class="bg-white rounded-2xl p-6 card-shadow transition-all hover:shadow-lg">
+          <div class="flex items-center mb-5">
+            <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mr-3">
+              <i class="fa fa-bell-o text-primary"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-800">最新通知</h3>
+          </div>
+          
+          <div class="space-y-4 max-h-[480px] overflow-y-auto pr-2 scrollbar-thin">
+            <!-- 通知项1 -->
+            <div class="p-4 bg-neutral rounded-xl border border-gray-100 hover:border-primary/30 transition-all">
+              <div class="flex justify-between items-start mb-2">
+                <span class="text-xs font-medium px-2 py-1 bg-primary/10 text-primary rounded-full">重要通知</span>
+                <span class="text-xs text-gray-500">2025-11-10</span>
+              </div>
+              <p class="text-sm">本周三下午14:00将进行消防演习，请各班同学提前15分钟在操场集合，听从老师指挥。</p>
+            </div>
+            
+            <!-- 通知项2 -->
+            <div class="p-4 bg-neutral rounded-xl border border-gray-100 hover:border-primary/30 transition-all">
+              <div class="flex justify-between items-start mb-2">
+                <span class="text-xs font-medium px-2 py-1 bg-blue-100 text-blue-600 rounded-full">考试通知</span>
+                <span class="text-xs text-gray-500">2025-11-08</span>
+              </div>
+              <p class="text-sm">11月20日将举行期中考试，请同学们提前做好复习准备，考场安排将于下周公布。</p>
+            </div>
+            
+            <!-- 通知项3 -->
+            <div class="p-4 bg-neutral rounded-xl border border-gray-100 hover:border-primary/30 transition-all">
+              <div class="flex justify-between items-start mb-2">
+                <span class="text-xs font-medium px-2 py-1 bg-green-100 text-green-600 rounded-full">活动通知</span>
+                <span class="text-xs text-gray-500">2025-11-05</span>
+              </div>
+              <p class="text-sm">校园文化艺术节将于12月1日开幕，目前正在征集节目和作品，有意向的同学请于11月15日前报名。</p>
+            </div>
+            
+            <!-- 通知项4 -->
+            <div class="p-4 bg-neutral rounded-xl border border-gray-100 hover:border-primary/30 transition-all">
+              <div class="flex justify-between items-start mb-2">
+                <span class="text-xs font-medium px-2 py-1 bg-amber-100 text-amber-600 rounded-full">提醒</span>
+                <span class="text-xs text-gray-500">2025-11-03</span>
+              </div>
+              <p class="text-sm">冬季流感高发期，请同学们注意保暖，勤洗手，教室将定期进行消毒通风。</p>
+            </div>
+          </div>
+          
+          <button class="w-full mt-4 text-primary hover:text-primary/80 font-medium py-2 transition-all flex items-center justify-center">
+            <i class="fa fa-history mr-2"></i>查看全部通知
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="bg-white border-t border-gray-100 mt-12">
+    <div class="container mx-auto px-4 py-6 text-center text-sm text-gray-500">
+      <p>© 2025 请了吗 - 学生请假管理系统 版权所有</p>
+    </div>
+  </footer>
+
+  <!-- 新增：退出登录功能脚本 -->
+  <script>
+    // 处理退出登录
+    function handleLogout() {
+      // 显示确认弹窗
+      if (confirm('确定要退出登录吗？')) {
+        // 发送退出登录请求到后端
+        fetch('/api/logout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+        .then(response => {
+          // 无论后端返回什么状态，都跳转登录页
+          window.location.href = '/login';
+        })
+        .catch(error => {
+          console.error('退出登录失败:', error);
+          alert('退出失败，请重试');
+        });
+      }
+    }
+
+    // 页面加载时验证登录状态（防止未登录直接访问）
+    window.onload = function() {
+      fetch('/api/check_login')
+        .then(response => response.json())
+        .then(data => {
+          if (!data.logged_in || data.user_info?.role_name !== '学生') {
+            window.location.href = '/login';
+          }
+        });
+    }
+  </script>
+</body>
+</html>

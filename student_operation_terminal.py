@@ -125,6 +125,20 @@ class StudentOperation:
             self.conn.rollback()
             print(f"❌ 密码修改失败：{e}")
 
+    def _get_leave_times(self):
+        """获取学生已批准的请假次数"""
+        try:
+            self.cursor.execute("""
+                SELECT COUNT(*) 
+                FROM student_leave 
+                WHERE student_id = %s AND approval_status = '已批准'
+            """, (self.student_id,))
+            result = self.cursor.fetchone()
+            return result[0] if result else 0
+        except pymysql.MySQLError as e:
+            print(f"❌ 查询请假次数失败：{e}")
+            return 0
+
     def _parse_datetime_input(self, input_str):
         """解析日期时间输入，将'2025 10 13 12 12 12'格式转换为'2025-10-13 12:12:12'"""
         try:
@@ -206,19 +220,26 @@ class StudentOperation:
                 print("❌ 课程代码、教师工号和请假原因必须填写")
                 return
             
-            # 设置默认值 - 只插入数据库表中实际存在的字段
+            # 计算请假次数
+            approved_times = self._get_leave_times()
+            current_times = approved_times + 1
+            
+            # 设置默认值
             approval_status = "待审批"  # 默认状态
             
-            # 插入请假信息 - 只使用数据库表中实际存在的字段
+            # 插入请假信息 - 包含 times 字段
             self.cursor.execute("""
                 INSERT INTO student_leave 
-                (student_id, student_name, dept, course_code, teacher_id, leave_reason, start_time, end_time, approval_status)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (self.student_id, student_name, dept, course_code, teacher_id, leave_reason, start_time, end_time, approval_status))
+                (student_id, student_name, dept, course_code, teacher_id, leave_reason, start_time, end_time, approval_status, times)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (self.student_id, student_name, dept, course_code, teacher_id, leave_reason, start_time, end_time, approval_status, current_times))
             
             self.conn.commit()
             print("✅ 请假申请提交成功，等待审批")
             print(f"   请假时间: {start_time} 至 {end_time}")
+            print(f"   本次请假次数: {current_times}")
+            if approved_times > 0:
+                print(f"   之前已批准请假次数: {approved_times}")
             
         except pymysql.MySQLError as e:
             self.conn.rollback()
@@ -230,7 +251,7 @@ class StudentOperation:
             # 查询字段与数据库表结构一致
             self.cursor.execute("""
                 SELECT leave_id, course_code, teacher_id, leave_reason, start_time, end_time, 
-                       approval_status, approver_id, approver_name, approval_time
+                       approval_status, approver_id, approver_name, approval_time, times
                 FROM student_leave
                 WHERE student_id = %s
                 ORDER BY start_time DESC
@@ -243,11 +264,11 @@ class StudentOperation:
                 return
             
             print("\n===== 我的请假记录 =====")
-            print(f"{'请假ID':<8} {'课程代码':<12} {'教师工号':<12} {'请假原因':<15} {'开始时间':<20} {'结束时间':<20} {'状态':<8} {'审批人':<10} {'审批时间':<20}")
+            print(f"{'请假ID':<8} {'课程代码':<12} {'教师工号':<12} {'请假原因':<15} {'开始时间':<20} {'结束时间':<20} {'状态':<8} {'审批人':<10} {'审批时间':<20} {'次数':<4}")
             print("-" * 150)
             
             for record in leave_records:
-                leave_id, course_code, teacher_id, leave_reason, start_time, end_time, approval_status, approver_id, approver_name, approval_time = record
+                leave_id, course_code, teacher_id, leave_reason, start_time, end_time, approval_status, approver_id, approver_name, approval_time, times = record
                 
                 # 处理可能为空的字段
                 approver_display = approver_name if approver_name else (approver_id if approver_id else "未审批")
@@ -256,7 +277,7 @@ class StudentOperation:
                 # 截断过长的请假原因以便显示
                 short_reason = leave_reason[:12] + "..." if len(leave_reason) > 15 else leave_reason
                 
-                print(f"{leave_id:<8} {course_code:<12} {teacher_id:<12} {short_reason:<15} {str(start_time):<20} {str(end_time):<20} {approval_status:<8} {approver_display:<10} {approval_time_display:<20}")
+                print(f"{leave_id:<8} {course_code:<12} {teacher_id:<12} {short_reason:<15} {str(start_time):<20} {str(end_time):<20} {approval_status:<8} {approver_display:<10} {approval_time_display:<20} {times:<4}")
                 
         except pymysql.MySQLError as e:
             print(f"❌ 查询请假记录失败：{e}")

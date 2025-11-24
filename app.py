@@ -6,7 +6,7 @@ from flask import Flask, request, jsonify, session, redirect, url_for, render_te
 from functools import wraps
 import pymysql
 from db_config import get_db_config  # 确保存在数据库配置文件
-from teacher.teacher import TeacherService  # 导入老师服务类
+from teacher.teacher_operation import TeacherService  # 导入老师服务类
 
 # 初始化Flask应用
 app = Flask(__name__)

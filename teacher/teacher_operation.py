@@ -1,5 +1,4 @@
 
-import uuid
 from datetime import datetime
 from typing import List, Optional, Sequence
 
@@ -93,14 +92,14 @@ class TeacherService:
         
         where_clause = " AND ".join(conditions)
         
+        # 先尝试连接 course_info 表获取课程名称，如果失败则只查询基础信息
         sql = f"""
             SELECT
                 sl.leave_id,
                 sl.student_id,
                 sl.student_name,
                 sl.dept,
-                sl.course_id,
-                c.course_name,
+                sl.course_code,
                 sl.leave_reason,
                 sl.start_time,
                 sl.end_time,
@@ -108,8 +107,6 @@ class TeacherService:
                 sl.approval_time,
                 sl.times
             FROM {STUDENT_LEAVE_TABLE} sl
-            LEFT JOIN {COURSE_TABLE} c
-                ON sl.course_id = c.course_id
             WHERE {where_clause}
             ORDER BY sl.approval_time DESC, sl.start_time DESC
         """
@@ -118,6 +115,25 @@ class TeacherService:
                 with conn.cursor() as cursor:
                     cursor.execute(sql, tuple(params))
                     rows = cursor.fetchall()
+                    
+                    # 获取课程名称：student_leave.course_code 对应 course_info.course_id
+                    for row in rows:
+                        course_code = row.get('course_code')
+                        row['course_name'] = None  # 默认值
+                        if course_code:
+                            try:
+                                # course_info 表的主键是 course_id，student_leave 表中存储的是 course_code
+                                # 所以用 course_code 的值去 course_info 表的 course_id 字段查询
+                                cursor.execute(
+                                    f"SELECT course_name FROM {COURSE_TABLE} WHERE course_id = %s",
+                                    (course_code,)
+                                )
+                                course = cursor.fetchone()
+                                if course:
+                                    row['course_name'] = course.get('course_name') if isinstance(course, dict) else (course[0] if course else None)
+                            except Exception as e:
+                                # 忽略错误，保持 course_name 为 None
+                                pass
         except pymysql.MySQLError as exc:
             return {
                 "success": False,
@@ -166,14 +182,13 @@ class TeacherService:
             FROM {TEACHER_TABLE}
             WHERE teacher_id = %s
         """
-        # 查询课程信息
+        # 查询课程信息（course_info 表的主键是 course_id）
         course_sql = f"""
             SELECT course_id, course_name
             FROM {COURSE_TABLE}
             WHERE course_id = %s
         """
 
-        leave_id = uuid.uuid4().hex[:12]
         insert_sql = f"""
             INSERT INTO {TEACHER_LEAVE_TABLE}
                 (leave_id, teacher_id, dept, course_id,
@@ -200,13 +215,42 @@ class TeacherService:
                             "message": "课程不存在",
                         }
 
+                    # 生成 leave_id：格式为 年月日 + 当日序号（3位数字）
+                    # 例如：20251124001 表示 2025年11月24日的第1个请假
+                    today_str = datetime.now().strftime("%Y%m%d")
+                    
+                    # 查询今天已有的请假记录数量
+                    count_sql = f"""
+                        SELECT COUNT(*) as cnt
+                        FROM {TEACHER_LEAVE_TABLE}
+                        WHERE leave_id LIKE %s
+                    """
+                    cursor.execute(count_sql, (f"{today_str}%",))
+                    count_result = cursor.fetchone()
+                    today_count = count_result.get('cnt') if isinstance(count_result, dict) else (count_result[0] if count_result else 0)
+                    
+                    # 生成序号（从001开始）
+                    sequence_num = today_count + 1
+                    leave_id = f"{today_str}{sequence_num:03d}"
+                    
+                    # 确保唯一性：如果 leave_id 已存在，递增序号直到找到可用的
+                    check_sql = f"SELECT leave_id FROM {TEACHER_LEAVE_TABLE} WHERE leave_id = %s"
+                    while True:
+                        cursor.execute(check_sql, (leave_id,))
+                        if cursor.fetchone():
+                            sequence_num += 1
+                            leave_id = f"{today_str}{sequence_num:03d}"
+                        else:
+                            break
+
+                    # teacher_leave 表使用 course_id 字段存储课程编号
                     cursor.execute(
                         insert_sql,
                         (
                             leave_id,
                             teacher_id,
                             teacher["dept"],
-                            course_id,
+                            course_id,  # 使用输入的课程编号（对应 course_id 字段）
                             leave_reason,
                             start_dt.strftime("%Y-%m-%d %H:%M:%S"),
                             end_dt.strftime("%Y-%m-%d %H:%M:%S"),
@@ -263,9 +307,22 @@ class TeacherOperation:
 
     # ---------------- 菜单功能 ----------------
     def _show_student_leaves(self):
+        print("\n===== 查看学生请假记录 =====")
+        # 获取今天的日期作为默认值
+        today = datetime.now().strftime("%Y-%m-%d")
+        # 询问是否按日期筛选（默认今天）
+        filter_date_input = input(f"请输入要查询的日期（格式：YYYY-MM-DD，默认今天 {today}，留空显示全部）：").strip()
+        
+        # 如果输入为空，使用今天的日期；如果输入了日期，使用输入的日期
+        if not filter_date_input:
+            use_today = input("是否查看今天的数据？(y/n，默认y)：").strip().lower()
+            filter_date = today if use_today != 'n' else None
+        else:
+            filter_date = filter_date_input
+        
         result = self.service.get_approved_student_leaves(
             teacher_id=self.teacher_id,
-            statuses=None,  # 使用默认的已批准状态
+            filter_date=filter_date if filter_date else None
         )
         if not result.get("success"):
             print(f"❌ 查询失败：{result.get('message')}")
@@ -273,10 +330,17 @@ class TeacherOperation:
 
         data = result.get("data") or []
         if not data:
-            print("\n暂无匹配的学生请假记录")
+            if filter_date:
+                print(f"\n{filter_date} 暂无匹配的学生请假记录")
+            else:
+                print("\n暂无匹配的学生请假记录")
             return
 
-        print("\n===== 学生请假列表（辅导员已批准）=====")
+        if filter_date:
+            print(f"\n===== 学生请假列表（{filter_date}）=====")
+        else:
+            print("\n===== 学生请假列表（辅导员已批准）=====")
+        
         header = (
             f"{'请假单号':<10} {'学号':<12} {'姓名':<6} {'课程':<6} "
             f"{'课程名称':<15} {'开始时间':<19} {'结束时间':<19} {'状态':<8}"
@@ -288,7 +352,7 @@ class TeacherOperation:
                 f"{item.get('leave_id', '-'):<10} "
                 f"{item.get('student_id', '-'):<12} "
                 f"{item.get('student_name', '-'):<6} "
-                f"{item.get('course_id', '-'):<6} "
+                f"{item.get('course_code', '-'):<6} "
                 f"{(item.get('course_name') or '-')[:14]:<15} "
                 f"{(item.get('start_time') or '-'):<19} "
                 f"{(item.get('end_time') or '-'):<19} "

@@ -4,7 +4,7 @@ from login import login
 from admin_operation import AdminOperation  # 修改这里的导入路径
 from student_operation import StudentOperation
 from counselor_operation import CounselorOperation
-from teacher.teacher import TeacherOperation  # 导入老师操作类
+from teacher.teacher_operation import TeacherOperation  # 导入老师操作类
 
 def main():
     """主程序循环：支持所有角色登录和操作"""

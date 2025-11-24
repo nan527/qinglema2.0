@@ -2,7 +2,7 @@
 def get_db_config():
     """返回数据库连接配置"""
     return {
-        "host": "192.168.5.173",
+        "host": "192.168.22.173",
         "port": 3306,
         "user": "remote_user",
         "password": "123456",  # pymysql需要字符串，不是bytes

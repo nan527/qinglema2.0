@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>老师工作台 - 请假管理系统</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h2>老师工作台</h2>
+            <button class="logout-btn" id="teacherLogoutBtn">退出登录</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="operation-menu">
+            <button class="refresh-btn" id="refreshLeavesBtn">刷新学生请假</button>
+        </div>
+
+        <div id="teacherMessage" class="message error-message"></div>
+
+        <section class="info-card">
+            <h3>老师信息</h3>
+            <div class="info-content">
+                <p><strong>姓名：</strong><span id="teacherName"></span></p>
+                <p><strong>工号：</strong><span id="teacherId"></span></p>
+            </div>
+        </section>
+
+        <section class="table-container">
+            <h3>学生请假记录（已由辅导员批准）</h3>
+            <div class="filter-bar">
+                <label for="statusFilter">状态筛选：</label>
+                <select id="statusFilter">
+                    <option value="">全部</option>
+                    <option value="同意">同意</option>
+                    <option value="已批准">已批准</option>
+                    <option value="通过">通过</option>
+                </select>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>请假单号</th>
+                        <th>学生学号</th>
+                        <th>学生姓名</th>
+                        <th>课程编号</th>
+                        <th>课程名称</th>
+                        <th>原因</th>
+                        <th>开始时间</th>
+                        <th>结束时间</th>
+                        <th>审批状态</th>
+                    </tr>
+                </thead>
+                <tbody id="studentLeavesBody">
+                    <tr>
+                        <td colspan="9" style="text-align:center; padding: 30px;">加载中...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="form-card">
+            <h3>老师请假申请</h3>
+            <form id="teacherLeaveForm">
+                <div class="form-group">
+                    <label for="leaveCourseId">课程编号</label>
+                    <input type="text" id="leaveCourseId" placeholder="请输入课程编号，例如 001" required>
+                </div>
+                <div class="form-group">
+                    <label for="leaveReason">请假原因</label>
+                    <textarea id="leaveReason" placeholder="请输入请假原因" rows="3" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="leaveStart">开始时间</label>
+                    <input type="datetime-local" id="leaveStart" required>
+                </div>
+                <div class="form-group">
+                    <label for="leaveEnd">结束时间</label>
+                    <input type="datetime-local" id="leaveEnd" required>
+                </div>
+                <button type="submit" class="add-btn">提交请假</button>
+            </form>
+        </section>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/teacher.js"></script>
+</body>
+</html>
+

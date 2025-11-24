@@ -4,6 +4,7 @@ from login import login
 from admin_operation import AdminOperation  # 修改这里的导入路径
 from student_operation import StudentOperation
 from counselor_operation import CounselorOperation
+from teacher.teacher import TeacherOperation  # 导入老师操作类
 
 def main():
     """主程序循环：支持所有角色登录和操作"""
@@ -45,8 +46,9 @@ def main():
             counselor.show_menu()
             
         elif role_name == "讲师":
-            print(f"\n👨‍🏫 您是{role_name}，当前版本暂未开发讲师功能界面")
-            input("按回车键返回登录界面...")
+            print(f"\n👨‍🏫 检测到讲师身份，进入老师工作台...")
+            teacher = TeacherOperation(user_info)
+            teacher.show_menu()
             
         else:
             print(f"\n❓ 未知角色类型：{role_name}")

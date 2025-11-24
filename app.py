@@ -6,6 +6,7 @@ from flask import Flask, request, jsonify, session, redirect, url_for, render_te
 from functools import wraps
 import pymysql
 from db_config import get_db_config  # 确保存在数据库配置文件
+from teacher.teacher import TeacherService  # 导入老师服务类
 
 # 初始化Flask应用
 app = Flask(__name__)
@@ -277,6 +278,56 @@ def get_all_users():
         return jsonify({"success": True, "data": users})
     except pymysql.MySQLError as e:
         return jsonify({"success": False, "message": f"查询失败：{str(e)}"})
+
+# ==================== 老师模块API接口 ====================
+teacher_service = TeacherService()  # 初始化老师服务实例
+
+@app.route('/api/teacher/student-leaves', methods=['GET'])
+@login_required(role='讲师')
+def get_teacher_student_leaves():
+    """获取已由辅导员批准的学生请假记录（仅讲师），支持按日期筛选"""
+    teacher_id = session['user_info']['user_account']
+    filter_date = request.args.get('filter_date', '').strip()
+    
+    # 日期参数验证
+    filter_date = filter_date if filter_date else None
+    
+    result = teacher_service.get_approved_student_leaves(
+        teacher_id=teacher_id,
+        filter_date=filter_date
+    )
+    
+    http_code = 200 if result.get("success") else 400
+    return jsonify(result), http_code
+
+@app.route('/api/teacher/leave', methods=['POST'])
+@login_required(role='讲师')
+def submit_teacher_leave():
+    """老师提交请假申请（仅讲师）"""
+    teacher_id = session['user_info']['user_account']
+    data = request.json or {}
+    
+    course_id = data.get('course_id', '').strip()
+    leave_reason = data.get('leave_reason', '').strip()
+    start_time = data.get('start_time', '').strip()
+    end_time = data.get('end_time', '').strip()
+    
+    # 转换 datetime-local 格式为数据库格式
+    if start_time and 'T' in start_time:
+        start_time = start_time.replace('T', ' ')
+    if end_time and 'T' in end_time:
+        end_time = end_time.replace('T', ' ')
+    
+    result = teacher_service.submit_teacher_leave(
+        teacher_id=teacher_id,
+        course_id=course_id,
+        leave_reason=leave_reason,
+        start_time=start_time,
+        end_time=end_time
+    )
+    
+    http_code = 201 if result.get("success") else 400
+    return jsonify(result), http_code
 
 # 启动应用
 if __name__ == '__main__':

@@ -6,11 +6,13 @@ from flask import Flask, request, jsonify, session, redirect, url_for, render_te
 from functools import wraps
 import pymysql
 from db_config import get_db_config  # 确保存在数据库配置文件
+from counselor_operation import CounselorOperation
 
 # 初始化Flask应用
 app = Flask(__name__)
 app.secret_key = 'your_secure_secret_key_123456'  # 生产环境需更换为随机安全密钥
 app.config['UPLOAD_FOLDER'] = 'qianzi'  # 签字图片保存目录
+app.config['DEBUG'] = True  # 启用调试模式
 
 # 确保签字文件夹存在
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -18,8 +20,14 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 # 数据库连接工具函数
 def get_db_connection():
     """获取数据库连接"""
-    config = get_db_config()
-    return pymysql.connect(** config)
+    try:
+        config = get_db_config()
+        conn = pymysql.connect(** config)
+        print("数据库连接成功")
+        return conn
+    except Exception as e:
+        print(f"数据库连接失败: {e}")
+        raise
 
 # 登录验证装饰器（带角色权限控制）
 def login_required(role=None):
@@ -81,12 +89,59 @@ def teacher_page():
 @app.route('/counselor')
 @login_required(role='辅导员')
 def counselor_page():
-    """辅导员页面（支持接收签字图片参数）"""
+    """辅导员页面（重定向到默认的全部假条页面）"""
+    signature = request.args.get('signature', '')
+    # 重定向到全部假条页面，并传递signature参数
+    if signature:
+        return redirect(url_for('counselor_all_leaves', signature=signature))
+    return redirect(url_for('counselor_all_leaves'))
+
+@app.route('/counselor/all')
+@login_required(role='辅导员')
+def counselor_all_leaves():
+    """全部假条页面"""
     signature = request.args.get('signature', '')
     return render_template(
-        'counselor.html', 
+        'counselor/all_leaves.html', 
         user_info=session['user_info'],
-        signature=signature
+        signature=signature,
+        filter_type='all'
+    )
+
+@app.route('/counselor/pending')
+@login_required(role='辅导员')
+def counselor_pending_leaves():
+    """待审批假条页面"""
+    signature = request.args.get('signature', '')
+    return render_template(
+        'counselor/pending_leaves.html', 
+        user_info=session['user_info'],
+        signature=signature,
+        filter_type='pending'
+    )
+
+@app.route('/counselor/approved')
+@login_required(role='辅导员')
+def counselor_approved_leaves():
+    """已批准假条页面"""
+    signature = request.args.get('signature', '')
+    return render_template(
+        'counselor/approved_leaves.html', 
+        user_info=session['user_info'],
+        signature=signature,
+        filter_type='approved'
+    )
+
+@app.route('/counselor/rejected')
+@login_required(role='辅导员')
+def counselor_rejected_leaves():
+    """已驳回假条页面"""
+    signature = request.args.get('signature', '')
+    return render_template(
+        'counselor/rejected_leaves.html', 
+        user_info=session['user_info'],
+        signature=signature,
+        filter_type='rejected'
     )
 
 @app.route('/qianzi')
@@ -278,6 +333,7 @@ def get_all_users():
     except pymysql.MySQLError as e:
         return jsonify({"success": False, "message": f"查询失败：{str(e)}"})
 
+<<<<<<< HEAD
 
 # ---------- 学生端：课程与请假相关API ----------
 @app.route('/api/courses', methods=['GET'])
@@ -285,10 +341,18 @@ def get_all_users():
 def api_get_courses():
     """返回当前学生已选的课程列表：[{course_id, course_name}, ...]"""
     student_id = session['user_info']['user_account']  # 使用正确的session键名
+=======
+# 教师获取请假记录接口
+@app.route('/api/teacher/leave_requests', methods=['GET'])
+@login_required(role='讲师')
+def get_teacher_leave_requests():
+    """获取教师相关的请假记录"""
+>>>>>>> 80df1667cb4604a245e42130c2fabd47dc63309e
     try:
         conn = get_db_connection()
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         
+<<<<<<< HEAD
         # 查询学生已选课程
         cursor.execute("""
             SELECT ci.course_id, ci.course_name 
@@ -466,8 +530,296 @@ def api_student_leave():
                 conn.close()
         except Exception:
             pass
+=======
+        # 获取当前登录教师的ID
+        teacher_id = session['user_info']['user_account']
+        
+        # 查询教师相关的请假记录
+        # 假设student_leave表中有teacher_id或course_id与teacher_info关联
+        sql = """
+            SELECT 
+            sl.leave_id,
+            sl.student_id,
+            si.student_name,
+            sl.course_code,
+            sl.start_time,
+            sl.end_time,
+            sl.leave_reason,
+            sl.approval_status,
+            sl.sort,
+            si.times
+            FROM 
+                student_leave sl
+            LEFT JOIN 
+                student_info si ON sl.student_id = si.student_id
+            WHERE 
+                sl.approver_id = %s OR sl.course_code IN (
+                    SELECT course_id FROM teacher_courses WHERE teacher_id = %s
+                )
+            ORDER BY 
+                sl.start_time DESC
+        """
+        
+        cursor.execute(sql, (teacher_id, teacher_id))
+        leave_requests = cursor.fetchall()
+        
+        conn.close()
+        
+        return jsonify({
+            "success": True,
+            "data": leave_requests
+        })
+        
+    except pymysql.MySQLError as e:
+        print(f"数据库错误: {str(e)}")
+        # 如果teacher_courses表不存在或者关联查询失败，尝试简单查询
+        try:
+            cursor.execute("""
+                SELECT 
+            sl.leave_id,
+            sl.student_id,
+            si.student_name,
+            sl.course_code,
+            sl.start_time,
+            sl.end_time,
+            sl.leave_reason,
+            sl.approval_status,
+            sl.sort,
+            si.times
+                FROM 
+                    student_leave sl
+                LEFT JOIN 
+                    student_info si ON sl.student_id = si.student_id
+                WHERE 
+                    sl.approver_id = %s
+                ORDER BY 
+                    sl.start_time DESC
+            """, (teacher_id,))
+            leave_requests = cursor.fetchall()
+            conn.close()
+            return jsonify({
+                "success": True,
+                "data": leave_requests
+            })
+        except Exception as inner_e:
+            print(f"备用查询也失败: {str(inner_e)}")
+            return jsonify({
+                "success": False,
+                "message": f"获取请假记录失败: {str(inner_e)}"
+            })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "message": f"获取请假记录失败: {str(e)}"
+        })
+
+# 辅导员获取请假记录接口
+@app.route('/api/counselor/leave_requests', methods=['GET'])
+@login_required(role='辅导员')
+def get_counselor_leave_requests():
+    """获取辅导员相关的请假记录（基于负责年级）"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        # 获取当前登录辅导员的ID和负责年级
+        counselor_id = session['user_info']['user_account']
+        responsible_grade = session['user_info'].get('responsible_grade', '')
+        
+        # 根据年级过滤学生请假记录
+        # 从学生ID的前4位判断年级
+        sql = """
+            SELECT 
+                sl.leave_id,
+                sl.student_id,
+                si.student_name,
+                sl.course_code,
+                sl.start_time,
+                sl.end_time,
+                sl.leave_reason,
+                sl.approval_status,
+                sl.sort,
+                si.times
+            FROM 
+                student_leave sl
+            LEFT JOIN 
+                student_info si ON sl.student_id = si.student_id
+            WHERE 
+                1=1
+        """
+        
+        # 如果有负责年级，添加年级过滤条件
+        params = []
+        if responsible_grade:
+            sql += " AND LEFT(sl.student_id, 4) = %s"
+            params.append(responsible_grade)
+        
+        # 添加排序
+        sql += " ORDER BY sl.start_time DESC"
+        
+        cursor.execute(sql, params)
+        leave_requests = cursor.fetchall()
+        
+        conn.close()
+        
+        return jsonify({
+            "success": True,
+            "data": leave_requests
+        })
+        
+    except pymysql.MySQLError as e:
+        print(f"数据库错误: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"获取请假记录失败: {str(e)}"
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "message": f"获取请假记录失败: {str(e)}"
+        })
+
+# 辅导员请假审批API
+@app.route('/api/counselor/approve_leave', methods=['POST'])
+@login_required(role='辅导员')
+def counselor_approve_leave():
+    """辅导员审批请假申请API"""
+    try:
+        # 获取请求数据
+        data = request.json
+        leave_id = data.get('leave_id')
+        action = data.get('action')
+        
+        # 验证参数
+        if not leave_id or action not in ['approve', 'reject']:
+            return jsonify({
+                "success": False,
+                "message": "无效的请求参数"
+            })
+        
+        # 获取辅导员信息
+        counselor_id = session['user_info']['user_account']
+        counselor_name = session['user_info']['user_name']
+        responsible_grade = session['user_info'].get('responsible_grade', '')
+        
+        # 创建CounselorOperation实例并调用审批方法
+        counselor = CounselorOperation(counselor_id, counselor_name, responsible_grade)
+        result = counselor.approve_leave_api(leave_id, action)
+        counselor._close_db()  # 确保关闭数据库连接
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"审批API异常: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"系统错误: {str(e)}"
+        })
+
+# 教师请假审批API
+@app.route('/api/teacher/approve_leave', methods=['POST'])
+@login_required(role='讲师')
+def teacher_approve_leave():
+    """教师审批请假申请API"""
+    try:
+        # 获取请求数据
+        data = request.json
+        leave_id = data.get('leave_id')
+        action = data.get('action')
+        
+        # 验证参数
+        if not leave_id or action not in ['approve', 'reject']:
+            return jsonify({
+                "success": False,
+                "message": "无效的请求参数"
+            })
+        
+        # 获取教师信息
+        teacher_id = session['user_info']['user_account']
+        teacher_name = session['user_info']['user_name']
+        
+        # 数据库操作：审批请假
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 1. 校验请假记录
+        sql_check = """
+            SELECT sl.leave_id, sl.approval_status 
+            FROM student_leave sl
+            WHERE sl.leave_id = %s
+            AND (sl.course_code IN (SELECT course_id FROM teacher_courses WHERE teacher_id = %s) 
+                 OR sl.approver_id = %s)
+        """
+        cursor.execute(sql_check, (leave_id, teacher_id, teacher_id))
+        result = cursor.fetchone()
+        
+        if not result:
+            conn.close()
+            return jsonify({"success": False, "message": "未找到您负责的请假记录"})
+        
+        if result[1] != "待审批":
+            conn.close()
+            return jsonify({"success": False, "message": f"该请假记录状态为「{result[1]}」，无需重复审批"})
+        
+        # 2. 确定审批结果
+        new_status = "已批准" if action == "approve" else "已驳回"
+        approval_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # 3. 获取学生ID（用于更新times字段）
+        sql_get_student_id = """
+            SELECT student_id FROM student_leave WHERE leave_id = %s
+        """
+        cursor.execute(sql_get_student_id, (leave_id,))
+        student_id_result = cursor.fetchone()
+        student_id = student_id_result[0] if student_id_result else None
+        
+        # 4. 事务处理：更新请假记录 + （仅同意时）更新学生times
+        conn.begin()
+        
+        # 4.1 更新请假记录
+        sql_update = """
+            UPDATE student_leave
+            SET approval_status = %s, 
+                approver_id = %s, 
+                approver_name = %s, 
+                approval_time = %s
+            WHERE leave_id = %s
+        """
+        cursor.execute(sql_update, (new_status, teacher_id, teacher_name, approval_time, leave_id))
+        
+        # 4.2 仅“同意”时，更新student_info的times字段
+        if action == "approve" and student_id:
+            sql_update_student = """
+                UPDATE student_info
+                SET times = times + 1, update_time = %s
+                WHERE student_id = %s
+            """
+            cursor.execute(sql_update_student, (approval_time, student_id))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            "success": True,
+            "message": f"审批成功！请假ID{leave_id}状态更新为「{new_status}」"
+        })
+        
+    except pymysql.MySQLError as e:
+        print(f"数据库错误: {str(e)}")
+        return jsonify({"success": False, "message": f"数据库错误: {str(e)}"})
+    except Exception as e:
+        print(f"审批API异常: {str(e)}")
+        return jsonify({"success": False, "message": f"系统错误: {str(e)}"})
+
+
+>>>>>>> 80df1667cb4604a245e42130c2fabd47dc63309e
 
 # 启动应用
 if __name__ == '__main__':
-    # 生产环境需设置debug=False，并配置合适的host和port
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    try:
+        # 运行应用程序 - 禁用自动重载以避免watchdog问题
+        app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
+    except Exception as e:
+        print(f"应用程序启动失败: {e}")
+        import traceback
+        traceback.print_exc()

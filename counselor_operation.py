@@ -1,6 +1,7 @@
 import pymysql
 from db_config import get_db_config
 from datetime import datetime
+import json
 
 class CounselorOperation:
     def __init__(self, counselor_id, counselor_name, responsible_grade):
@@ -20,7 +21,7 @@ class CounselorOperation:
             self.cursor = self.conn.cursor()
         except pymysql.MySQLError as e:
             print(f"数据库连接失败：{e}")
-            exit()
+            raise Exception(f"数据库连接失败：{e}")
 
     def _close_db(self):
         """关闭数据库连接"""
@@ -273,3 +274,76 @@ class CounselorOperation:
         except pymysql.MySQLError as e:
             self.conn.rollback()
             print(f"❌ 密码修改失败：{e}")
+    
+    # ---------------------------- API功能：审批请假申请 ----------------------------
+    def approve_leave_api(self, leave_id, action):
+        """审批请假申请的API方法，返回JSON格式响应"""
+        try:
+            # 1. 校验请假记录归属 + 查询学生当前请假次数
+            sql_check = """
+                SELECT sl.leave_id, sl.student_id, sl.approval_status, si.times
+                FROM student_leave sl
+                LEFT JOIN student_info si ON sl.student_id = si.student_id
+                WHERE sl.leave_id = %s
+                  AND LEFT(sl.student_id, 4) = %s
+            """
+            self.cursor.execute(sql_check, (leave_id, self.responsible_grade))
+            result = self.cursor.fetchone()
+
+            if not result:
+                return {"success": False, "message": f"未找到{self.responsible_grade}级ID为{leave_id}的请假记录"}
+
+            leave_id_db, student_id, approval_status, student_times = result
+            if approval_status != "待审批":
+                return {"success": False, "message": f"该请假记录状态为「{approval_status}」，无需重复审批"}
+
+            # 2. 学生请假次数≥5时仍可审批，但会在日志中记录
+            if student_times >= 5:
+                print(f"⚠️ 警告：学生{student_id}当前已请假{student_times}次")
+
+            # 3. 确定审批结果
+            if action == "approve":
+                new_status = "已批准"
+            elif action == "reject":
+                new_status = "已驳回"
+            else:
+                return {"success": False, "message": "无效的操作类型"}
+
+            approval_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            approver_name = self.counselor_name  # 当前辅导员姓名
+
+            # 4. 事务处理：更新请假记录 + （仅同意时）更新学生times
+            self.conn.begin()
+            # 4.1 更新student_leave表
+            sql_update_leave = """
+                UPDATE student_leave
+                SET approval_status = %s, 
+                    approver_id = %s, 
+                    approver_name = %s, 
+                    approval_time = %s
+                WHERE leave_id = %s
+            """
+            self.cursor.execute(sql_update_leave, (new_status, self.counselor_id, approver_name, approval_time, leave_id))
+
+            # 4.2 仅“同意”时，更新student_info的times字段
+            if action == "approve":
+                sql_update_student = """
+                    UPDATE student_info
+                    SET times = times + 1, update_time = %s
+                    WHERE student_id = %s
+                """
+                self.cursor.execute(sql_update_student, (approval_time, student_id))
+
+            self.conn.commit()
+            return {"success": True, "message": f"审批成功！请假ID{leave_id}状态更新为「{new_status}」"}
+
+        except pymysql.MySQLError as e:
+            if self.conn:
+                self.conn.rollback()
+            print(f"❌ 审批API失败：{e}")
+            return {"success": False, "message": f"数据库错误：{str(e)}"}
+        except Exception as e:
+            if self.conn:
+                self.conn.rollback()
+            print(f"❌ 审批API异常：{e}")
+            return {"success": False, "message": f"系统错误：{str(e)}"}

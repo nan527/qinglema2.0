@@ -40,8 +40,8 @@
     </style>
 </head>
 <body>
-    <!-- 修正：返回辅导员页面的路径 -->
-    <button class="back-btn" onclick="window.location.href='/counselor'">
+    <!-- 修正：返回辅导员页面的路径，点击返回时清除临时数据 -->
+    <button class="back-btn" onclick="clearTempDataAndReturn()">
         <i class="fa fa-arrow-left mr-1"></i>返回审批页
     </button>
     
@@ -118,11 +118,22 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
         
-        // 保存签字
+        // 保存签字并完成审批
         function saveSignature() {
             const dataURL = canvas.toDataURL('image/png');
             
-            // 发送到后端保存
+            // 获取之前存储的请假批准信息
+            const pendingApproval = localStorage.getItem('pending_leave_approval');
+            
+            if (!pendingApproval) {
+                alert('未找到待批准信息，请重新操作');
+                window.location.href = '/counselor';
+                return;
+            }
+            
+            const approvalData = JSON.parse(pendingApproval);
+            
+            // 发送到后端保存签字，使用leave_id作为文件名
             fetch('/api/save_signature', {
                 method: 'POST',
                 headers: {
@@ -130,22 +141,46 @@
                 },
                 body: JSON.stringify({ 
                     imageData: dataURL,
-                    fileName: `signature_${new Date().getTime()}.png`
+                    fileName: `signature_${approvalData.leave_id}.png`
                 })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert('签字已保存，即将返回审批页');
-                    // 修正：跳转回辅导员页面并携带签字路径
-                    window.location.href = `/counselor?signature=${data.imagePath}`;
+                    // 签字保存成功后，调用批准API并携带签字路径和leave_id
+                    return fetch('/api/counselor/approve_leave', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            leave_id: approvalData.leave_id,
+                            action: approvalData.action,
+                            comment: approvalData.comment,
+                            signature_path: data.imagePath,
+                            leave_id_for_signature: approvalData.leave_id  // 额外传递leave_id以确保签名与假条关联
+                        })
+                    });
                 } else {
-                    alert('保存失败: ' + data.message);
+                    throw new Error('保存签字失败: ' + data.message);
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 清除临时存储的数据
+                    localStorage.removeItem('pending_leave_approval');
+                    
+                    alert('请假已成功批准，即将返回审批页');
+                    // 跳转回辅导员页面
+                    window.location.href = '/counselor';
+                } else {
+                    throw new Error('批准失败: ' + data.message);
                 }
             })
             .catch(error => {
-                console.error('保存失败:', error);
-                alert('保存失败，请重试');
+                console.error('操作失败:', error);
+                alert('操作失败: ' + error.message);
             });
         }
         
@@ -169,6 +204,14 @@
         // 按钮事件
         document.getElementById('clearBtn').addEventListener('click', clearSignature);
         document.getElementById('saveBtn').addEventListener('click', saveSignature);
+        
+        // 清除临时数据并返回审批页
+        function clearTempDataAndReturn() {
+            // 清除localStorage中的临时数据
+            localStorage.removeItem('pending_leave_approval');
+            // 返回审批页
+            window.location.href = '/counselor';
+        }
     </script>
 </body>
 </html>

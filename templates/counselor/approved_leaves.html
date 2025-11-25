@@ -1,0 +1,118 @@
+{% include 'counselor/header.html' %}
+
+    <!-- 快捷统计卡片区域 -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div class="bg-white rounded-xl p-5 border border-gray-100 card-shadow card-hover">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-500">待审批假条</p>
+            <p class="text-2xl font-bold mt-2 text-warning" id="pendingCount">0</p>
+          </div>
+          <div class="w-12 h-12 rounded-full bg-warning/10 flex items-center justify-center">
+            <i class="fa fa-clock-o text-xl text-warning"></i>
+          </div>
+        </div>
+      </div>
+      <div class="bg-white rounded-xl p-5 border border-gray-100 card-shadow card-hover">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-500">已批准假条</p>
+            <p class="text-2xl font-bold mt-2 text-success" id="approvedCount">0</p>
+          </div>
+          <div class="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center">
+            <i class="fa fa-check-circle text-xl text-success"></i>
+          </div>
+        </div>
+      </div>
+      <div class="bg-white rounded-xl p-5 border border-gray-100 card-shadow card-hover">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-500">已驳回假条</p>
+            <p class="text-2xl font-bold mt-2 text-danger" id="rejectedCount">0</p>
+          </div>
+          <div class="w-12 h-12 rounded-full bg-danger/10 flex items-center justify-center">
+            <i class="fa fa-times-circle text-xl text-danger"></i>
+          </div>
+        </div>
+      </div>
+      <div class="bg-white rounded-xl p-5 border border-gray-100 card-shadow card-hover">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-500">本月请假总数</p>
+            <p class="text-2xl font-bold mt-2 text-primary" id="totalCount">0</p>
+          </div>
+          <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+            <i class="fa fa-calendar-check-o text-xl text-primary"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 假条筛选区域 -->
+    <div class="bg-white rounded-xl p-5 mb-8 border border-gray-100 card-shadow">
+      <div class="flex flex-wrap items-center gap-4">
+        <h4 class="font-semibold text-lg">假条状态</h4>
+        <div class="flex flex-wrap gap-2">
+          <button id="filterAll" class="px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors btn-hover">
+            全部假条
+          </button>
+          <button id="filterPending" class="px-4 py-2 bg-warning/10 text-warning rounded-lg hover:bg-warning/20 transition-colors btn-hover">
+            待审批
+          </button>
+          <button id="filterApproved" class="px-4 py-2 bg-success text-white rounded-lg btn-hover">
+            已批准
+          </button>
+          <button id="filterRejected" class="px-4 py-2 bg-danger/10 text-danger rounded-lg hover:bg-danger/20 transition-colors btn-hover">
+            已驳回
+          </button>
+        </div>
+      </div>
+      
+      <div class="flex flex-wrap items-center gap-4 mt-6">
+        <div class="relative flex-grow max-w-md">
+          <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+            <i class="fa fa-search"></i>
+          </span>
+          <input type="text" id="searchInput" placeholder="搜索学生姓名或学号" 
+                 class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
+        </div>
+        <div class="w-full sm:w-auto">
+          <select id="gradeSelect" class="w-full border border-gray-200 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50">
+            <option value="">全部年级</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 假条列表容器 -->
+    <div class="bg-white rounded-xl p-5 mb-6 border border-gray-100 card-shadow">
+      <div class="flex justify-between items-center mb-4">
+        <h4 class="font-semibold text-lg">已批准假条</h4>
+        <p class="text-sm text-gray-500" id="recordCount">0条记录</p>
+      </div>
+      
+      <div id="leaveListContainer" class="space-y-4">
+        <!-- 加载状态 -->
+        <div class="text-center py-8 text-gray-500">
+          <i class="fa fa-spinner fa-spin text-xl mb-2"></i>
+          <p>正在加载数据...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 分页控件 -->
+    <div class="flex justify-between items-center">
+      <div class="text-sm text-gray-500">
+        第 <span id="currentPageDisplay">1</span> / <span id="totalPagesDisplay">0</span> 页
+      </div>
+      <div class="flex gap-2">
+        <button id="prevPage" disabled class="px-4 py-2 border border-gray-200 rounded-lg text-gray-400 cursor-not-allowed">
+          <i class="fa fa-chevron-left mr-1"></i> 上一页
+        </button>
+        <button id="nextPage" disabled class="px-4 py-2 border border-gray-200 rounded-lg text-gray-400 cursor-not-allowed">
+          下一页 <i class="fa fa-chevron-right ml-1"></i>
+        </button>
+      </div>
+    </div>
+
+{% include 'counselor/footer.html' %}

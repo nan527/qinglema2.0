@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>辅导员工作平台 - {{ title }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+
+  <script>
+    // Tailwind配置
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#4F46E5',
+            secondary: '#EEF2FF',
+            success: '#10B981',
+            warning: '#F59E0B',
+            danger: '#EF4444'
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    };
+  </script>
+
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .card-shadow {
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+      }
+      .card-hover {
+        @apply hover:shadow-xl transition-all duration-300;
+      }
+      .btn-hover {
+        @apply hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 active:translate-y-0;
+      }
+      .nav-active {
+        @apply bg-primary text-white;
+      }
+      .nav-inactive {
+        @apply hover:bg-gray-100 transition-colors;
+      }
+    }
+  </style>
+</head>
+
+<body class="font-inter bg-gray-50 min-h-screen text-gray-800">
+  <!-- 顶部导航 -->
+  <header class="bg-white shadow-sm sticky top-0 z-10">
+    <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center space-x-2">
+        <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+          <i class="fa fa-graduation-cap text-primary text-xl"></i>
+        </div>
+        <h1 class="text-xl font-semibold">辅导员工作平台</h1>
+      </div>
+      <div class="text-sm flex items-center space-x-4">
+        <span class="text-gray-600">欢迎，<span class="font-medium" id="counselorName">{{ user_info.user_name }}</span></span>
+        <button id="logoutBtn" class="text-primary hover:text-primary/80 transition-colors flex items-center">
+          <i class="fa fa-sign-out mr-1"></i>退出登录
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主内容区 -->
+  <main class="container mx-auto px-4 py-8 max-w-6xl">
+    <!-- 页面标题 -->
+    <div class="text-center mb-8">
+      <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold">请假审批管理</h2>
+      <p class="text-gray-500 mt-2">学生请假申请的查看与审批管理</p>
+    </div>

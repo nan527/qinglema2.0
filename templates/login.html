@@ -176,17 +176,17 @@
                     messageEl.className = 'message success';
                     
                     // 根据后端返回的角色自动跳转
-                    setTimeout(() => {
-                        if (result.role === '管理员') {
-                            window.location.href = '/admin';
-                        } else if (result.role === '学生') {
-                            window.location.href = '/student';
-                        } else if (result.role === '辅导员') {
-                            window.location.href = '/counselor';
-                        } else if (result.role === '讲师') {
-                            window.location.href = '/teacher';
-                        }
-                    }, 1000);
+                setTimeout(() => {
+                    if (result.role === '管理员') {
+                        window.location.href = '/admin';
+                    } else if (result.role === '学生') {
+                        window.location.href = '/student';
+                    } else if (result.role === '辅导员') {
+                        window.location.href = '/counselor';
+                    } else if (result.role === '讲师' || result.role === 'teacher') {
+                        window.location.href = '/teacher';
+                    }
+                }, 1000);
                 } else {
                     messageEl.textContent = result.message;
                     messageEl.className = 'message error';

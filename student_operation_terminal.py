@@ -185,30 +185,7 @@ class StudentOperation:
             # 获取请假信息
             print("\n===== 添加请假信息 =====")
             course_id = input("请输入课程代码：").strip()
-            
-            # 如果输入了课程代码，显示可选的授课老师
-            if course_id:
-                teachers = self._get_teachers_by_course(course_id)
-                if teachers:
-                    print(f"\n该课程的授课老师列表：")
-                    for idx, (teacher_id, teacher_name) in enumerate(teachers, 1):
-                        print(f"{idx}. 工号: {teacher_id}, 姓名: {teacher_name}")
-                    
-                    # 让学生选择老师或手动输入
-                    choice = input("请选择老师序号(或直接输入工号): ").strip()
-                    if choice.isdigit() and 1 <= int(choice) <= len(teachers):
-                        teacher_id = teachers[int(choice)-1][0]
-                        teacher_name = teachers[int(choice)-1][1]
-                        print(f"已选择: {teacher_id} - {teacher_name}")
-                    else:
-                        # 如果输入不是序号，直接使用输入的值作为工号
-                        teacher_id = choice
-                else:
-                    print("未找到该课程的授课老师信息，请手动输入")
-                    teacher_id = input("请输入教师工号：").strip()
-            else:
-                teacher_id = input("请输入教师工号：").strip()
-                
+            teacher_id = input("请输入教师工号：").strip()
             leave_reason = input("请输入请假原因：").strip()
             
             # 时间输入循环
@@ -305,37 +282,10 @@ class StudentOperation:
         except pymysql.MySQLError as e:
             print(f"❌ 查询请假记录失败：{e}")
 
-    def _get_teachers_by_course(self, course_id):
-        """根据课程ID查询授课老师"""
-        try:
-            # 先尝试使用 course_id 字段连接
-            try:
-                self.cursor.execute("""
-                    SELECT ti.teacher_id, ti.teacher_name
-                    FROM course_info ci
-                    LEFT JOIN teacher_info ti ON ci.teacher_id = ti.teacher_id
-                    WHERE ci.course_id = %s
-                """, (course_id,))
-            except pymysql.MySQLError:
-                # 兼容 course_id 字段
-                self.cursor.execute("""
-                    SELECT ti.teacher_id, ti.teacher_name
-                    FROM course_info ci
-                    LEFT JOIN teacher_info ti ON ci.teacher_id = ti.teacher_id
-                    WHERE ci.course_id = %s
-                """, (course_id,))
-            
-            teachers = self.cursor.fetchall()
-            # 过滤空结果
-            return [teacher for teacher in teachers if teacher and teacher[0]]
-        except pymysql.MySQLError as e:
-            print(f"❌ 查询授课老师失败：{e}")
-            return []
-    
     def _show_my_courses(self):
         """查看我的选课"""
         try:
-            # 先尝试使用 course_code 字段连接
+            # 先尝试使用 course_id 字段连接
             try:
                 self.cursor.execute("""
                     SELECT scs.course_id, ci.course_name
@@ -361,18 +311,12 @@ class StudentOperation:
                 return
             
             print("\n===== 我的选课 =====")
-            print(f"{'课程代码':<12} {'课程名称':<30} {'授课老师':<40}")
-            print("-" * 90)
+            print(f"{'课程代码':<12} {'课程名称':<30}")
+            print("-" * 45)
             
             for course in courses:
                 course_id, course_name = course
-                # 查询该课程的授课老师
-                teachers = self._get_teachers_by_course(course_id)
-                if teachers:
-                    teacher_info = ", ".join([f"{t[0]}({t[1]})" for t in teachers])
-                else:
-                    teacher_info = "暂无授课老师信息"
-                print(f"{course_id:<12} {course_name:<30} {teacher_info:<40}")
+                print(f"{course_id:<12} {course_name:<30}")
                 
         except pymysql.MySQLError as e:
             print(f"❌ 查询选课记录失败：{e}")

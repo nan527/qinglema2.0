@@ -103,7 +103,7 @@ class CounselorOperation:
         """查看负责年级中状态为“待审批”的请假记录"""
         try:
             sql = """
-                SELECT sl.leave_id, sl.student_id, sl.student_name, sl.course_code, 
+                SELECT sl.leave_id, sl.student_id, sl.student_name, sl.course_id, 
                        sl.leave_reason, sl.start_time, sl.end_time, sl.approval_status
                 FROM student_leave sl
                 WHERE LEFT(sl.student_id, 4) = %s
@@ -130,7 +130,7 @@ class CounselorOperation:
         """查看负责年级所有请假记录（含已批准/已拒绝）"""
         try:
             sql = """
-                SELECT sl.leave_id, sl.student_id, sl.student_name, sl.course_code, 
+                SELECT sl.leave_id, sl.student_id, sl.student_name, sl.course_id, 
                        sl.approval_status, sl.approver_id, sl.approver_name, sl.approval_time
                 FROM student_leave sl
                 WHERE LEFT(sl.student_id, 4) = %s

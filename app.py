@@ -278,6 +278,195 @@ def get_all_users():
     except pymysql.MySQLError as e:
         return jsonify({"success": False, "message": f"查询失败：{str(e)}"})
 
+
+# ---------- 学生端：课程与请假相关API ----------
+@app.route('/api/courses', methods=['GET'])
+@login_required(role='学生')
+def api_get_courses():
+    """返回当前学生已选的课程列表：[{course_id, course_name}, ...]"""
+    student_id = session['user_info']['user_account']  # 使用正确的session键名
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        # 查询学生已选课程
+        cursor.execute("""
+            SELECT ci.course_id, ci.course_name 
+            FROM course_info ci
+            JOIN student_course_selection scs ON ci.course_id = scs.course_id
+            WHERE scs.student_id = %s
+            ORDER BY ci.course_id
+        """, (student_id,))
+        rows = cursor.fetchall()
+        
+        return jsonify({"success": True, "data": rows})
+    except pymysql.MySQLError as e:
+        return jsonify({"success": False, "message": f"查询失败：{str(e)}"})
+    finally:
+        try:
+            cursor.close()
+        except Exception:
+            pass
+        try:
+            if conn and conn.open:
+                conn.close()
+        except Exception:
+            pass
+
+
+@app.route('/api/teachers', methods=['GET'])
+@login_required(role='学生')
+def api_get_teachers():
+    """返回所有教师列表：[{teacher_id, teacher_name}, ...]"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        cursor.execute("SELECT teacher_id, teacher_name FROM teacher_info ORDER BY teacher_id")
+        rows = cursor.fetchall()
+        return jsonify({"success": True, "data": rows})
+    except pymysql.MySQLError as e:
+        return jsonify({"success": False, "message": f"查询失败：{str(e)}"})
+    finally:
+        try:
+            cursor.close()
+        except Exception:
+            pass
+        try:
+            if conn and conn.open:
+                conn.close()
+        except Exception:
+            pass
+
+
+@app.route('/api/course_teachers', methods=['GET'])
+@login_required(role='学生')
+def api_course_teachers():
+    """根据 course_id 返回该课程的授课教师（返回 teacher_id, teacher_name 列表）"""
+    course_id = request.args.get('course_id', '').strip()  # 直接使用course_id参数
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+        if course_id:
+            # 直接查询teacher_course表获取该课程的所有授课教师
+            cursor.execute("""
+                SELECT ti.teacher_id, ti.teacher_name
+                FROM teacher_course tc
+                JOIN teacher_info ti ON tc.teacher_id = ti.teacher_id
+                WHERE tc.course_id = %s
+            """, (course_id,))
+            rows = cursor.fetchall()
+            
+            # 过滤空结果
+            rows = [r for r in rows if r and r.get('teacher_id')]
+            
+            # 如果没有找到，返回友好提示
+            if not rows:
+                return jsonify({"success": True, "data": [], "message": "该课程暂无授课教师信息"})
+            
+            return jsonify({"success": True, "data": rows})
+
+        else:
+            # 无 course_id 则返回所有教师
+            cursor.execute("SELECT teacher_id, teacher_name FROM teacher_info ORDER BY teacher_id")
+            rows = cursor.fetchall()
+            return jsonify({"success": True, "data": rows})
+
+    except Exception as e:
+        # 捕获所有异常，确保返回有效的 JSON 响应
+        print(f"获取课程教师信息失败: {str(e)}")
+        return jsonify({"success": False, "message": f"查询失败：{str(e)}"})
+    finally:
+        # 确保资源被正确释放
+        try:
+            cursor.close()
+        except Exception:
+            pass
+        try:
+            if conn and conn.open:
+                conn.close()
+        except Exception:
+            pass
+
+
+@app.route('/api/student/leave', methods=['POST'])
+@login_required(role='学生')
+def api_student_leave():
+    """学生提交请假：支持多课程选择，期望 JSON {course_teacher_pairs: [{course_id, teacher_id}], start_time, end_time, leave_reason} 返回 success/message"""
+    data = request.json or {}
+    course_teacher_pairs = data.get('course_teacher_pairs', [])
+    start_time = data.get('start_time', '').strip()
+    end_time = data.get('end_time', '').strip()
+    leave_reason = data.get('leave_reason', '').strip()
+
+    # 参数验证
+    if not start_time or not end_time or not leave_reason:
+        return jsonify({"success": False, "message": "请填写完整的请假信息"})
+    
+    # 验证课程-教师对数组
+    if not isinstance(course_teacher_pairs, list) or len(course_teacher_pairs) == 0:
+        return jsonify({"success": False, "message": "请至少选择一个课程和对应的老师"})
+    
+    # 验证每个课程-教师对
+    for pair in course_teacher_pairs:
+        if not isinstance(pair, dict) or not pair.get('course_id') or not pair.get('teacher_id'):
+            return jsonify({"success": False, "message": "课程或教师信息不完整"})
+
+    student_account = session['user_info']['user_account']
+    conn = None
+    cursor = None
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # 获取学生姓名与部门
+        cursor.execute("SELECT student_name, dept FROM student_info WHERE student_id = %s", (student_account,))
+        stu = cursor.fetchone()
+        if not stu:
+            return jsonify({"success": False, "message": "学生信息不存在"})
+        student_name, dept = stu[0], stu[1]
+
+        # 计算已批准请假次数
+        cursor.execute("SELECT COUNT(*) FROM student_leave WHERE student_id = %s AND approval_status = '已批准'", (student_account,))
+        approved_times = cursor.fetchone()[0]
+        current_times = approved_times + 1
+        approval_status = '待审批'
+
+        # 为每个课程-教师对创建请假记录
+        for pair in course_teacher_pairs:
+            course_code = pair.get('course_id', '').strip()  # 获取课程代码
+            teacher_id = pair.get('teacher_id', '').strip()
+            
+            cursor.execute('''
+                INSERT INTO student_leave
+                (student_id, student_name, dept, course_code, teacher_id, leave_reason, start_time, end_time, approval_status, times)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ''', (student_account, student_name, dept, course_code, teacher_id, leave_reason, start_time, end_time, approval_status, current_times))
+        
+        conn.commit()
+        return jsonify({"success": True, "message": "请假提交成功"})
+        
+    except Exception as e:
+        try:
+            if conn:
+                conn.rollback()
+        except Exception:
+            pass
+        print(f"提交请假失败: {str(e)}")
+        return jsonify({"success": False, "message": f"数据库错误：{str(e)}"})
+    finally:
+        try:
+            if cursor:
+                cursor.close()
+        except Exception:
+            pass
+        try:
+            if conn and hasattr(conn, 'open') and conn.open:
+                conn.close()
+        except Exception:
+            pass
+
 # 启动应用
 if __name__ == '__main__':
     # 生产环境需设置debug=False，并配置合适的host和port

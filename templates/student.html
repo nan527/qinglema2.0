@@ -69,7 +69,7 @@
       </div>
 
       <!-- 双栏卡片布局 -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <!-- 请假模块 -->
         <div class="bg-white rounded-2xl p-6 card-shadow transition-all hover:shadow-lg">
           <div class="flex items-center mb-5">
@@ -135,56 +135,119 @@
           </form>
         </div>
 
-        <!-- 通知模块 -->
+        <!-- 通知模块 - 老师请假信息 -->
         <div class="bg-white rounded-2xl p-6 card-shadow transition-all hover:shadow-lg">
           <div class="flex items-center mb-5">
             <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mr-3">
               <i class="fa fa-bell-o text-primary"></i>
             </div>
-            <h3 class="text-xl font-semibold text-gray-800">最新通知</h3>
+            <h3 class="text-xl font-semibold text-gray-800">老师请假信息</h3>
           </div>
           
-          <div class="space-y-4 max-h-[480px] overflow-y-auto pr-2 scrollbar-thin">
-            <!-- 通知项1 -->
-            <div class="p-4 bg-neutral rounded-xl border border-gray-100 hover:border-primary/30 transition-all">
-              <div class="flex justify-between items-start mb-2">
-                <span class="text-xs font-medium px-2 py-1 bg-primary/10 text-primary rounded-full">重要通知</span>
-                <span class="text-xs text-gray-500">2025-11-10</span>
-              </div>
-              <p class="text-sm">本周三下午14:00将进行消防演习，请各班同学提前15分钟在操场集合，听从老师指挥。</p>
-            </div>
-            
-            <!-- 通知项2 -->
-            <div class="p-4 bg-neutral rounded-xl border border-gray-100 hover:border-primary/30 transition-all">
-              <div class="flex justify-between items-start mb-2">
-                <span class="text-xs font-medium px-2 py-1 bg-blue-100 text-blue-600 rounded-full">考试通知</span>
-                <span class="text-xs text-gray-500">2025-11-08</span>
-              </div>
-              <p class="text-sm">11月20日将举行期中考试，请同学们提前做好复习准备，考场安排将于下周公布。</p>
-            </div>
-            
-            <!-- 通知项3 -->
-            <div class="p-4 bg-neutral rounded-xl border border-gray-100 hover:border-primary/30 transition-all">
-              <div class="flex justify-between items-start mb-2">
-                <span class="text-xs font-medium px-2 py-1 bg-green-100 text-green-600 rounded-full">活动通知</span>
-                <span class="text-xs text-gray-500">2025-11-05</span>
-              </div>
-              <p class="text-sm">校园文化艺术节将于12月1日开幕，目前正在征集节目和作品，有意向的同学请于11月15日前报名。</p>
-            </div>
-            
-            <!-- 通知项4 -->
-            <div class="p-4 bg-neutral rounded-xl border border-gray-100 hover:border-primary/30 transition-all">
-              <div class="flex justify-between items-start mb-2">
-                <span class="text-xs font-medium px-2 py-1 bg-amber-100 text-amber-600 rounded-full">提醒</span>
-                <span class="text-xs text-gray-500">2025-11-03</span>
-              </div>
-              <p class="text-sm">冬季流感高发期，请同学们注意保暖，勤洗手，教室将定期进行消毒通风。</p>
+          <div id="teacher-leave-notifications" class="space-y-4 max-h-[480px] overflow-y-auto pr-2 scrollbar-thin">
+            <!-- 加载中的状态 -->
+            <div class="text-center py-4">
+              <p class="text-gray-500">正在加载老师请假信息...</p>
             </div>
           </div>
           
-          <button class="w-full mt-4 text-primary hover:text-primary/80 font-medium py-2 transition-all flex items-center justify-center">
-            <i class="fa fa-history mr-2"></i>查看全部通知
+          <script>
+            // 加载老师请假信息
+            function loadTeacherLeaveNotifications() {
+                fetch('/api/teacher/leave_records')
+                    .then(response => response.json())
+                    .then(data => {
+                        const container = document.getElementById('teacher-leave-notifications');
+                        
+                        if (data.success && data.data && data.data.length > 0) {
+                            // 清空容器
+                            container.innerHTML = '';
+                            
+                            // 遍历数据并创建通知项
+                            data.data.forEach(record => {
+                                const notificationItem = document.createElement('div');
+                                notificationItem.className = 'p-4 bg-neutral rounded-xl border border-gray-100 hover:border-primary/30 transition-all';
+                                
+                                // 格式化日期
+                                const startTime = new Date(record.start_time);
+                                const dateStr = `${startTime.getFullYear()}-${String(startTime.getMonth() + 1).padStart(2, '0')}-${String(startTime.getDate()).padStart(2, '0')}`;
+                                
+                                notificationItem.innerHTML = `
+                                    <div class="flex justify-between items-start mb-2">
+                                        <span class="text-xs font-medium px-2 py-1 bg-blue-100 text-blue-600 rounded-full">老师请假</span>
+                                        <span class="text-xs text-gray-500">${dateStr}</span>
+                                    </div>
+                                    <div class="text-sm space-y-1">
+                                        <div>教师ID: ${record.teacher_id}</div>
+                                        <div>教师姓名: ${record.teacher_name || '未知'}</div>
+                                        <div>课程ID: ${record.course_id || '未知'}</div>
+                                        <div>课程名称: ${record.course_name || '未知'}</div>
+                                        <div>请假原因: ${record.leave_reason}</div>
+                                        <div>请假时间: ${formatDateTime(record.start_time)} 至 ${formatDateTime(record.end_time)}</div>
+                                    </div>
+                                `;
+                                
+                                container.appendChild(notificationItem);
+                            });
+                        } else {
+                            container.innerHTML = '<div class="text-center py-4"><p class="text-gray-500">暂无老师请假信息</p></div>';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('加载老师请假信息失败:', error);
+                        const container = document.getElementById('teacher-leave-notifications');
+                        container.innerHTML = '<div class="text-center py-4"><p class="text-red-500">加载失败，请稍后重试</p></div>';
+                    });
+            }
+            
+            // 格式化日期时间
+            function formatDateTime(dateTimeStr) {
+                const date = new Date(dateTimeStr);
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                return `${year}-${month}-${day} ${hours}:${minutes}`;
+            }
+            
+            // 页面加载完成后执行
+            window.addEventListener('load', loadTeacherLeaveNotifications);
+          </script>
+        </div>
+      </div>
+
+      <!-- 请假记录模块 -->
+      <div class="bg-white rounded-2xl p-6 card-shadow transition-all hover:shadow-lg mb-8">
+        <div class="flex items-center mb-5">
+          <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mr-3">
+            <i class="fa fa-list-alt text-primary"></i>
+          </div>
+          <h3 class="text-xl font-semibold text-gray-800">我的请假记录</h3>
+          <button id="refreshRecordsBtn" class="ml-auto px-4 py-1.5 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors text-sm">
+            <i class="fa fa-refresh mr-1"></i>刷新记录
           </button>
+        </div>
+        
+        <div id="leaveRecordsContainer" class="overflow-x-auto">
+          <table class="w-full min-w-[600px] text-sm">
+            <thead>
+              <tr class="border-b border-gray-200">
+                <th class="text-left py-3 px-4 font-medium text-gray-600">请假时间</th>
+                <th class="text-left py-3 px-4 font-medium text-gray-600">课程</th>
+                <th class="text-left py-3 px-4 font-medium text-gray-600">请假事由</th>
+                <th class="text-left py-3 px-4 font-medium text-gray-600">状态</th>
+                <th class="text-left py-3 px-4 font-medium text-gray-600">审批人</th>
+              </tr>
+            </thead>
+            <tbody id="leaveRecordsTableBody">
+              <tr>
+                <td colspan="5" class="py-10 text-center text-gray-500">
+                  <i class="fa fa-spinner fa-spin mr-2"></i>加载中...
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -489,6 +552,169 @@
       await loadCourses();
       bindCourseChangeEvents();
       initializeEvents();
+      loadLeaveRecords();
+    });
+
+    // 加载学生请假记录
+    async function loadLeaveRecords() {
+      const tableBody = document.getElementById('leaveRecordsTableBody');
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="5" class="py-10 text-center text-gray-500">
+            <i class="fa fa-spinner fa-spin mr-2"></i>加载中...
+          </td>
+        </tr>
+      `;
+
+      try {
+        const res = await fetch('/api/student/leave_records');
+        const data = await res.json();
+
+        if (!data.success) {
+          // 根据后端返回的错误信息提供更友好的提示
+          let errorMessage = data.message || '加载失败';
+          
+          // 数据库错误特殊处理
+          if (errorMessage.includes('数据库')) {
+            errorMessage = '系统数据查询异常，请稍后再试';
+          } else if (errorMessage.includes('权限')) {
+            errorMessage = '您没有权限查看请假记录';
+          }
+          
+          tableBody.innerHTML = `
+            <tr>
+              <td colspan="5" class="py-10 text-center text-red-500">
+                <i class="fa fa-exclamation-circle mr-2"></i>${errorMessage}
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        const records = data.data || [];
+        
+        if (records.length === 0) {
+          tableBody.innerHTML = `
+            <tr>
+              <td colspan="5" class="py-10 text-center text-gray-500">
+                <i class="fa fa-info-circle mr-2"></i>暂无请假记录
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        // 生成表格内容
+        let html = '';
+        for (const record of records) {
+          // 格式化时间范围
+          const startTime = formatDateTime(record.start_time);
+          const endTime = formatDateTime(record.end_time);
+          const timeRange = `${startTime} 至 ${endTime}`;
+
+          // 格式化状态显示
+          let statusClass = '';
+          let statusIcon = '';
+          switch (record.approval_status) {
+            case '待审批':
+              statusClass = 'bg-yellow-100 text-yellow-600';
+              statusIcon = 'fa-clock-o';
+              break;
+            case '已批准':
+              statusClass = 'bg-green-100 text-green-600';
+              statusIcon = 'fa-check-circle';
+              break;
+            case '已拒绝':
+              statusClass = 'bg-red-100 text-red-600';
+              statusIcon = 'fa-times-circle';
+              break;
+            default:
+              statusClass = 'bg-gray-100 text-gray-600';
+              statusIcon = 'fa-question-circle';
+          }
+
+          // 不再显示审批人信息，因为API不再返回approver_id字段
+          const approverInfo = record.approval_status !== '待审批' 
+            ? '已审批' 
+            : '待审批';
+
+          html += `
+            <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+              <td class="py-3 px-4 text-gray-700">${timeRange}</td>
+              <td class="py-3 px-4 text-gray-700">${formatCourseInfo(record.course_code, record.teacher_id)}</td>
+              <td class="py-3 px-4 text-gray-700 max-w-[200px] truncate" title="${record.leave_reason || ''}">${record.leave_reason || '无'}</td>
+              <td class="py-3 px-4">
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${statusClass}">
+                  <i class="fa ${statusIcon} mr-1"></i>${record.approval_status}
+                </span>
+              </td>
+              <td class="py-3 px-4 text-gray-600 text-sm">${approverInfo}</td>
+            </tr>
+          `;
+        }
+
+        tableBody.innerHTML = html;
+      } catch (error) {
+        console.error('加载请假记录失败:', error);
+        // 根据错误类型提供更具体的错误信息
+        let errorMessage = '加载异常，请重试';
+        
+        // 网络错误处理
+        if (!navigator.onLine) {
+          errorMessage = '网络连接已断开，请检查网络后重试';
+        } else if (error.name === 'TypeError') {
+          errorMessage = '数据解析错误，请稍后重试';
+        } else if (error.name === 'AbortError') {
+          errorMessage = '请求已取消';
+        } else if (error.message && error.message.includes('timeout')) {
+          errorMessage = '请求超时，请检查网络状态';
+        }
+        
+        tableBody.innerHTML = `
+          <tr>
+            <td colspan="5" class="py-10 text-center text-red-500">
+              <i class="fa fa-exclamation-circle mr-2"></i>${errorMessage}
+            </td>
+          </tr>
+        `;
+      }
+    }
+
+    // 格式化日期时间
+    function formatDateTime(dateTimeStr) {
+      if (!dateTimeStr) return '未知时间';
+      try {
+        const date = new Date(dateTimeStr);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}:${minutes}`;
+      } catch (e) {
+        return dateTimeStr.slice(0, 16); // 尝试简单截取，以防日期解析失败
+      }
+    }
+
+    // 格式化课程信息
+    function formatCourseInfo(courseCode, teacherId) {
+      if (!courseCode) return '无';
+      // 如果课程代码包含逗号（多个课程），只显示前两个课程作为预览
+      const courses = courseCode.split(',').map(c => c.trim());
+      if (courses.length > 2) {
+        return `${courses.slice(0, 2).join(', ')} 等${courses.length}门课`;
+      }
+      return courses.join(', ');
+    }
+
+    // 绑定刷新按钮事件
+    document.getElementById('refreshRecordsBtn').addEventListener('click', function() {
+      this.disabled = true;
+      this.innerHTML = '<i class="fa fa-refresh fa-spin mr-1"></i>刷新中...';
+      loadLeaveRecords().finally(() => {
+        this.disabled = false;
+        this.innerHTML = '<i class="fa fa-refresh mr-1"></i>刷新记录';
+      });
     });
   </script>
 </body>

@@ -553,13 +553,18 @@ def teacher_approve_leave():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # 1. 校验请假记录
+        # 1. 校验请假记录 - 修改为支持逗号分隔的course_code
         sql_check = """
             SELECT sl.leave_id, sl.approval_status 
             FROM student_leave sl
             WHERE sl.leave_id = %s
-            AND (sl.course_code IN (SELECT course_id FROM teacher_courses WHERE teacher_id = %s) 
-                 OR sl.approver_id = %s)
+            AND (
+                # 使用FIND_IN_SET函数检查教师是否负责请假记录中的任一课程
+                EXISTS (SELECT 1 FROM teacher_courses tc 
+                        WHERE tc.teacher_id = %s 
+                        AND FIND_IN_SET(tc.course_id, sl.course_code))
+                OR sl.approver_id = %s
+            )
         """
         cursor.execute(sql_check, (leave_id, teacher_id, teacher_id))
         result = cursor.fetchone()
@@ -621,6 +626,59 @@ def teacher_approve_leave():
     except Exception as e:
         print(f"审批API异常: {str(e)}")
         return jsonify({"success": False, "message": f"系统错误: {str(e)}"})
+
+@app.route('/api/teacher/leave_records', methods=['GET'])
+def api_teacher_leave_records():
+    """
+    获取学生所选课程的老师请假记录
+    """
+    try:
+        # 获取当前登录的学生ID
+        if 'user_info' not in session or session['user_info']['role_name'] != '学生':
+            return jsonify({"success": False, "message": "用户未登录或不是学生"})
+        student_id = session['user_info']['user_account']
+        
+        conn = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        # 查询学生所选课程的老师请假记录
+        # 通过student_course_selection表关联，只返回学生选课的课程对应的老师请假信息
+        cursor.execute("""
+            SELECT 
+                t_leave.teacher_id,
+                ti.teacher_name,
+                t_leave.leave_reason,
+                t_leave.start_time,
+                t_leave.end_time,
+                t_leave.course_id,
+                ci.course_name
+            FROM 
+                teacher_leave t_leave
+            LEFT JOIN 
+                teacher_info ti ON t_leave.teacher_id = ti.teacher_id
+            LEFT JOIN
+                course_info ci ON t_leave.course_id = ci.course_id
+            INNER JOIN
+                student_course_selection scs ON t_leave.course_id = scs.course_id
+            WHERE
+                scs.student_id = %s
+            ORDER BY 
+                t_leave.start_time DESC
+        """, (student_id,))
+        
+        records = cursor.fetchall()
+        conn.close()
+        
+        return jsonify({
+            "success": True,
+            "data": records
+        })
+    except pymysql.MySQLError as e:
+        print(f"数据库错误: {str(e)}")
+        return jsonify({"success": False, "message": f"获取教师请假记录失败: {str(e)}"})
+    except Exception as e:
+        print(f"系统错误: {str(e)}")
+        return jsonify({"success": False, "message": f"获取教师请假记录失败: {str(e)}"})
 
 
 # ---------- 学生端：课程与请假相关API ----------
@@ -742,7 +800,7 @@ def api_student_leave():
     start_time = data.get('start_time', '').strip()
     end_time = data.get('end_time', '').strip()
     leave_reason = data.get('leave_reason', '').strip()
-
+    
     # 参数验证
     if not start_time or not end_time or not leave_reason:
         return jsonify({"success": False, "message": "请填写完整的请假信息"})
@@ -777,16 +835,17 @@ def api_student_leave():
         current_times = approved_times + 1
         approval_status = '待审批'
 
-        # 为每个课程-教师对创建请假记录
-        for pair in course_teacher_pairs:
-            course_code = pair.get('course_id', '').strip()  # 获取课程代码
-            teacher_id = pair.get('teacher_id', '').strip()
-            
-            cursor.execute('''
-                INSERT INTO student_leave
-                (student_id, student_name, dept, course_code, teacher_id, leave_reason, start_time, end_time, approval_status, times)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ''', (student_account, student_name, dept, course_code, teacher_id, leave_reason, start_time, end_time, approval_status, current_times))
+        # 将多个课程ID合并为逗号分隔的字符串
+        course_codes = ','.join([pair.get('course_id', '').strip() for pair in course_teacher_pairs])
+        # 将多个教师ID合并为逗号分隔的字符串
+        teacher_ids = ','.join([pair.get('teacher_id', '').strip() for pair in course_teacher_pairs])
+        
+        # 创建单条请假记录，包含所有课程和教师信息
+        cursor.execute('''
+            INSERT INTO student_leave
+            (student_id, student_name, dept, course_code, teacher_id, leave_reason, start_time, end_time, approval_status, times)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ''', (student_account, student_name, dept, course_codes, teacher_ids, leave_reason, start_time, end_time, approval_status, current_times))
         
         conn.commit()
         return jsonify({"success": True, "message": "请假提交成功"})
@@ -807,6 +866,60 @@ def api_student_leave():
             pass
         try:
             if conn and hasattr(conn, 'open') and conn.open:
+                conn.close()
+        except Exception:
+            pass
+
+
+@app.route('/api/student/leave_records', methods=['GET'])
+@login_required(role='学生')
+def api_student_leave_records():
+    """学生查看自己的请假记录，返回 {success, data: [leave_records], message} """
+    student_id = session['user_info']['user_account']
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        print(f"开始查询学生{student_id}的请假记录")
+        
+        # 查询学生的所有请假记录，只获取需要显示的字段
+        cursor.execute("""
+            SELECT 
+                course_code, 
+                teacher_id, 
+                start_time, 
+                end_time, 
+                leave_reason, 
+                approval_status, 
+                sort
+            FROM student_leave 
+            WHERE student_id = %s 
+            ORDER BY start_time DESC
+        """, (student_id,))
+        
+        records = cursor.fetchall()
+        print(f"查询成功，获取到{len(records)}条记录")
+        return jsonify({"success": True, "data": records})
+    except pymysql.MySQLError as e:
+        print(f"MySQL错误查询学生请假记录失败: {str(e)}")
+        return jsonify({"success": False, "message": f"数据库查询失败：{str(e)}"})
+    except Exception as e:
+        print(f"未知错误查询学生请假记录失败: {str(e)}")
+        return jsonify({"success": False, "message": f"系统异常：{str(e)}"})
+    finally:
+        # 确保关闭数据库连接
+        try:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
+                print("数据库连接已关闭")
+        except Exception:
+            pass
+        try:
+            if conn and conn.open:
                 conn.close()
         except Exception:
             pass

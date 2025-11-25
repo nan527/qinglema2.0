@@ -104,7 +104,7 @@ class CounselorOperation:
         """查看负责年级中状态为“待审批”的请假记录"""
         try:
             sql = """
-                SELECT sl.leave_id, sl.student_id, sl.student_name, sl.course_id, 
+                SELECT sl.leave_id, sl.student_id, sl.student_name, sl.course_code, 
                        sl.leave_reason, sl.start_time, sl.end_time, sl.approval_status
                 FROM student_leave sl
                 WHERE LEFT(sl.student_id, 4) = %s
@@ -119,10 +119,12 @@ class CounselorOperation:
                 return
 
             print(f"\n===== {self.responsible_grade}级待审批请假记录 =====")
-            print(f"{'请假ID':<10} {'学生ID':<15} {'学生姓名':<10} {'课程代码':<10} {'请假原因':<20} {'开始时间':<20} {'结束时间':<20} {'状态':<10}")
-            print("-" * 130)
+            print(f"{'请假ID':<10} {'学生ID':<15} {'学生姓名':<10} {'课程代码':<20} {'请假原因':<20} {'开始时间':<20} {'结束时间':<20} {'状态':<10}")
+            print("-" * 140)
             for leave in leaves:
-                print(f"{leave[0]:<10} {leave[1]:<15} {leave[2]:<10} {leave[3]:<10} {leave[4][:18]:<20} {str(leave[5]):<20} {str(leave[6]):<20} {leave[7]:<10}")
+                # 课程代码可能包含多个，截取显示前18个字符
+                course_code_display = str(leave[3])[:18] if leave[3] else ""
+                print(f"{leave[0]:<10} {leave[1]:<15} {leave[2]:<10} {course_code_display:<20} {leave[4][:18]:<20} {str(leave[5]):<20} {str(leave[6]):<20} {leave[7]:<10}")
         except pymysql.MySQLError as e:
             print(f"❌ 查询失败：{e}")
 
@@ -131,7 +133,7 @@ class CounselorOperation:
         """查看负责年级所有请假记录（含已批准/已拒绝）"""
         try:
             sql = """
-                SELECT sl.leave_id, sl.student_id, sl.student_name, sl.course_id, 
+                SELECT sl.leave_id, sl.student_id, sl.student_name, sl.course_code, 
                        sl.approval_status, sl.approver_id, sl.approver_name, sl.approval_time
                 FROM student_leave sl
                 WHERE LEFT(sl.student_id, 4) = %s
@@ -145,13 +147,15 @@ class CounselorOperation:
                 return
 
             print(f"\n===== {self.responsible_grade}级所有请假记录 =====")
-            print(f"{'请假ID':<10} {'学生ID':<15} {'学生姓名':<10} {'课程代码':<10} {'状态':<10} {'审批人ID':<10} {'审批人姓名':<10} {'审批时间':<20}")
-            print("-" * 120)
+            print(f"{'请假ID':<10} {'学生ID':<15} {'学生姓名':<10} {'课程代码':<20} {'状态':<10} {'审批人ID':<10} {'审批人姓名':<10} {'审批时间':<20}")
+            print("-" * 130)
             for leave in leaves:
                 approver_id = leave[5] if leave[5] else "未审批"
                 approver_name = leave[6] if leave[6] else "未审批"
                 approval_time = str(leave[7]) if leave[7] else "未审批"
-                print(f"{leave[0]:<10} {leave[1]:<15} {leave[2]:<10} {leave[3]:<10} {leave[4]:<10} {approver_id:<10} {approver_name:<10} {approval_time:<20}")
+                # 课程代码可能包含多个，截取显示前18个字符
+                course_code_display = str(leave[3])[:18] if leave[3] else ""
+                print(f"{leave[0]:<10} {leave[1]:<15} {leave[2]:<10} {course_code_display:<20} {leave[4]:<10} {approver_id:<10} {approver_name:<10} {approval_time:<20}")
         except pymysql.MySQLError as e:
             print(f"❌ 查询失败：{e}")
 

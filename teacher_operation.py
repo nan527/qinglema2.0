@@ -62,6 +62,43 @@ class TeacherService:
     # ------------------------------------------------------------------ #
     # 数据查询
     # ------------------------------------------------------------------ #
+    def get_teacher_leaves(self) -> dict:
+        """
+        获取所有老师的请假记录
+        返回teacher_id, courseid, start_time, end_time, leave_reason等字段
+        """
+        sql = f"""
+            SELECT
+                tl.teacher_id,
+                tl.course_id,
+                tl.leave_reason,
+                tl.start_time,
+                tl.end_time,
+                t.teacher_name,
+                c.course_name
+            FROM {TEACHER_LEAVE_TABLE} tl
+            LEFT JOIN {TEACHER_TABLE} t ON tl.teacher_id = t.teacher_id
+            LEFT JOIN {COURSE_TABLE} c ON tl.course_id = c.course_id
+            ORDER BY tl.start_time DESC
+        """
+        
+        try:
+            with self._connect() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(sql)
+                    rows = cursor.fetchall()
+        except pymysql.MySQLError as exc:
+            return {
+                "success": False,
+                "message": f"查询老师请假失败：{exc}",
+            }
+
+        for row in rows:
+            row["start_time"] = self._serialize_datetime(row["start_time"])
+            row["end_time"] = self._serialize_datetime(row["end_time"])
+
+        return {"success": True, "data": rows, "message": "查询成功"}
+
     def get_approved_student_leaves(
         self,
         teacher_id: str,

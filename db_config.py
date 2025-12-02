@@ -2,9 +2,9 @@
 def get_db_config():
     """返回数据库连接配置"""
     return {
-        "host": "localhost",
+        "host": "10.122.204.252",
         "port": 3306,
-        "user": "root",
+        "user": "remote_user",
         "password": "123456".encode('utf8'),  # 按需处理编码
         "database": "qing2",
         "charset": "utf8mb4"

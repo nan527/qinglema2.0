@@ -2,6 +2,7 @@
 let allCourses = [];
 let leaveRecords = [];
 let attachmentFile = null;
+let currentLeaveFilter = 'all'; // 当前请假记录筛选状态
 
 // ========== 佐证文件预览 ==========
 function previewAttachment(input) {
@@ -245,10 +246,12 @@ async function loadLeaveRecords() {
     const data = await res.json();
     if (data.success && data.data && data.data.length > 0) {
       leaveRecords = data.data;
-      renderRecords(data.data, container);
+      // 应用当前筛选
+      filterLeaveRecords(currentLeaveFilter);
       renderRecentLeaves(data.data.slice(0, 3));
       updateStats();
     } else {
+      leaveRecords = [];
       container.innerHTML = '<div class="text-center py-10 text-gray-400"><i class="fas fa-inbox"></i> 暂无请假记录</div>';
       document.getElementById('recent-leaves').innerHTML = '<div class="text-center py-6 text-gray-400">暂无记录</div>';
       updateStats();
@@ -353,6 +356,54 @@ function updateStats() {
   
   // 检查请假过多警告
   checkLeaveWarning();
+}
+
+// ========== 筛选请假记录 ==========
+function filterLeaveRecords(status) {
+  currentLeaveFilter = status;
+  const container = document.getElementById('leaveRecordsContainer');
+  
+  // 更新按钮样式
+  document.querySelectorAll('[id^="filter-"]').forEach(btn => {
+    btn.classList.remove('ring-2', 'ring-primary', 'bg-primary', 'text-white');
+    btn.classList.add('hover:bg-gray-200', 'hover:bg-orange-100', 'hover:bg-green-100', 'hover:bg-red-100');
+  });
+  
+  const activeBtn = document.getElementById(`filter-${status === 'all' ? 'all' : status === '待审批' ? 'pending' : status === '已批准' ? 'approved' : 'rejected'}`);
+  if (activeBtn) {
+    activeBtn.classList.add('ring-2', 'ring-primary');
+    if (status === 'all') {
+      activeBtn.classList.remove('bg-gray-100', 'text-gray-600');
+      activeBtn.classList.add('bg-primary', 'text-white');
+    } else if (status === '待审批') {
+      activeBtn.classList.remove('bg-orange-50', 'text-orange-600');
+      activeBtn.classList.add('bg-orange-500', 'text-white');
+    } else if (status === '已批准') {
+      activeBtn.classList.remove('bg-green-50', 'text-green-600');
+      activeBtn.classList.add('bg-green-500', 'text-white');
+    } else if (status === '已驳回') {
+      activeBtn.classList.remove('bg-red-50', 'text-red-600');
+      activeBtn.classList.add('bg-red-500', 'text-white');
+    }
+  }
+  
+  if (!leaveRecords || leaveRecords.length === 0) {
+    container.innerHTML = '<div class="text-center py-10 text-gray-400"><i class="fas fa-inbox"></i> 暂无请假记录</div>';
+    document.getElementById('records-count').textContent = 0;
+    return;
+  }
+
+  let filtered = leaveRecords;
+  if (status !== 'all') {
+    filtered = leaveRecords.filter(r => r.approval_status === status);
+  }
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="text-center py-10 text-gray-400"><i class="fas fa-inbox"></i> 暂无${status === 'all' ? '' : status}记录</div>`;
+    document.getElementById('records-count').textContent = 0;
+  } else {
+    renderRecords(filtered, container);
+  }
 }
 
 // ========== 聊天功能 ==========

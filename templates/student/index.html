@@ -145,7 +145,7 @@
 
       <!-- 统计卡片 -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div class="glass-card rounded-2xl p-6 hover-lift cursor-pointer" onclick="switchPage('records')">
+        <div class="glass-card rounded-2xl p-6 hover-lift cursor-pointer" onclick="switchPage('records'); filterLeaveRecords('all');">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-gray-500 text-sm mb-1">总请假</p>
@@ -156,7 +156,7 @@
             </div>
           </div>
         </div>
-        <div class="glass-card rounded-2xl p-6 hover-lift">
+        <div class="glass-card rounded-2xl p-6 hover-lift cursor-pointer" onclick="switchPage('records'); filterLeaveRecords('待审批');">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-gray-500 text-sm mb-1">待审批</p>
@@ -167,7 +167,7 @@
             </div>
           </div>
         </div>
-        <div class="glass-card rounded-2xl p-6 hover-lift">
+        <div class="glass-card rounded-2xl p-6 hover-lift cursor-pointer" onclick="switchPage('records'); filterLeaveRecords('已批准');">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-gray-500 text-sm mb-1">已批准</p>
@@ -178,7 +178,7 @@
             </div>
           </div>
         </div>
-        <div class="glass-card rounded-2xl p-6 hover-lift">
+        <div class="glass-card rounded-2xl p-6 hover-lift cursor-pointer" onclick="switchPage('records'); filterLeaveRecords('已驳回');">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-gray-500 text-sm mb-1">已驳回</p>
@@ -311,9 +311,26 @@
             <span class="text-lg font-bold text-primary" id="records-count">0</span>
             <span class="text-sm text-gray-500">条记录</span>
           </div>
-          <button onclick="loadLeaveRecords()" class="px-4 py-2 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all text-sm font-medium">
-            <i class="fa-solid fa-rotate mr-1"></i>刷新
-          </button>
+          <div class="flex items-center space-x-2">
+            <!-- 筛选按钮组 -->
+            <div class="flex items-center space-x-2 mr-4">
+              <button id="filter-all" onclick="filterLeaveRecords('all')" class="px-3 py-1.5 rounded-full text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all">
+                全部
+              </button>
+              <button id="filter-pending" onclick="filterLeaveRecords('待审批')" class="px-3 py-1.5 rounded-full text-xs font-bold bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all">
+                待审批
+              </button>
+              <button id="filter-approved" onclick="filterLeaveRecords('已批准')" class="px-3 py-1.5 rounded-full text-xs font-bold bg-green-50 text-green-600 hover:bg-green-100 transition-all">
+                已批准
+              </button>
+              <button id="filter-rejected" onclick="filterLeaveRecords('已驳回')" class="px-3 py-1.5 rounded-full text-xs font-bold bg-red-50 text-red-600 hover:bg-red-100 transition-all">
+                未通过
+              </button>
+            </div>
+            <button onclick="loadLeaveRecords()" class="px-4 py-2 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all text-sm font-medium">
+              <i class="fa-solid fa-rotate mr-1"></i>刷新
+            </button>
+          </div>
         </div>
         <div id="leaveRecordsContainer" class="space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
           <div class="text-center py-10 text-gray-400"><i class="fa-solid fa-spinner fa-spin"></i> 加载中...</div>

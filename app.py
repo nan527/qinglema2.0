@@ -497,7 +497,12 @@ def user_preview():
         if user:
             avatar_url = None
             if user[3]:  # avatar字段
-                avatar_url = f"/head_image/{user[3]}"
+                # 检查头像文件位置
+                avatar_file = user[3]
+                if avatar_file.startswith('teacher_'):
+                    avatar_url = f"/static/avatars/{avatar_file}"
+                else:
+                    avatar_url = f"/head_image/{avatar_file}"
             
             return jsonify({
                 "success": True,
@@ -1364,7 +1369,7 @@ def get_teacher_chat_students():
             JOIN student_course_selection scs ON tc.course_id = scs.course_id
             JOIN student_info si ON scs.student_id = si.student_id
             WHERE tc.teacher_id = %s
-            ORDER BY si.student_name
+            ORDER BY si.student_id
         """, (teacher_id,))
         students = cursor.fetchall()
         
@@ -1376,7 +1381,7 @@ def get_teacher_chat_students():
                 JOIN student_course_selection scs ON sl.course_id = scs.course_id
                 JOIN student_info si ON scs.student_id = si.student_id
                 WHERE sl.teacher_id = %s
-                ORDER BY si.student_name
+                ORDER BY si.student_id
             """, (teacher_id,))
             students = cursor.fetchall()
         
@@ -1387,7 +1392,7 @@ def get_teacher_chat_students():
                 FROM student_leave sl
                 LEFT JOIN student_info si ON sl.student_id = si.student_id
                 WHERE sl.teacher_id = %s
-                ORDER BY sl.student_name
+                ORDER BY sl.student_id
             """, (teacher_id,))
             students = cursor.fetchall()
         
@@ -1479,12 +1484,35 @@ def get_teacher_profile():
         
         teacher_id = session['user_info']['user_account']
         
+        # 获取教师基本信息
         cursor.execute("""
-            SELECT teacher_id, teacher_name, dept, contact, course_code
+            SELECT teacher_id, teacher_name, dept, contact, avatar
             FROM teacher_info
             WHERE teacher_id = %s
         """, (teacher_id,))
         teacher = cursor.fetchone()
+        
+        # 获取教师授课课程（优先从teacher_course表，备选从teacher_notifications表）
+        cursor.execute("""
+            SELECT GROUP_CONCAT(DISTINCT ci.course_name SEPARATOR ', ') as courses
+            FROM teacher_course tc
+            JOIN course_info ci ON tc.course_id = ci.course_id
+            WHERE tc.teacher_id = %s
+        """, (teacher_id,))
+        course_result = cursor.fetchone()
+        courses = course_result.get('courses', '') if course_result else ''
+        
+        # 如果teacher_course表没有数据，从teacher_notifications表获取
+        if not courses:
+            cursor.execute("""
+                SELECT GROUP_CONCAT(DISTINCT ci.course_name SEPARATOR ', ') as courses
+                FROM teacher_notifications tn
+                JOIN course_info ci ON tn.course_id = ci.course_id
+                WHERE tn.teacher_id = %s
+            """, (teacher_id,))
+            course_result = cursor.fetchone()
+            courses = course_result.get('courses', '') if course_result else ''
+        
         conn.close()
         
         if teacher:
@@ -1493,7 +1521,8 @@ def get_teacher_profile():
                 "data": {
                     "dept": teacher.get('dept', ''),
                     "contact": teacher.get('contact', ''),
-                    "courses": teacher.get('course_code', '')
+                    "courses": courses or '',
+                    "avatar": teacher.get('avatar', '')
                 }
             })
         return jsonify({"success": True, "data": {}})
@@ -1527,6 +1556,52 @@ def update_teacher_contact():
         
     except Exception as e:
         print(f"更新联系方式失败: {str(e)}")
+        return jsonify({"success": False, "message": str(e)})
+
+# 教师上传头像
+@app.route('/api/teacher/upload_avatar', methods=['POST'])
+@login_required(role='讲师')
+def upload_teacher_avatar():
+    """上传教师头像"""
+    try:
+        if 'avatar' not in request.files:
+            return jsonify({"success": False, "message": "没有上传文件"})
+        
+        file = request.files['avatar']
+        if file.filename == '':
+            return jsonify({"success": False, "message": "没有选择文件"})
+        
+        # 检查文件类型
+        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+        ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+        if ext not in allowed_extensions:
+            return jsonify({"success": False, "message": "不支持的图片格式"})
+        
+        teacher_id = session['user_info']['user_account']
+        
+        # 生成文件名
+        import uuid
+        filename = f"teacher_{teacher_id}_{uuid.uuid4().hex[:8]}.{ext}"
+        
+        # 确保目录存在
+        avatar_dir = os.path.join(app.root_path, 'static', 'avatars')
+        os.makedirs(avatar_dir, exist_ok=True)
+        
+        # 保存文件
+        filepath = os.path.join(avatar_dir, filename)
+        file.save(filepath)
+        
+        # 更新数据库
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE teacher_info SET avatar = %s WHERE teacher_id = %s", (filename, teacher_id))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({"success": True, "avatar": filename, "message": "头像更新成功"})
+        
+    except Exception as e:
+        print(f"上传头像失败: {str(e)}")
         return jsonify({"success": False, "message": str(e)})
 
 # 教师获取课程学生数

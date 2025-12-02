@@ -106,7 +106,7 @@
         <div class="flex items-center space-x-3">
           <div class="flex items-center space-x-3 px-4 py-2 rounded-2xl glass-card hover-lift group cursor-pointer">
             <div class="relative">
-              <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold text-lg shadow-lg">
+              <div id="navAvatar" class="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold text-lg shadow-lg overflow-hidden">
                 {{ user_info.user_name[0] if user_info.user_name else 'T' }}
               </div>
               <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
@@ -319,57 +319,57 @@
 
     <!-- 学生聊天页面 -->
     <div id="page-chat" class="page-content hidden">
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-280px)] min-h-[500px]">
-        <!-- 学生列表 -->
-        <div class="glass-card rounded-3xl p-5 flex flex-col">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="font-bold text-gray-800 flex items-center">
-              <i class="fa-solid fa-users mr-2 text-primary"></i>学生列表
-            </h3>
-            <button onclick="loadChatStudents()" class="p-2 hover:bg-primary/10 rounded-lg transition-all">
-              <i class="fa-solid fa-rotate text-primary"></i>
-            </button>
-          </div>
-          <div class="mb-4">
-            <input type="text" id="studentSearch" placeholder="搜索学生..." oninput="filterStudents()" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all text-sm">
-          </div>
-          <div id="studentList" class="flex-1 space-y-2 overflow-y-auto custom-scrollbar max-h-96">
-            <div class="p-4 text-center text-gray-400">
-              <i class="fa-solid fa-spinner fa-spin"></i> 加载中...
-            </div>
-          </div>
-        </div>
-        
-        <!-- 聊天区域 -->
-        <div class="lg:col-span-2 glass-card rounded-3xl flex flex-col">
-          <!-- 聊天头部 -->
-          <div class="p-4 border-b border-gray-100 flex items-center space-x-3">
-            <div id="chatAvatar" class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-primary font-bold">
-              ?
-            </div>
-            <div>
-              <p id="chatStudentName" class="font-bold text-gray-800">选择学生开始聊天</p>
-              <p id="chatStudentId" class="text-xs text-gray-400">--</p>
-            </div>
-          </div>
-          
-          <!-- 聊天消息区 -->
-          <div id="chatMessages" class="flex-1 p-6 overflow-y-auto custom-scrollbar bg-gradient-to-b from-gray-50/50 to-white">
-            <div class="text-center py-16 text-gray-400">
-              <div class="w-20 h-20 mx-auto mb-4 rounded-2xl bg-primary/10 flex items-center justify-center">
-                <i class="fa-solid fa-comments text-4xl text-primary/30"></i>
-              </div>
-              <p class="font-medium">选择一个学生开始聊天</p>
-            </div>
-          </div>
-          
-          <!-- 输入区域 -->
-          <div class="p-4 border-t border-gray-100">
-            <div class="flex space-x-3">
-              <input type="text" id="chatInput" placeholder="选择学生后发送消息..." disabled class="flex-1 px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all disabled:bg-gray-100 disabled:cursor-not-allowed" onkeypress="if(event.key==='Enter')sendChatMessage()">
-              <button onclick="sendChatMessage()" id="chatSendBtn" disabled class="px-6 py-3 bg-gradient-to-r from-primary to-accent text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                <i class="fa-solid fa-paper-plane"></i>
+      <div class="glass-card rounded-2xl overflow-hidden" style="height: 520px;">
+        <div class="flex h-full">
+          <!-- 学生列表 -->
+          <div class="w-64 border-r border-gray-200 flex flex-col bg-white/50">
+            <div class="p-3 border-b border-gray-100 flex items-center justify-between">
+              <h3 class="font-bold text-gray-800 text-sm flex items-center">
+                <i class="fa-solid fa-users mr-2 text-primary"></i>学生列表
+              </h3>
+              <button onclick="loadChatStudents()" class="p-1.5 hover:bg-primary/10 rounded-lg transition-all">
+                <i class="fa-solid fa-rotate text-primary text-sm"></i>
               </button>
+            </div>
+            <div class="p-2">
+              <input type="text" id="studentSearch" placeholder="搜索学生..." oninput="filterStudents()" class="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all text-sm">
+            </div>
+            <div id="studentList" class="flex-1 overflow-y-auto custom-scrollbar">
+              <div class="p-4 text-center text-gray-400 text-sm">
+                <i class="fa-solid fa-spinner fa-spin"></i> 加载中...
+              </div>
+            </div>
+          </div>
+          
+          <!-- 聊天区域 -->
+          <div class="flex-1 flex flex-col">
+            <!-- 聊天头部 -->
+            <div class="p-3 border-b border-gray-100 flex items-center space-x-3 bg-white/50">
+              <div id="chatAvatar" class="w-9 h-9 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-primary font-bold text-sm">?</div>
+              <div>
+                <p id="chatStudentName" class="font-bold text-gray-800 text-sm">选择学生开始聊天</p>
+                <p id="chatStudentId" class="text-xs text-gray-400">--</p>
+              </div>
+            </div>
+            
+            <!-- 聊天消息区 -->
+            <div id="chatMessages" class="flex-1 p-4 overflow-y-auto custom-scrollbar bg-gradient-to-b from-gray-50/30 to-white">
+              <div class="text-center py-12 text-gray-400">
+                <div class="w-16 h-16 mx-auto mb-3 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <i class="fa-solid fa-comments text-2xl text-primary/30"></i>
+                </div>
+                <p class="text-sm">选择一个学生开始聊天</p>
+              </div>
+            </div>
+            
+            <!-- 输入区域 -->
+            <div class="p-3 border-t border-gray-100 bg-white/50">
+              <div class="flex space-x-2">
+                <input type="text" id="chatInput" placeholder="选择学生后发送消息..." disabled class="flex-1 px-3 py-2 rounded-lg border border-gray-200 bg-white focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all text-sm disabled:bg-gray-100 disabled:cursor-not-allowed" onkeypress="if(event.key==='Enter')sendChatMessage()">
+                <button onclick="sendChatMessage()" id="chatSendBtn" disabled class="px-4 py-2 bg-gradient-to-r from-primary to-accent text-white rounded-lg font-medium shadow hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                  <i class="fa-solid fa-paper-plane"></i>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -477,12 +477,17 @@
         <!-- 右侧：头像和快捷操作 -->
         <div class="space-y-6">
           <div class="glass-card rounded-3xl p-6 hover-lift text-center">
-            <div class="relative inline-block mb-4">
+            <div class="relative inline-block mb-4 group cursor-pointer" onclick="document.getElementById('avatarInput').click()">
               <div class="absolute -inset-2 bg-gradient-to-r from-primary via-accent to-primary-light rounded-3xl blur-lg opacity-30"></div>
-              <div id="profileAvatar" class="relative w-28 h-28 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-4xl font-bold shadow-xl">
+              <div id="profileAvatar" class="relative w-28 h-28 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-4xl font-bold shadow-xl overflow-hidden">
                 {{ user_info.user_name[0] if user_info.user_name else 'T' }}
               </div>
+              <div class="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center">
+                <i class="fa-solid fa-camera text-white text-2xl"></i>
+              </div>
             </div>
+            <input type="file" id="avatarInput" accept="image/*" class="hidden" onchange="uploadAvatar(this)">
+            <p class="text-xs text-gray-400 mb-2">点击头像更换</p>
             <h4 class="font-bold text-xl text-gray-800">{{ user_info.user_name }}</h4>
             <p class="text-primary font-medium">{{ user_info.role_name }}</p>
             <div class="mt-4 pt-4 border-t border-gray-100">
@@ -514,6 +519,8 @@
 
   <script>
     let allLeaveRecords = [];
+    let teacherAvatar = null;  // 教师头像
+    const teacherName = '{{ user_info.user_name }}';
     
     // Toast提示
     function showToast(message, type = 'success') {
@@ -1112,16 +1119,13 @@
       }
       
       container.innerHTML = filtered.map(s => {
-        const avatarHtml = s.avatar 
-          ? `<img src="/static/avatars/${s.avatar}" class="w-10 h-10 rounded-xl object-cover flex-shrink-0" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 items-center justify-center text-primary font-bold flex-shrink-0" style="display:none">${(s.name || '?').charAt(0)}</div>`
-          : `<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-primary font-bold flex-shrink-0">${(s.name || '?').charAt(0)}</div>`;
-        
+        const initial = (s.name || '?').charAt(0);
         return `
-          <div class="student-item p-3 rounded-xl cursor-pointer hover:bg-white hover:shadow transition-all flex items-center space-x-3 ${currentChatStudent && currentChatStudent.id === s.id ? 'bg-white shadow ring-2 ring-primary' : ''}"
+          <div class="student-item px-3 py-2 cursor-pointer hover:bg-primary/5 border-b border-gray-100 flex items-center space-x-2 ${currentChatStudent && currentChatStudent.id === s.id ? 'bg-primary/10' : ''}"
                onclick="selectStudent('${s.id}', '${s.name || ''}')">
-            ${avatarHtml}
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-primary font-bold text-sm flex-shrink-0">${initial}</div>
             <div class="flex-1 min-w-0">
-              <p class="font-medium text-gray-800 truncate">${s.name || '未知'}</p>
+              <p class="font-medium text-gray-800 text-sm truncate">${s.name || '未知'}</p>
               <p class="text-xs text-gray-400 truncate">${s.id}</p>
             </div>
           </div>
@@ -1190,7 +1194,9 @@
               </div>
               <p class="text-xs mt-1 px-2 text-gray-400">${msg.create_time || ''}</p>
             </div>
-            ${isSent ? `<div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-sm font-bold flex-shrink-0">李</div>` : ''}
+            ${isSent ? (teacherAvatar 
+              ? `<img src="/static/avatars/${teacherAvatar}" class="w-10 h-10 rounded-full object-cover flex-shrink-0">`
+              : `<div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-sm font-bold flex-shrink-0">${teacherName.charAt(0)}</div>`) : ''}
           </div>
         `;
       }).join('');
@@ -1229,14 +1235,31 @@
       try {
         const res = await fetch('/api/teacher/profile');
         const data = await res.json();
+        console.log('Profile API response:', data);
         if (data.success && data.data) {
           const info = data.data;
           document.getElementById('profileDept').textContent = info.dept || '未设置';
           document.getElementById('profileContact').textContent = info.contact || '未设置';
           document.getElementById('profileCourses').textContent = info.courses || '未设置';
+          // 显示头像
+          if (info.avatar) {
+            teacherAvatar = info.avatar;  // 保存教师头像用于聊天
+            const avatarImg = `<img src="/static/avatars/${info.avatar}" class="w-full h-full object-cover">`;
+            document.getElementById('profileAvatar').innerHTML = avatarImg;
+            document.getElementById('navAvatar').innerHTML = avatarImg;
+          }
+        } else {
+          // API返回失败时显示错误信息
+          document.getElementById('profileDept').textContent = '加载失败';
+          document.getElementById('profileContact').textContent = '加载失败';
+          document.getElementById('profileCourses').textContent = '加载失败';
+          console.error('API返回失败:', data.message);
         }
       } catch (err) {
         console.error('加载个人信息失败:', err);
+        document.getElementById('profileDept').textContent = '加载失败';
+        document.getElementById('profileContact').textContent = '加载失败';
+        document.getElementById('profileCourses').textContent = '加载失败';
       }
       
       // 更新统计
@@ -1273,6 +1296,42 @@
         showToast('更新失败', 'error');
       }
     }
+    
+    // 上传头像
+    async function uploadAvatar(input) {
+      if (!input.files || !input.files[0]) return;
+      
+      const file = input.files[0];
+      if (file.size > 2 * 1024 * 1024) {
+        showToast('图片大小不能超过2MB', 'error');
+        return;
+      }
+      
+      const formData = new FormData();
+      formData.append('avatar', file);
+      
+      try {
+        showToast('上传中...');
+        const res = await fetch('/api/teacher/upload_avatar', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if (data.success) {
+          // 更新头像显示（个人信息页和导航栏）
+          const avatarImg = `<img src="/static/avatars/${data.avatar}?t=${Date.now()}" class="w-full h-full object-cover">`;
+          document.getElementById('profileAvatar').innerHTML = avatarImg;
+          document.getElementById('navAvatar').innerHTML = avatarImg;
+          showToast('头像更新成功');
+        } else {
+          showToast(data.message || '上传失败', 'error');
+        }
+      } catch (err) {
+        console.error('上传头像失败:', err);
+        showToast('上传失败', 'error');
+      }
+      input.value = '';
+    }
 
     // 退出登录
     function handleLogout() {
@@ -1284,6 +1343,7 @@
     // 初始化
     document.addEventListener('DOMContentLoaded', () => {
       loadLeaveRecords();
+      loadProfileInfo();  // 加载头像
       document.getElementById('notificationForm').addEventListener('submit', sendNotification);
     });
   </script>

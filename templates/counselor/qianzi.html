@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>电子签名 - 辅导员工作平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#0EA5E9',
+                        'primary-dark': '#0284C7',
+                        accent: '#6366F1',
+                    }
+                }
+            }
+        };
+    </script>
+    
+    <style>
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: 
+                radial-gradient(at 40% 20%, rgba(14, 165, 233, 0.08) 0px, transparent 50%),
+                radial-gradient(at 80% 0%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
+                radial-gradient(at 0% 50%, rgba(14, 165, 233, 0.05) 0px, transparent 50%),
+                linear-gradient(180deg, #F8FAFC 0%, #EFF6FF 100%);
+            min-height: 100vh;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+        .signature-area {
+            background: linear-gradient(135deg, #fafafa 25%, transparent 25%),
+                        linear-gradient(225deg, #fafafa 25%, transparent 25%),
+                        linear-gradient(45deg, #fafafa 25%, transparent 25%),
+                        linear-gradient(315deg, #fafafa 25%, #fff 25%);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 0, 10px -10px, 0px 10px;
+        }
+        #signatureCanvas {
+            cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%230EA5E9' d='M7 17a1 1 0 01-1-1V8a1 1 0 012 0v8a1 1 0 01-1 1zm4 0a1 1 0 01-1-1V8a1 1 0 012 0v8a1 1 0 01-1 1zm4-9v8a1 1 0 01-2 0V8a1 1 0 012 0z'/%3E%3C/svg%3E") 12 24, crosshair;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        .float-icon { animation: float 3s ease-in-out infinite; }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.5; }
+            50% { transform: scale(1); opacity: 0.3; }
+            100% { transform: scale(0.95); opacity: 0.5; }
+        }
+        .pulse-ring { animation: pulse-ring 2s ease-in-out infinite; }
+    </style>
+</head>
+
+<body class="min-h-screen flex items-center justify-center p-6">
+    <div class="w-full max-w-2xl">
+        <!-- 卡片容器 -->
+        <div class="glass-card rounded-3xl shadow-2xl shadow-primary/10 overflow-hidden">
+            <!-- 头部 -->
+            <div class="relative bg-gradient-to-r from-primary to-accent p-8 text-white">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                <div class="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2"></div>
+                
+                <div class="relative flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center float-icon">
+                            <i class="fa-solid fa-signature text-2xl"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-2xl font-bold">电子签名</h1>
+                            <p class="text-white/70 text-sm mt-1">请在下方区域签署您的姓名</p>
+                        </div>
+                    </div>
+                    <button onclick="clearTempDataAndReturn()" class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center hover:bg-white/30 transition-all">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 签字区域 -->
+            <div class="p-8">
+                <div class="relative">
+                    <!-- 装饰角标 -->
+                    <div class="absolute -top-2 -left-2 w-6 h-6 border-t-2 border-l-2 border-primary rounded-tl-lg"></div>
+                    <div class="absolute -top-2 -right-2 w-6 h-6 border-t-2 border-r-2 border-primary rounded-tr-lg"></div>
+                    <div class="absolute -bottom-2 -left-2 w-6 h-6 border-b-2 border-l-2 border-primary rounded-bl-lg"></div>
+                    <div class="absolute -bottom-2 -right-2 w-6 h-6 border-b-2 border-r-2 border-primary rounded-br-lg"></div>
+                    
+                    <!-- Canvas 容器 -->
+                    <div class="signature-area rounded-2xl border-2 border-dashed border-gray-200 overflow-hidden" style="height: 280px;">
+                        <canvas id="signatureCanvas" class="w-full h-full"></canvas>
+                    </div>
+                    
+                    <!-- 提示文字 -->
+                    <div id="placeholder" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-gray-300">
+                        <div class="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-3">
+                            <i class="fa-solid fa-pen-fancy text-2xl text-gray-300"></i>
+                        </div>
+                        <p class="text-lg font-medium">在此处签名</p>
+                        <p class="text-sm mt-1">使用鼠标或触摸屏书写</p>
+                    </div>
+                </div>
+                
+                <!-- 笔画设置 -->
+                <div class="flex items-center justify-center mt-6 space-x-6">
+                    <div class="flex items-center space-x-3">
+                        <span class="text-sm text-gray-500">笔画粗细</span>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="setLineWidth(2)" class="line-width-btn w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center hover:bg-primary hover:text-white transition-all" data-width="2">
+                                <div class="w-1.5 h-1.5 rounded-full bg-current"></div>
+                            </button>
+                            <button onclick="setLineWidth(4)" class="line-width-btn w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center transition-all" data-width="4">
+                                <div class="w-2.5 h-2.5 rounded-full bg-current"></div>
+                            </button>
+                            <button onclick="setLineWidth(6)" class="line-width-btn w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center hover:bg-primary hover:text-white transition-all" data-width="6">
+                                <div class="w-3.5 h-3.5 rounded-full bg-current"></div>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="w-px h-6 bg-gray-200"></div>
+                    <div class="flex items-center space-x-3">
+                        <span class="text-sm text-gray-500">墨水颜色</span>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="setColor('#000000')" class="color-btn w-6 h-6 rounded-full bg-black ring-2 ring-offset-2 ring-primary transition-all"></button>
+                            <button onclick="setColor('#0EA5E9')" class="color-btn w-6 h-6 rounded-full bg-primary transition-all hover:ring-2 hover:ring-offset-2 hover:ring-primary"></button>
+                            <button onclick="setColor('#6366F1')" class="color-btn w-6 h-6 rounded-full bg-indigo-500 transition-all hover:ring-2 hover:ring-offset-2 hover:ring-indigo-500"></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 底部按钮 -->
+            <div class="px-8 pb-8">
+                <div class="flex space-x-4">
+                    <button id="clearBtn" class="flex-1 py-4 bg-gray-100 text-gray-600 rounded-2xl font-medium hover:bg-gray-200 transition-all flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-eraser"></i>
+                        <span>清除重签</span>
+                    </button>
+                    <button id="saveBtn" class="flex-1 py-4 bg-gradient-to-r from-primary to-accent text-white rounded-2xl font-medium shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 hover:-translate-y-0.5 transition-all flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-check"></i>
+                        <span>确认签名</span>
+                    </button>
+                </div>
+                <p class="text-center text-xs text-gray-400 mt-4">
+                    <i class="fa-solid fa-shield-check mr-1"></i>
+                    您的签名将被安全保存并用于批准请假申请
+                </p>
+            </div>
+        </div>
+        
+        <!-- 返回链接 -->
+        <div class="text-center mt-6">
+            <button onclick="clearTempDataAndReturn()" class="text-gray-500 hover:text-primary transition-colors text-sm">
+                <i class="fa-solid fa-arrow-left mr-2"></i>取消并返回审批列表
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 获取Canvas元素和上下文
+        const canvas = document.getElementById('signatureCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 设置Canvas尺寸
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.offsetWidth;
+            canvas.height = container.offsetHeight;
+        }
+        
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        // 签字相关变量
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let currentColor = '#000000';
+        let currentLineWidth = 4;
+        let hasDrawn = false;
+        const placeholder = document.getElementById('placeholder');
+        
+        // 设置笔画粗细
+        function setLineWidth(width) {
+            currentLineWidth = width;
+            document.querySelectorAll('.line-width-btn').forEach(btn => {
+                if (parseInt(btn.dataset.width) === width) {
+                    btn.classList.remove('bg-gray-200');
+                    btn.classList.add('bg-primary', 'text-white');
+                } else {
+                    btn.classList.remove('bg-primary', 'text-white');
+                    btn.classList.add('bg-gray-200');
+                }
+            });
+        }
+        
+        // 设置颜色
+        function setColor(color) {
+            currentColor = color;
+            document.querySelectorAll('.color-btn').forEach(btn => {
+                btn.classList.remove('ring-2', 'ring-offset-2', 'ring-primary', 'ring-indigo-500');
+            });
+            event.target.classList.add('ring-2', 'ring-offset-2', color === '#6366F1' ? 'ring-indigo-500' : 'ring-primary');
+        }
+        
+        // 开始绘制
+        function startDrawing(e) {
+            isDrawing = true;
+            [lastX, lastY] = getPosition(e);
+            if (!hasDrawn) {
+                hasDrawn = true;
+                placeholder.style.opacity = '0';
+            }
+        }
+        
+        // 绘制中
+        function draw(e) {
+            if (!isDrawing) return;
+            
+            const [x, y] = getPosition(e);
+            ctx.strokeStyle = currentColor;
+            ctx.lineWidth = currentLineWidth;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            
+            [lastX, lastY] = [x, y];
+        }
+        
+        // 结束绘制
+        function stopDrawing() {
+            isDrawing = false;
+        }
+        
+        // 获取鼠标/触摸位置
+        function getPosition(e) {
+            const rect = canvas.getBoundingClientRect();
+            if (e.type.includes('mouse')) {
+                return [e.clientX - rect.left, e.clientY - rect.top];
+            } else {
+                return [e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top];
+            }
+        }
+        
+        // 清除签字
+        function clearSignature() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            hasDrawn = false;
+            placeholder.style.opacity = '1';
+        }
+        
+        // 保存签字并完成审批
+        function saveSignature() {
+            const dataURL = canvas.toDataURL('image/png');
+            const pendingApproval = localStorage.getItem('pending_leave_approval');
+            
+            if (!pendingApproval) {
+                alert('未找到待批准信息，请重新操作');
+                window.location.href = '/counselor';
+                return;
+            }
+            
+            const approvalData = JSON.parse(pendingApproval);
+            
+            fetch('/api/save_signature', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    imageData: dataURL,
+                    leave_id: approvalData.leave_id
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    return fetch('/api/counselor/approve_leave', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            leave_id: approvalData.leave_id,
+                            action: approvalData.action,
+                            comment: approvalData.comment,
+                            signature_path: data.imagePath,
+                            leave_id_for_signature: approvalData.leave_id
+                        })
+                    });
+                } else {
+                    throw new Error('保存签字失败: ' + data.message);
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    localStorage.removeItem('pending_leave_approval');
+                    alert('请假已成功批准，即将返回审批页');
+                    window.location.href = '/counselor';
+                } else {
+                    throw new Error('批准失败: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('操作失败:', error);
+                alert('操作失败: ' + error.message);
+            });
+        }
+        
+        // 事件监听
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+        
+        // 触摸设备支持
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startDrawing(e);
+        });
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            draw(e);
+        });
+        canvas.addEventListener('touchend', stopDrawing);
+        
+        // 按钮事件
+        document.getElementById('clearBtn').addEventListener('click', clearSignature);
+        document.getElementById('saveBtn').addEventListener('click', saveSignature);
+        
+        // 清除临时数据并返回审批页
+        function clearTempDataAndReturn() {
+            // 清除localStorage中的临时数据
+            localStorage.removeItem('pending_leave_approval');
+            // 返回审批页
+            window.location.href = '/counselor';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,452 @@
+{% include 'counselor/header.html' %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  .stat-card {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+  }
+  .chart-container {
+    position: relative;
+    height: 280px;
+  }
+  @keyframes countUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .count-up { animation: countUp 0.5s ease-out forwards; }
+</style>
+<div class="container mx-auto px-6 py-8 max-w-7xl">
+  <!-- 页面标题 -->
+  <div class="mb-8">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-1.5 h-8 bg-gradient-to-b from-primary to-accent rounded-full"></div>
+        <h2 class="text-2xl font-bold text-gray-800">数据统计分析</h2>
+      </div>
+      <div class="flex items-center space-x-3">
+        <select id="timeRange" class="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
+          <option value="all">全部时间</option>
+          <option value="month">本月</option>
+          <option value="quarter">本季度</option>
+          <option value="year">本年</option>
+        </select>
+        <button id="exportAllBtn" class="px-4 py-2 bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-xl text-sm font-medium shadow-md hover:shadow-lg transition-all flex items-center">
+          <i class="fa-solid fa-download mr-2"></i>导出报表
+        </button>
+      </div>
+    </div>
+    <p class="text-gray-500 mt-2 ml-5">全面了解学生请假情况，为管理决策提供数据支持</p>
+  </div>
+
+  <!-- 核心指标卡片 -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="stat-card rounded-2xl p-5 hover:shadow-lg transition-shadow">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-500">总请假数</p>
+          <p class="text-3xl font-bold text-gray-800 mt-1 count-up" id="totalCount">0</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+          <i class="fa-solid fa-file-lines text-white text-lg"></i>
+        </div>
+      </div>
+      <p class="text-xs text-gray-400 mt-2">累计请假申请</p>
+    </div>
+    <div class="stat-card rounded-2xl p-5 hover:shadow-lg transition-shadow">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-500">待处理</p>
+          <p class="text-3xl font-bold text-amber-500 mt-1 count-up" id="pendingCount">0</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+          <i class="fa-solid fa-clock text-white text-lg"></i>
+        </div>
+      </div>
+      <p class="text-xs text-gray-400 mt-2">需要您审批</p>
+    </div>
+    <div class="stat-card rounded-2xl p-5 hover:shadow-lg transition-shadow">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-500">通过率</p>
+          <p class="text-3xl font-bold text-emerald-500 mt-1 count-up" id="approvalRate">0%</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center">
+          <i class="fa-solid fa-chart-line text-white text-lg"></i>
+        </div>
+      </div>
+      <p class="text-xs text-gray-400 mt-2">审批通过比例</p>
+    </div>
+    <div class="stat-card rounded-2xl p-5 hover:shadow-lg transition-shadow">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-500">平均天数</p>
+          <p class="text-3xl font-bold text-accent mt-1 count-up" id="avgDays">0</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
+          <i class="fa-solid fa-calendar-days text-white text-lg"></i>
+        </div>
+      </div>
+      <p class="text-xs text-gray-400 mt-2">每次请假平均时长</p>
+    </div>
+  </div>
+
+  <!-- 图表区域 - 第一行 -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <!-- 审批状态分布 -->
+    <div class="stat-card rounded-2xl p-6">
+      <h3 class="font-bold text-gray-700 mb-4 flex items-center">
+        <i class="fa-solid fa-chart-pie mr-2 text-primary"></i>审批状态分布
+      </h3>
+      <div class="chart-container">
+        <canvas id="statusPieChart"></canvas>
+      </div>
+    </div>
+    
+    <!-- 请假类型统计 -->
+    <div class="stat-card rounded-2xl p-6">
+      <h3 class="font-bold text-gray-700 mb-4 flex items-center">
+        <i class="fa-solid fa-chart-bar mr-2 text-accent"></i>请假类型分布
+      </h3>
+      <div class="chart-container">
+        <canvas id="typeBarChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- 图表区域 - 第二行 -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <!-- 月度趋势 -->
+    <div class="stat-card rounded-2xl p-6">
+      <h3 class="font-bold text-gray-700 mb-4 flex items-center">
+        <i class="fa-solid fa-chart-area mr-2 text-emerald-500"></i>月度请假趋势
+      </h3>
+      <div class="chart-container">
+        <canvas id="monthlyTrendChart"></canvas>
+      </div>
+    </div>
+    
+    <!-- 年级分布 -->
+    <div class="stat-card rounded-2xl p-6">
+      <h3 class="font-bold text-gray-700 mb-4 flex items-center">
+        <i class="fa-solid fa-users mr-2 text-pink-500"></i>年级请假分布
+      </h3>
+      <div class="chart-container">
+        <canvas id="gradeChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- 详细数据表格 -->
+  <div class="stat-card rounded-2xl p-6 mb-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-gray-700 flex items-center">
+        <i class="fa-solid fa-table mr-2 text-gray-500"></i>请假频次排行
+      </h3>
+      <span class="text-xs text-gray-400">请假次数最多的学生</span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-gray-100">
+            <th class="text-left py-3 px-4 text-gray-500 font-medium">排名</th>
+            <th class="text-left py-3 px-4 text-gray-500 font-medium">学生姓名</th>
+            <th class="text-left py-3 px-4 text-gray-500 font-medium">学号</th>
+            <th class="text-left py-3 px-4 text-gray-500 font-medium">请假次数</th>
+            <th class="text-left py-3 px-4 text-gray-500 font-medium">累计天数</th>
+            <th class="text-left py-3 px-4 text-gray-500 font-medium">状态</th>
+          </tr>
+        </thead>
+        <tbody id="rankingTable">
+          <tr><td colspan="6" class="py-8 text-center text-gray-400">加载中...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 导出选项 -->
+  <div class="stat-card rounded-2xl p-6">
+    <h3 class="font-bold text-gray-700 mb-4 flex items-center">
+      <i class="fa-solid fa-file-export mr-2 text-emerald-500"></i>数据导出
+    </h3>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4">
+        <p class="font-medium text-gray-700 mb-2">按状态导出</p>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="exportByStatus('')" class="px-3 py-1.5 bg-white rounded-lg text-sm text-gray-600 hover:bg-primary hover:text-white transition-all shadow-sm">全部</button>
+          <button onclick="exportByStatus('待审批')" class="px-3 py-1.5 bg-white rounded-lg text-sm text-amber-600 hover:bg-amber-500 hover:text-white transition-all shadow-sm">待审批</button>
+          <button onclick="exportByStatus('已批准')" class="px-3 py-1.5 bg-white rounded-lg text-sm text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all shadow-sm">已批准</button>
+          <button onclick="exportByStatus('已驳回')" class="px-3 py-1.5 bg-white rounded-lg text-sm text-red-600 hover:bg-red-500 hover:text-white transition-all shadow-sm">已驳回</button>
+        </div>
+      </div>
+      <div class="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4">
+        <p class="font-medium text-gray-700 mb-2">按类型导出</p>
+        <div class="flex flex-wrap gap-2" id="typeExportBtns">
+          <!-- 动态生成 -->
+        </div>
+      </div>
+      <div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-4">
+        <p class="font-medium text-gray-700 mb-2">完整报表</p>
+        <button onclick="exportFullReport()" class="w-full py-2 bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-lg text-sm font-medium shadow-md hover:shadow-lg transition-all">
+          <i class="fa-solid fa-file-csv mr-2"></i>导出完整CSV
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// 统计页面脚本
+let statsData = null;
+let charts = {};
+
+// 初始化
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadStatistics();
+  
+  // 时间范围选择
+  document.getElementById('timeRange').addEventListener('change', loadStatistics);
+  
+  // 导出全部
+  document.getElementById('exportAllBtn').addEventListener('click', exportFullReport);
+});
+
+// 加载统计数据
+async function loadStatistics() {
+  try {
+    const response = await fetch('/api/counselor/leave_statistics');
+    const result = await response.json();
+    
+    if (result.success) {
+      statsData = result.data;
+      updateCards();
+      renderCharts();
+      loadRankingTable();
+      generateTypeExportBtns();
+    }
+  } catch (error) {
+    console.error('加载统计失败:', error);
+  }
+}
+
+// 更新卡片数据
+function updateCards() {
+  const d = statsData;
+  document.getElementById('totalCount').textContent = d.total || 0;
+  document.getElementById('pendingCount').textContent = d.by_status['待审批'] || 0;
+  document.getElementById('avgDays').textContent = d.avg_days || 0;
+  
+  // 计算通过率
+  const approved = d.by_status['已批准'] || 0;
+  const total = d.total || 1;
+  const rate = Math.round((approved / total) * 100);
+  document.getElementById('approvalRate').textContent = rate + '%';
+}
+
+// 渲染图表
+function renderCharts() {
+  // 状态饼图
+  renderStatusPie();
+  // 类型柱状图
+  renderTypeBar();
+  // 月度趋势
+  renderMonthlyTrend();
+  // 年级分布
+  renderGradeChart();
+}
+
+function renderStatusPie() {
+  const ctx = document.getElementById('statusPieChart');
+  if (!ctx) return;
+  if (charts.statusPie) charts.statusPie.destroy();
+  
+  const data = statsData.by_status || {};
+  charts.statusPie = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(data),
+      datasets: [{
+        data: Object.values(data),
+        backgroundColor: ['#F59E0B', '#10B981', '#EF4444'],
+        borderWidth: 0,
+        hoverOffset: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '60%',
+      plugins: {
+        legend: { position: 'right', labels: { padding: 20, font: { size: 12 } } }
+      }
+    }
+  });
+}
+
+function renderTypeBar() {
+  const ctx = document.getElementById('typeBarChart');
+  if (!ctx) return;
+  if (charts.typeBar) charts.typeBar.destroy();
+  
+  const data = statsData.by_type || {};
+  charts.typeBar = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: Object.keys(data),
+      datasets: [{
+        data: Object.values(data),
+        backgroundColor: ['#0EA5E9', '#6366F1', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981'],
+        borderRadius: 8,
+        barThickness: 40
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { beginAtZero: true, ticks: { stepSize: 1 } }
+      }
+    }
+  });
+}
+
+function renderMonthlyTrend() {
+  const ctx = document.getElementById('monthlyTrendChart');
+  if (!ctx) return;
+  if (charts.monthly) charts.monthly.destroy();
+  
+  const data = statsData.by_month || {};
+  const sortedMonths = Object.keys(data).sort().slice(-6);
+  
+  charts.monthly = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: sortedMonths.map(m => m.substring(5) + '月'),
+      datasets: [{
+        label: '请假数',
+        data: sortedMonths.map(m => data[m]),
+        borderColor: '#10B981',
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        fill: true,
+        tension: 0.4,
+        pointRadius: 6,
+        pointBackgroundColor: '#10B981'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { beginAtZero: true, ticks: { stepSize: 1 } }
+      }
+    }
+  });
+}
+
+function renderGradeChart() {
+  const ctx = document.getElementById('gradeChart');
+  if (!ctx) return;
+  if (charts.grade) charts.grade.destroy();
+  
+  const data = statsData.by_grade || {};
+  charts.grade = new Chart(ctx, {
+    type: 'polarArea',
+    data: {
+      labels: Object.keys(data),
+      datasets: [{
+        data: Object.values(data),
+        backgroundColor: ['rgba(14, 165, 233, 0.7)', 'rgba(99, 102, 241, 0.7)', 'rgba(236, 72, 153, 0.7)', 'rgba(245, 158, 11, 0.7)'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { padding: 15, font: { size: 12 } } }
+      }
+    }
+  });
+}
+
+// 加载排行表格
+async function loadRankingTable() {
+  try {
+    const response = await fetch('/api/counselor/leave_requests');
+    const result = await response.json();
+    
+    if (result.success) {
+      const students = {};
+      result.data.forEach(item => {
+        if (!students[item.student_id]) {
+          students[item.student_id] = {
+            name: item.student_name,
+            id: item.student_id,
+            count: 0,
+            days: 0
+          };
+        }
+        students[item.student_id].count++;
+        const start = new Date(item.start_time);
+        const end = new Date(item.end_time);
+        students[item.student_id].days += Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+      });
+      
+      const ranking = Object.values(students).sort((a, b) => b.count - a.count).slice(0, 10);
+      
+      const tbody = document.getElementById('rankingTable');
+      if (ranking.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="py-8 text-center text-gray-400">暂无数据</td></tr>';
+        return;
+      }
+      
+      tbody.innerHTML = ranking.map((s, i) => `
+        <tr class="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+          <td class="py-3 px-4">
+            <span class="w-6 h-6 inline-flex items-center justify-center rounded-full ${i < 3 ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white' : 'bg-gray-100 text-gray-500'} text-xs font-bold">${i + 1}</span>
+          </td>
+          <td class="py-3 px-4 font-medium text-gray-800">${s.name}</td>
+          <td class="py-3 px-4 text-gray-500">${s.id}</td>
+          <td class="py-3 px-4"><span class="font-bold ${s.count > 5 ? 'text-red-500' : 'text-primary'}">${s.count}</span> 次</td>
+          <td class="py-3 px-4 text-gray-600">${s.days} 天</td>
+          <td class="py-3 px-4">
+            ${s.count > 5 ? '<span class="px-2 py-1 bg-red-100 text-red-600 rounded-full text-xs">需关注</span>' : '<span class="px-2 py-1 bg-green-100 text-green-600 rounded-full text-xs">正常</span>'}
+          </td>
+        </tr>
+      `).join('');
+    }
+  } catch (error) {
+    console.error('加载排行失败:', error);
+  }
+}
+
+// 生成类型导出按钮
+function generateTypeExportBtns() {
+  const types = Object.keys(statsData.by_type || {});
+  const container = document.getElementById('typeExportBtns');
+  container.innerHTML = types.map(type => 
+    `<button onclick="exportByType('${type}')" class="px-3 py-1.5 bg-white rounded-lg text-sm text-gray-600 hover:bg-accent hover:text-white transition-all shadow-sm">${type}</button>`
+  ).join('');
+}
+
+// 导出函数
+function exportByStatus(status) {
+  window.open(`/api/counselor/export_leaves?status=${encodeURIComponent(status)}`, '_blank');
+}
+
+function exportByType(type) {
+  // 可扩展：添加type参数到API
+  window.open(`/api/counselor/export_leaves?type=${encodeURIComponent(type)}`, '_blank');
+}
+
+function exportFullReport() {
+  window.open('/api/counselor/export_leaves', '_blank');
+}
+</script>
+
+{% include 'counselor/footer.html' %}

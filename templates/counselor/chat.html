@@ -1,0 +1,278 @@
+{% include 'counselor/header.html' %}
+
+  <!-- 页面标题覆盖 -->
+  <script>document.querySelector('main > div:first-child').innerHTML = '<div class="flex items-center space-x-3 mb-2"><div class="w-1.5 h-8 bg-gradient-to-b from-primary to-accent rounded-full"></div><h2 class="text-3xl font-bold bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 bg-clip-text text-transparent">学生消息</h2></div><p class="text-gray-500 ml-5">与学生进行实时在线沟通</p>';</script>
+
+  <!-- 返回按钮 -->
+  <div class="mb-8">
+    <a href="/counselor/all" class="group inline-flex items-center px-5 py-2.5 glass-card rounded-xl text-gray-600 hover:text-primary transition-all duration-300 hover-lift">
+      <i class="fa-solid fa-arrow-left mr-2 group-hover:-translate-x-1 transition-transform"></i>返回审批列表
+    </a>
+  </div>
+
+  <!-- 聊天容器 -->
+  <div class="glass-card rounded-3xl overflow-hidden" style="height: calc(100vh - 300px); min-height: 550px;">
+    <div class="flex h-full">
+      <!-- 左侧联系人列表 -->
+      <div class="w-80 border-r border-white/50 flex flex-col bg-gradient-to-b from-white/50 to-primary/5">
+        <div class="p-5 border-b border-white/50">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-gray-700 flex items-center">
+              <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center mr-3 shadow-md">
+                <i class="fa-solid fa-users text-white text-sm"></i>
+              </div>
+              学生列表
+            </h3>
+            <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+          </div>
+        </div>
+        <div id="contactList" class="flex-1 overflow-y-auto custom-scrollbar">
+          <div class="p-6 text-center text-gray-400">
+            <div class="w-10 h-10 mx-auto mb-3 rounded-xl bg-primary/10 flex items-center justify-center">
+              <i class="fa-solid fa-spinner fa-spin text-primary"></i>
+            </div>
+            <p class="text-sm">加载中...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右侧聊天区域 -->
+      <div class="flex-1 flex flex-col bg-gradient-to-br from-slate-50/50 to-primary/5">
+        <!-- 聊天标题 -->
+        <div id="chatHeader" class="p-5 border-b border-white/50 bg-white/70 backdrop-blur-sm">
+          <span class="text-gray-400 flex items-center">
+            <i class="fa-solid fa-hand-pointer mr-2"></i>
+            请选择一个学生开始聊天
+          </span>
+        </div>
+
+        <!-- 消息列表 -->
+        <div id="messageList" class="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+          <div class="text-center text-gray-400 py-16">
+            <div class="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center">
+              <i class="fa-solid fa-comments text-4xl text-primary/40"></i>
+            </div>
+            <p class="font-medium">选择左侧学生开始聊天</p>
+            <p class="text-sm text-gray-300 mt-1">消息将实时同步</p>
+          </div>
+        </div>
+
+        <!-- 输入区域 -->
+        <div id="inputArea" class="p-5 border-t border-white/50 bg-white/80 backdrop-blur-sm hidden">
+          <div class="flex space-x-3">
+            <div class="flex-1 relative">
+              <input type="text" id="messageInput" 
+                     class="w-full px-5 py-3.5 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all shadow-sm"
+                     placeholder="输入消息..." maxlength="1000">
+              <button class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-primary transition-colors">
+                <i class="fa-solid fa-face-smile text-xl"></i>
+              </button>
+            </div>
+            <button id="sendBtn" 
+                    class="px-8 py-3.5 bg-gradient-to-r from-primary to-accent text-white rounded-2xl shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5 transition-all flex items-center font-medium btn-glow">
+              <i class="fa-solid fa-paper-plane mr-2"></i>发送
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      let currentContactId = null;
+      let currentContactName = null;
+      let pollingTimer = null;
+
+      // 加载联系人列表
+      async function loadContacts() {
+        try {
+          const resp = await fetch('/api/chat/contacts');
+          const result = await resp.json();
+          
+          const container = document.getElementById('contactList');
+          if (!result.success || !result.data.length) {
+            container.innerHTML = '<div class="p-4 text-center text-gray-400">暂无学生</div>';
+            return;
+          }
+          
+          container.innerHTML = result.data.map(contact => `
+            <div class="contact-item group p-4 mx-3 my-2 rounded-2xl cursor-pointer transition-all duration-300 ${currentContactId === contact.id ? 'bg-gradient-to-r from-primary/15 to-accent/10 shadow-md' : 'hover:bg-white/80 hover:shadow-sm'}"
+                 data-id="${contact.id}" data-name="${contact.name}">
+              <div class="flex items-center">
+                <div class="relative">
+                  <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold shadow-lg group-hover:scale-105 transition-transform">
+                    ${contact.name.charAt(0)}
+                  </div>
+                  <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+                </div>
+                <div class="ml-4 flex-1 min-w-0">
+                  <div class="flex items-center justify-between">
+                    <span class="font-bold text-gray-800">${contact.name}</span>
+                    ${contact.unread > 0 ? `<span class="bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs px-2.5 py-1 rounded-full shadow-md animate-pulse">${contact.unread}</span>` : ''}
+                  </div>
+                  <div class="flex items-center justify-between mt-1.5">
+                    <span class="text-sm text-gray-400 truncate">${contact.last_message || '暂无消息'}</span>
+                    <span class="text-xs text-gray-300 ml-2">${contact.last_time}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `).join('');
+
+          // 绑定点击事件
+          container.querySelectorAll('.contact-item').forEach(item => {
+            item.addEventListener('click', () => {
+              const id = item.dataset.id;
+              const name = item.dataset.name;
+              selectContact(id, name);
+            });
+          });
+        } catch (e) {
+          console.error('加载联系人失败', e);
+        }
+      }
+
+      // 选择联系人
+      function selectContact(id, name) {
+        currentContactId = id;
+        currentContactName = name;
+        
+        // 更新标题
+        document.getElementById('chatHeader').innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              <div class="relative">
+                <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold shadow-lg">
+                  ${name.charAt(0)}
+                </div>
+                <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+              </div>
+              <div class="ml-4">
+                <span class="font-bold text-gray-800 text-lg">${name}</span>
+                <p class="text-xs text-gray-400 flex items-center"><i class="fa-solid fa-id-card mr-1"></i>${id}</p>
+              </div>
+            </div>
+            <div class="flex items-center space-x-2">
+              <span class="px-3 py-1 bg-green-100 text-green-600 text-xs rounded-full font-medium">在线</span>
+            </div>
+          </div>
+        `;
+        
+        // 显示输入区域
+        document.getElementById('inputArea').classList.remove('hidden');
+        
+        // 更新联系人列表高亮
+        document.querySelectorAll('.contact-item').forEach(item => {
+          item.classList.toggle('bg-primary/10', item.dataset.id === id);
+        });
+        
+        // 加载消息
+        loadMessages();
+        
+        // 开始轮询
+        startPolling();
+      }
+
+      // 加载消息
+      async function loadMessages() {
+        if (!currentContactId) return;
+        
+        try {
+          const resp = await fetch(`/api/chat/messages?contact_id=${currentContactId}`);
+          const result = await resp.json();
+          
+          const container = document.getElementById('messageList');
+          if (!result.success || !result.data.length) {
+            container.innerHTML = '<div class="text-center text-gray-400 py-10">暂无消息，发送第一条消息吧</div>';
+            return;
+          }
+          
+          container.innerHTML = result.data.map(msg => `
+            <div class="flex ${msg.is_self ? 'justify-end' : 'justify-start'} items-end space-x-3 animate-in">
+              ${!msg.is_self ? `
+                <div class="relative flex-shrink-0">
+                  <img src="/head_image/${msg.avatar || 'boy.png'}" class="w-10 h-10 rounded-xl object-cover ring-2 ring-white shadow-md" onerror="this.src='/head_image/boy.png'">
+                </div>
+              ` : ''}
+              <div class="max-w-[70%] ${msg.is_self ? 'bg-gradient-to-r from-primary to-accent text-white shadow-lg shadow-primary/20' : 'bg-white shadow-md'} rounded-2xl ${msg.is_self ? 'rounded-br-md' : 'rounded-bl-md'} px-5 py-3.5">
+                <p class="break-words leading-relaxed">${escapeHtml(msg.content)}</p>
+                <p class="text-xs ${msg.is_self ? 'text-white/60' : 'text-gray-300'} mt-2 text-right flex items-center justify-end">
+                  <i class="fa-solid fa-clock mr-1"></i>${msg.create_time.split(' ')[1]}
+                  ${msg.is_self ? '<i class="fa-solid fa-check-double ml-2 text-white/80"></i>' : ''}
+                </p>
+              </div>
+              ${msg.is_self ? `
+                <div class="relative flex-shrink-0">
+                  <img src="/head_image/${msg.avatar || 'boy.png'}" class="w-10 h-10 rounded-xl object-cover ring-2 ring-white shadow-md" onerror="this.src='/head_image/boy.png'">
+                </div>
+              ` : ''}
+            </div>
+          `).join('');
+          
+          // 滚动到底部
+          container.scrollTop = container.scrollHeight;
+          
+          // 刷新联系人列表以更新未读数
+          loadContacts();
+        } catch (e) {
+          console.error('加载消息失败', e);
+        }
+      }
+
+      // 发送消息
+      async function sendMessage() {
+        const input = document.getElementById('messageInput');
+        const content = input.value.trim();
+        
+        if (!content || !currentContactId) return;
+        
+        try {
+          const resp = await fetch('/api/chat/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ receiver_id: currentContactId, content })
+          });
+          const result = await resp.json();
+          
+          if (result.success) {
+            input.value = '';
+            loadMessages();
+          } else {
+            alert(result.message || '发送失败');
+          }
+        } catch (e) {
+          console.error('发送消息失败', e);
+          alert('发送失败，请重试');
+        }
+      }
+
+      // 轮询新消息
+      function startPolling() {
+        if (pollingTimer) clearInterval(pollingTimer);
+        pollingTimer = setInterval(() => {
+          if (currentContactId) loadMessages();
+        }, 3000);
+      }
+
+      // HTML 转义
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      // 初始化
+      loadContacts();
+
+      // 绑定发送按钮
+      document.getElementById('sendBtn').addEventListener('click', sendMessage);
+
+      // 绑定回车发送
+      document.getElementById('messageInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendMessage();
+      });
+    })();
+  </script>
+
+{% include 'counselor/footer.html' %}

@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>学生工作台 - 请了吗</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#10B981',
+            'primary-light': '#34D399',
+            'primary-dark': '#059669',
+            accent: '#6EE7B7',
+            surface: '#F0FDF4',
+            success: '#10B981',
+            warning: '#F59E0B',
+            danger: '#EF4444'
+          },
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          animation: {
+            'float': 'float 6s ease-in-out infinite',
+            'glow': 'glow 2s ease-in-out infinite alternate',
+            'slide-up': 'slideUp 0.5s ease-out',
+            'fade-in': 'fadeIn 0.6s ease-out',
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
+    @keyframes glow { from { box-shadow: 0 0 20px rgba(16, 185, 129, 0.2); } to { box-shadow: 0 0 30px rgba(16, 185, 129, 0.4); } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+    
+    .glass-card { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.5); }
+    .glass-nav { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); }
+    .gradient-border { position: relative; background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(110,231,183,0.1)); }
+    .gradient-border::before { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: linear-gradient(135deg, #10B981, #6EE7B7); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+    .shimmer { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent); background-size: 200% 100%; animation: shimmer 2s infinite; }
+    .hover-lift { transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    .hover-lift:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(16, 185, 129, 0.15); }
+    .btn-glow { position: relative; overflow: hidden; }
+    .btn-glow::after { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent); transform: rotate(45deg); transition: all 0.6s; opacity: 0; }
+    .btn-glow:hover::after { animation: shimmer 1.5s; opacity: 1; }
+    .animate-in { animation: slideUp 0.5s ease-out forwards; }
+    .mesh-gradient { background: radial-gradient(at 40% 20%, rgba(16, 185, 129, 0.08) 0px, transparent 50%), radial-gradient(at 80% 0%, rgba(110, 231, 183, 0.08) 0px, transparent 50%), radial-gradient(at 0% 50%, rgba(16, 185, 129, 0.05) 0px, transparent 50%), radial-gradient(at 80% 50%, rgba(110, 231, 183, 0.05) 0px, transparent 50%), radial-gradient(at 0% 100%, rgba(16, 185, 129, 0.08) 0px, transparent 50%), linear-gradient(180deg, #F0FDF4 0%, #ECFDF5 100%); }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #10B981, #6EE7B7); border-radius: 10px; }
+    .text-gradient { background: linear-gradient(135deg, #10B981, #059669); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .page-content { display: none; animation: slideUp 0.5s ease-out; }
+    .page-content.active { display: block; }
+    .badge-pending { background: linear-gradient(135deg, #FEF3C7, #FDE68A); color: #92400E; }
+    .badge-approved { background: linear-gradient(135deg, #D1FAE5, #A7F3D0); color: #065F46; }
+    .badge-rejected { background: linear-gradient(135deg, #FEE2E2, #FECACA); color: #991B1B; }
+    .chat-bubble.sent { background: linear-gradient(135deg, #10B981, #34D399); }
+    .chat-bubble.received { background: #F3F4F6; }
+  </style>
+</head>
+<body class="font-sans mesh-gradient min-h-screen text-gray-700">
+  <!-- 顶部导航 -->
+  <header class="glass-nav sticky top-0 z-50 border-b border-white/50 shadow-lg shadow-primary/5">
+    <div class="container mx-auto px-6 py-3">
+      <div class="flex items-center">
+        <!-- Logo区域 -->
+        <div class="flex items-center space-x-4 flex-shrink-0">
+          <div class="relative group">
+            <div class="absolute -inset-1 bg-gradient-to-r from-primary via-accent to-primary-light rounded-2xl blur opacity-40 group-hover:opacity-70 transition duration-500"></div>
+            <div class="relative w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-xl">
+              <i class="fa-solid fa-graduation-cap text-white text-xl"></i>
+            </div>
+          </div>
+          <div class="hidden lg:block">
+            <h1 class="text-xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">学生工作台</h1>
+            <p class="text-xs text-gray-400 font-medium tracking-wide">STUDENT PORTAL</p>
+          </div>
+        </div>
+        
+        <!-- 导航菜单 - 居中 -->
+        <nav class="hidden md:flex items-center bg-white/50 rounded-2xl p-1.5 shadow-inner mx-auto">
+          <button onclick="switchPage('home')" class="nav-item px-5 py-2.5 rounded-xl text-primary bg-white shadow-md text-sm font-medium flex items-center space-x-2" data-page="home">
+            <i class="fa-solid fa-home"></i><span>首页</span>
+          </button>
+          <button onclick="switchPage('leave')" class="nav-item px-5 py-2.5 rounded-xl text-gray-600 hover:text-primary hover:bg-white hover:shadow-md transition-all duration-300 text-sm font-medium flex items-center space-x-2" data-page="leave">
+            <i class="fa-solid fa-file-signature"></i><span>请假申请</span>
+          </button>
+          <button onclick="switchPage('records')" class="nav-item px-5 py-2.5 rounded-xl text-gray-600 hover:text-primary hover:bg-white hover:shadow-md transition-all duration-300 text-sm font-medium flex items-center space-x-2" data-page="records">
+            <i class="fa-solid fa-clock-rotate-left"></i><span>请假记录</span>
+          </button>
+          <button onclick="switchPage('notifications')" class="nav-item px-5 py-2.5 rounded-xl text-gray-600 hover:text-primary hover:bg-white hover:shadow-md transition-all duration-300 text-sm font-medium flex items-center space-x-2" data-page="notifications">
+            <i class="fa-solid fa-bell"></i><span>课程通知</span>
+          </button>
+          <button onclick="switchPage('chat')" class="nav-item px-5 py-2.5 rounded-xl text-gray-600 hover:text-primary hover:bg-white hover:shadow-md transition-all duration-300 text-sm font-medium flex items-center space-x-2" data-page="chat">
+            <i class="fa-solid fa-comments"></i><span>联系辅导员</span>
+          </button>
+          <button onclick="switchPage('profile')" class="nav-item px-5 py-2.5 rounded-xl text-gray-600 hover:text-primary hover:bg-white hover:shadow-md transition-all duration-300 text-sm font-medium flex items-center space-x-2" data-page="profile">
+            <i class="fa-solid fa-user-gear"></i><span>个人中心</span>
+          </button>
+        </nav>
+        
+        <!-- 右侧：警告+用户信息 -->
+        <div class="flex items-center space-x-3 flex-shrink-0">
+          <!-- 警告提示 -->
+          <div id="leave-warning" class="hidden items-center px-4 py-2 rounded-2xl bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg animate-pulse">
+            <i class="fa-solid fa-triangle-exclamation mr-2"></i>
+            <span class="text-sm font-medium">请假过多!</span>
+          </div>
+          <!-- 用户信息 -->
+          <div class="flex items-center space-x-3 px-4 py-2 rounded-2xl glass-card hover-lift group cursor-pointer" onclick="switchPage('profile')">
+            <div class="relative">
+              <img src="/head_image/{{ user_info.avatar or 'boy.png' }}" alt="头像" class="w-11 h-11 rounded-xl object-cover ring-2 ring-white shadow-lg group-hover:ring-primary/50 transition-all duration-300" onerror="this.src='/head_image/boy.png'">
+              <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+            </div>
+            <div class="hidden sm:block">
+              <p class="text-sm font-bold text-gray-800">{{ user_info.user_name }}</p>
+              <p class="text-xs text-primary font-medium">{{ user_info.user_account }}</p>
+            </div>
+          </div>
+          <button onclick="handleLogout()" class="w-10 h-10 rounded-xl glass-card flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all duration-300 hover:scale-105" title="退出登录">
+            <i class="fa-solid fa-power-off"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主内容区 -->
+  <main class="container mx-auto px-6 py-10 max-w-6xl">
+    <!-- 首页 -->
+    <div id="page-home" class="page-content active">
+      <div class="mb-10 animate-in">
+        <div class="flex items-center space-x-3 mb-2">
+          <div class="w-1.5 h-8 bg-gradient-to-b from-primary to-accent rounded-full"></div>
+          <h2 class="text-3xl font-bold bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 bg-clip-text text-transparent">欢迎回来，{{ user_info.user_name }} 👋</h2>
+        </div>
+        <p class="text-gray-500 ml-5">快速查看您的请假状态和统计信息</p>
+      </div>
+
+      <!-- 统计卡片 -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="glass-card rounded-2xl p-6 hover-lift cursor-pointer" onclick="switchPage('records')">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray-500 text-sm mb-1">总请假</p>
+              <p class="text-3xl font-bold text-gray-800" id="stat-total">--</p>
+            </div>
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+              <i class="fa-solid fa-chart-simple text-white text-xl"></i>
+            </div>
+          </div>
+        </div>
+        <div class="glass-card rounded-2xl p-6 hover-lift">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray-500 text-sm mb-1">待审批</p>
+              <p class="text-3xl font-bold text-orange-500" id="stat-pending">--</p>
+            </div>
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/30">
+              <i class="fa-solid fa-clock text-white text-xl"></i>
+            </div>
+          </div>
+        </div>
+        <div class="glass-card rounded-2xl p-6 hover-lift">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray-500 text-sm mb-1">已批准</p>
+              <p class="text-3xl font-bold text-green-500" id="stat-approved">--</p>
+            </div>
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-400 to-green-500 flex items-center justify-center shadow-lg shadow-green-500/30">
+              <i class="fa-solid fa-check text-white text-xl"></i>
+            </div>
+          </div>
+        </div>
+        <div class="glass-card rounded-2xl p-6 hover-lift">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray-500 text-sm mb-1">已驳回</p>
+              <p class="text-3xl font-bold text-red-500" id="stat-rejected">--</p>
+            </div>
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-400 to-red-500 flex items-center justify-center shadow-lg shadow-red-500/30">
+              <i class="fa-solid fa-xmark text-white text-xl"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 最近请假记录 -->
+      <div class="glass-card rounded-2xl p-6">
+        <div class="flex items-center justify-between mb-5">
+          <h3 class="text-lg font-bold text-gray-800 flex items-center">
+            <i class="fa-solid fa-clock-rotate-left text-primary mr-2"></i>最近请假
+          </h3>
+          <button onclick="switchPage('records')" class="text-sm text-primary hover:underline">查看全部 →</button>
+        </div>
+        <div id="recent-leaves" class="space-y-3">
+          <div class="text-center py-8 text-gray-400"><i class="fa-solid fa-spinner fa-spin"></i> 加载中...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 请假申请页面 -->
+    <div id="page-leave" class="page-content">
+      <div class="mb-10 animate-in">
+        <div class="flex items-center space-x-3 mb-2">
+          <div class="w-1.5 h-8 bg-gradient-to-b from-primary to-accent rounded-full"></div>
+          <h2 class="text-3xl font-bold bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 bg-clip-text text-transparent">请假申请</h2>
+        </div>
+        <p class="text-gray-500 ml-5">填写请假信息并提交审批</p>
+      </div>
+
+      <div class="glass-card rounded-2xl p-8">
+        <form id="leaveForm" class="space-y-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2"><i class="fa-solid fa-calendar-days text-primary mr-2"></i>开始时间</label>
+              <input type="datetime-local" id="startTime" required class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2"><i class="fa-solid fa-calendar-check text-primary mr-2"></i>结束时间</label>
+              <input type="datetime-local" id="endTime" required class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+            </div>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2"><i class="fa-solid fa-book text-primary mr-2"></i>选择课程和教师</label>
+            <div id="courseTeacherContainer" class="space-y-3">
+              <div class="course-teacher-row flex items-center gap-3">
+                <select class="course-select flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+                  <option value="">请选择课程</option>
+                </select>
+                <select class="teacher-select flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+                  <option value="">请先选择课程</option>
+                </select>
+                <button type="button" class="add-course-btn w-11 h-11 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all flex items-center justify-center"><i class="fa-solid fa-plus"></i></button>
+                <button type="button" class="remove-course-btn w-11 h-11 rounded-xl bg-red-100 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center hidden"><i class="fa-solid fa-minus"></i></button>
+              </div>
+            </div>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2"><i class="fa-solid fa-tag text-primary mr-2"></i>请假类型</label>
+            <select id="leaveType" required class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all bg-white">
+              <option value="事假">事假</option>
+              <option value="病假">病假</option>
+              <option value="公假">公假</option>
+              <option value="丧假">丧假</option>
+              <option value="其他">其他</option>
+            </select>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2"><i class="fa-solid fa-pen text-primary mr-2"></i>请假事由</label>
+            <textarea id="leaveReason" rows="4" required placeholder="请详细描述您的请假原因..." class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all resize-none"></textarea>
+          </div>
+          
+          <!-- 佐证文件上传 -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2"><i class="fa-solid fa-paperclip text-primary mr-2"></i>佐证文件（可选）</label>
+            <div class="relative">
+              <input type="file" id="attachmentFile" accept=".png,.jpg,.jpeg,.gif,.pdf" class="hidden" onchange="previewAttachment(this)">
+              <div id="attachmentPreview" class="hidden mb-3 p-4 bg-gray-50 rounded-xl">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-3">
+                    <div id="previewIcon" class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <i class="fa-solid fa-image text-blue-500"></i>
+                    </div>
+                    <span id="previewFileName" class="text-gray-700 text-sm"></span>
+                  </div>
+                  <button type="button" onclick="clearAttachment()" class="text-gray-400 hover:text-red-500 transition-colors">
+                    <i class="fa-solid fa-xmark"></i>
+                  </button>
+                </div>
+                <img id="previewImage" class="hidden mt-3 max-h-32 rounded-lg mx-auto" />
+              </div>
+              <button type="button" onclick="document.getElementById('attachmentFile').click()" class="w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-gray-500 hover:border-primary hover:text-primary transition-all flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-cloud-arrow-up"></i>
+                <span>上传图片或PDF文件</span>
+              </button>
+              <p class="text-xs text-gray-400 mt-2 text-center">支持 PNG、JPG、GIF、PDF 格式，可用于上传病假条、证明材料等</p>
+            </div>
+          </div>
+          
+          <button type="submit" id="submitBtn" class="w-full py-4 bg-gradient-to-r from-primary to-accent text-white rounded-2xl font-medium shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 hover:-translate-y-0.5 transition-all btn-glow flex items-center justify-center">
+            <i class="fa-solid fa-paper-plane mr-2"></i>提交请假申请
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- 请假记录页面 -->
+    <div id="page-records" class="page-content">
+      <div class="mb-10 animate-in">
+        <div class="flex items-center space-x-3 mb-2">
+          <div class="w-1.5 h-8 bg-gradient-to-b from-primary to-accent rounded-full"></div>
+          <h2 class="text-3xl font-bold bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 bg-clip-text text-transparent">请假记录</h2>
+        </div>
+        <p class="text-gray-500 ml-5">查看您的所有请假申请记录</p>
+      </div>
+
+      <div class="glass-card rounded-2xl p-6">
+        <div class="flex items-center justify-between mb-6">
+          <div class="flex items-center space-x-2">
+            <span class="text-sm text-gray-500">共</span>
+            <span class="text-lg font-bold text-primary" id="records-count">0</span>
+            <span class="text-sm text-gray-500">条记录</span>
+          </div>
+          <button onclick="loadLeaveRecords()" class="px-4 py-2 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all text-sm font-medium">
+            <i class="fa-solid fa-rotate mr-1"></i>刷新
+          </button>
+        </div>
+        <div id="leaveRecordsContainer" class="space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+          <div class="text-center py-10 text-gray-400"><i class="fa-solid fa-spinner fa-spin"></i> 加载中...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 聊天页面 -->
+    <div id="page-chat" class="page-content">
+      <div class="mb-6 animate-in">
+        <div class="flex items-center space-x-3 mb-2">
+          <div class="w-1.5 h-8 bg-gradient-to-b from-primary to-accent rounded-full"></div>
+          <h2 class="text-3xl font-bold bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 bg-clip-text text-transparent">消息中心</h2>
+        </div>
+        <p class="text-gray-500 ml-5">与辅导员或讲师沟通交流</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" style="height: 68vh;">
+        <!-- 左侧：联系人列表 -->
+        <div class="glass-card rounded-2xl overflow-hidden">
+          <div class="bg-gradient-to-r from-primary to-accent p-4 text-white">
+            <h3 class="font-bold flex items-center"><i class="fa-solid fa-address-book mr-2"></i>联系人</h3>
+          </div>
+          <div class="p-3 overflow-y-auto custom-scrollbar" style="height: calc(68vh - 60px);">
+            <!-- 辅导员分组 -->
+            <div class="mb-4">
+              <p class="text-xs text-gray-400 font-medium px-2 mb-2 flex items-center">
+                <i class="fa-solid fa-user-tie mr-1"></i>辅导员
+              </p>
+              <div id="counselor-contacts" class="space-y-2">
+                <div class="text-center py-4 text-gray-300 text-sm"><i class="fa-solid fa-spinner fa-spin"></i></div>
+              </div>
+            </div>
+            <!-- 讲师分组 -->
+            <div>
+              <p class="text-xs text-gray-400 font-medium px-2 mb-2 flex items-center">
+                <i class="fa-solid fa-chalkboard-user mr-1"></i>授课讲师
+              </p>
+              <div id="teacher-contacts" class="space-y-2">
+                <div class="text-center py-4 text-gray-300 text-sm"><i class="fa-solid fa-spinner fa-spin"></i></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右侧：聊天区域 -->
+        <div class="lg:col-span-2 glass-card rounded-2xl overflow-hidden flex flex-col">
+          <!-- 聊天头部 -->
+          <div id="chat-header" class="bg-gradient-to-r from-primary to-accent p-4 text-white">
+            <div class="flex items-center space-x-3">
+              <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                <i class="fa-solid fa-comments text-lg"></i>
+              </div>
+              <div>
+                <h3 id="chat-contact-name" class="font-bold">请选择联系人</h3>
+                <p id="chat-contact-role" class="text-sm text-white/80">从左侧列表选择要聊天的对象</p>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 聊天消息 -->
+          <div id="chat-messages" class="flex-1 p-5 space-y-4 overflow-y-auto custom-scrollbar bg-gradient-to-b from-white/30 to-primary/5">
+            <div class="text-center py-16 text-gray-400">
+              <div class="w-20 h-20 mx-auto mb-4 rounded-2xl bg-primary/10 flex items-center justify-center">
+                <i class="fa-solid fa-comments text-4xl text-primary/30"></i>
+              </div>
+              <p class="font-medium">选择一个联系人开始聊天</p>
+              <p class="text-sm text-gray-300 mt-1">可以与辅导员或讲师沟通</p>
+            </div>
+          </div>
+          
+          <!-- 发送区域 -->
+          <div class="border-t border-white/50 p-4 bg-white/80 backdrop-blur">
+            <div class="flex space-x-3">
+              <input id="chat-input" type="text" placeholder="请先选择联系人..." disabled class="flex-1 px-5 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all shadow-sm disabled:bg-gray-100 disabled:cursor-not-allowed" onkeypress="if(event.key==='Enter') sendMessage()">
+              <button id="send-btn" onclick="sendMessage()" disabled class="px-6 py-3 bg-gradient-to-r from-primary to-accent text-white rounded-2xl shadow-lg shadow-primary/25 hover:shadow-xl transition-all flex items-center font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="fa-solid fa-paper-plane mr-2"></i>发送
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 课程通知页面 -->
+    <div id="page-notifications" class="page-content">
+      <div class="mb-10 animate-in">
+        <div class="flex items-center space-x-3 mb-2">
+          <div class="w-1.5 h-8 bg-gradient-to-b from-primary to-accent rounded-full"></div>
+          <h2 class="text-3xl font-bold bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 bg-clip-text text-transparent">课程通知</h2>
+        </div>
+        <p class="text-gray-500 ml-5">查看教师发布的课程相关通知</p>
+      </div>
+
+      <!-- 筛选区域 -->
+      <div class="glass-card rounded-2xl p-6 mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-bold text-gray-800 flex items-center">
+            <i class="fa-solid fa-filter mr-2 text-primary"></i>筛选通知
+          </h3>
+          <button onclick="clearNotificationFilters()" class="px-4 py-2 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all text-sm">
+            <i class="fa-solid fa-refresh mr-1"></i>清空筛选
+          </button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">课程</label>
+            <select id="course-filter" class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+              <option value="">全部课程</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">教师</label>
+            <select id="teacher-filter" class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+              <option value="">全部教师</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">开始日期</label>
+            <input type="date" id="start-date-filter" class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">结束日期</label>
+            <input type="date" id="end-date-filter" class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+          </div>
+        </div>
+        <div class="flex justify-end mt-4">
+          <button onclick="applyNotificationFilters()" class="px-6 py-2 rounded-xl bg-gradient-to-r from-primary to-accent text-white font-medium shadow-lg hover:shadow-xl transition-all">
+            <i class="fa-solid fa-search mr-2"></i>应用筛选
+          </button>
+        </div>
+      </div>
+
+      <!-- 通知列表 -->
+      <div class="glass-card rounded-2xl p-6">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-lg font-bold text-gray-800 flex items-center">
+            <i class="fa-solid fa-bell mr-2 text-primary"></i>通知列表
+          </h3>
+          <button onclick="loadNotifications()" class="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition-all" title="刷新">
+            <i class="fa-solid fa-refresh text-gray-600"></i>
+          </button>
+        </div>
+        <div id="notifications-list" class="space-y-4 max-h-96 overflow-y-auto custom-scrollbar">
+          <div class="text-center py-8 text-gray-400">
+            <i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i>
+            <p>加载通知中...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 个人中心页面 -->
+    <div id="page-profile" class="page-content">
+      <div class="mb-10 animate-in">
+        <div class="flex items-center space-x-3 mb-2">
+          <div class="w-1.5 h-8 bg-gradient-to-b from-primary to-accent rounded-full"></div>
+          <h2 class="text-3xl font-bold bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 bg-clip-text text-transparent">个人中心</h2>
+        </div>
+        <p class="text-gray-500 ml-5">查看和管理您的个人信息</p>
+      </div>
+
+      <!-- 个人信息卡片 -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- 左侧：头像和基本信息 -->
+        <div class="glass-card rounded-2xl p-8 text-center">
+          <div class="relative inline-block mb-6 group cursor-pointer" onclick="openAvatarModal()">
+            <div class="absolute -inset-2 bg-gradient-to-r from-primary via-accent to-primary-light rounded-full blur opacity-40 animate-pulse"></div>
+            <img id="profile-avatar" src="/head_image/{{ user_info.avatar or 'boy.png' }}" alt="头像" 
+                 class="relative w-28 h-28 rounded-full object-cover ring-4 ring-white shadow-xl" 
+                 onerror="this.src='/head_image/boy.png'">
+            <div class="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <i class="fa-solid fa-camera text-white text-xl"></i>
+            </div>
+            <div class="absolute bottom-1 right-1 w-6 h-6 bg-green-500 rounded-full border-3 border-white flex items-center justify-center">
+              <i class="fa-solid fa-check text-white text-xs"></i>
+            </div>
+          </div>
+          <h3 class="text-2xl font-bold text-gray-800 mb-1">{{ user_info.user_name }}</h3>
+          <p class="text-primary font-medium mb-4">{{ user_info.user_account }}</p>
+          <div class="flex justify-center space-x-2 mb-4">
+            <span class="px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium">在校学生</span>
+          </div>
+          <button onclick="openAvatarModal()" class="px-4 py-2 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all text-sm font-medium">
+            <i class="fa-solid fa-camera mr-1"></i>修改头像
+          </button>
+        </div>
+
+        <!-- 右侧：详细信息 -->
+        <div class="lg:col-span-2 space-y-6">
+          <div class="glass-card rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-5">
+              <h4 class="text-lg font-bold text-gray-800 flex items-center">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center mr-3 shadow-lg">
+                  <i class="fa-solid fa-id-card text-white"></i>
+                </div>
+                基本信息
+              </h4>
+              <button onclick="toggleEditContact()" id="edit-contact-btn" class="px-4 py-2 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all text-sm font-medium">
+                <i class="fa-solid fa-pen mr-1"></i>修改联系方式
+              </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="profile-info">
+              <div class="p-4 rounded-xl bg-white/50 hover:bg-white transition-all">
+                <p class="text-sm text-gray-500 mb-1">学号</p>
+                <p class="font-bold text-gray-800">{{ user_info.user_account }}</p>
+              </div>
+              <div class="p-4 rounded-xl bg-white/50 hover:bg-white transition-all">
+                <p class="text-sm text-gray-500 mb-1">姓名</p>
+                <p class="font-bold text-gray-800">{{ user_info.user_name }}</p>
+              </div>
+              <div class="p-4 rounded-xl bg-white/50 hover:bg-white transition-all">
+                <p class="text-sm text-gray-500 mb-1">院系</p>
+                <p class="font-bold text-gray-800" id="profile-dept">加载中...</p>
+              </div>
+              <div class="p-4 rounded-xl bg-white/50 hover:bg-white transition-all">
+                <p class="text-sm text-gray-500 mb-1">专业</p>
+                <p class="font-bold text-gray-800" id="profile-major">加载中...</p>
+              </div>
+              <div class="p-4 rounded-xl bg-white/50 hover:bg-white transition-all md:col-span-2">
+                <p class="text-sm text-gray-500 mb-1">联系方式</p>
+                <div id="contact-display">
+                  <p class="font-bold text-gray-800" id="profile-contact">加载中...</p>
+                </div>
+                <div id="contact-edit" class="hidden">
+                  <div class="flex space-x-2">
+                    <input type="text" id="contact-input" class="flex-1 px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="请输入联系方式">
+                    <button onclick="saveContact()" class="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary-dark transition-all">保存</button>
+                    <button onclick="toggleEditContact()" class="px-4 py-2 rounded-xl bg-gray-200 text-gray-600 hover:bg-gray-300 transition-all">取消</button>
+                  </div>
+                </div>
+              </div>
+              <div class="p-4 rounded-xl bg-white/50 hover:bg-white transition-all">
+                <p class="text-sm text-gray-500 mb-1">入学年份</p>
+                <p class="font-bold text-gray-800">{{ user_info.user_account[:4] }}级</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 请假统计 -->
+          <div class="glass-card rounded-2xl p-6">
+            <h4 class="text-lg font-bold text-gray-800 mb-5 flex items-center">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center mr-3 shadow-lg">
+                <i class="fa-solid fa-chart-pie text-white"></i>
+              </div>
+              请假统计
+            </h4>
+            <div class="grid grid-cols-3 gap-4">
+              <div class="text-center p-4 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100">
+                <p class="text-3xl font-bold text-blue-600" id="profile-stat-total">--</p>
+                <p class="text-sm text-gray-500 mt-1">总请假</p>
+              </div>
+              <div class="text-center p-4 rounded-xl bg-gradient-to-br from-green-50 to-green-100">
+                <p class="text-3xl font-bold text-green-600" id="profile-stat-approved">--</p>
+                <p class="text-sm text-gray-500 mt-1">已批准</p>
+              </div>
+              <div class="text-center p-4 rounded-xl bg-gradient-to-br from-orange-50 to-orange-100">
+                <p class="text-3xl font-bold text-orange-600" id="profile-stat-pending">--</p>
+                <p class="text-sm text-gray-500 mt-1">待审批</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 操作按钮 -->
+          <div class="glass-card rounded-2xl p-6">
+            <button onclick="handleLogout()" class="w-full py-4 rounded-xl bg-gradient-to-r from-red-500 to-pink-500 text-white font-medium shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:-translate-y-0.5 transition-all flex items-center justify-center">
+              <i class="fa-solid fa-power-off mr-2"></i>退出登录
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="toast" class="fixed top-24 left-1/2 -translate-x-1/2 px-6 py-3 rounded-2xl shadow-xl z-50 opacity-0 pointer-events-none transition-all duration-300"></div>
+
+  <!-- 头像选择模态框 -->
+  <div id="avatar-modal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeAvatarModal()"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg glass-card rounded-3xl p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="text-xl font-bold text-gray-800">选择头像</h3>
+        <button onclick="closeAvatarModal()" class="w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-all">
+          <i class="fa-solid fa-xmark text-gray-500"></i>
+        </button>
+      </div>
+      <div id="avatar-list" class="grid grid-cols-5 gap-3 max-h-64 overflow-y-auto custom-scrollbar">
+        <!-- 头像列表由JS动态加载 -->
+        <div class="text-center py-8 col-span-5 text-gray-400"><i class="fa-solid fa-spinner fa-spin"></i> 加载中...</div>
+      </div>
+      <div class="mt-6 pt-4 border-t border-gray-200">
+        <p class="text-sm text-gray-500 mb-3">或上传自定义头像</p>
+        <div class="flex space-x-3">
+          <input type="file" id="avatar-upload" accept="image/*" class="hidden" onchange="uploadAvatar(this)">
+          <button onclick="document.getElementById('avatar-upload').click()" class="flex-1 py-3 rounded-xl bg-gradient-to-r from-primary to-accent text-white font-medium shadow-lg hover:shadow-xl transition-all">
+            <i class="fa-solid fa-upload mr-2"></i>上传图片
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/student.js"></script>
+</body>
+</html>

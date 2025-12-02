@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>联系辅导员 - 学生工作平台</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+  <script>
+    tailwind.config = { theme: { extend: { colors: { primary: '#6366f1' } } } }
+  </script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
+    <div class="container mx-auto px-4 py-4 max-w-6xl flex justify-between items-center">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+          <i class="fa fa-user-graduate text-primary text-xl"></i>
+        </div>
+        <h1 class="text-xl font-semibold">学生工作平台</h1>
+      </div>
+      <div class="text-sm flex items-center space-x-4">
+        <span class="text-gray-600">欢迎，<span class="font-medium">{{ user_info.user_name }}</span></span>
+        <a href="/student" class="text-gray-600 hover:text-primary"><i class="fa fa-home mr-1"></i>首页</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container mx-auto px-4 py-8 max-w-6xl">
+    <div class="text-center mb-8">
+      <h2 class="text-2xl font-bold">联系辅导员</h2>
+      <p class="text-gray-500 mt-2">与辅导员进行即时沟通</p>
+    </div>
+
+    <div class="mb-6">
+      <a href="/student" class="inline-flex items-center px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-primary transition-colors shadow-sm">
+        <i class="fa fa-arrow-left mr-2"></i>返回首页
+      </a>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-lg overflow-hidden" style="height: calc(100vh - 320px); min-height: 500px;">
+      <div class="flex h-full">
+        <div class="w-80 border-r border-gray-200 flex flex-col">
+          <div class="p-4 border-b border-gray-200 bg-gray-50">
+            <h3 class="font-semibold text-gray-800"><i class="fa fa-user-tie mr-2 text-primary"></i>辅导员</h3>
+          </div>
+          <div id="contactList" class="flex-1 overflow-y-auto">
+            <div class="p-4 text-center text-gray-400"><i class="fa fa-spinner fa-spin"></i> 加载中...</div>
+          </div>
+        </div>
+
+        <div class="flex-1 flex flex-col">
+          <div id="chatHeader" class="p-4 border-b border-gray-200 bg-gray-50">
+            <span class="text-gray-400">请选择辅导员开始聊天</span>
+          </div>
+          <div id="messageList" class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+            <div class="text-center text-gray-400 py-20">
+              <i class="fa fa-comments text-6xl mb-4 opacity-30"></i>
+              <p>选择左侧辅导员开始聊天</p>
+            </div>
+          </div>
+          <div id="inputArea" class="p-4 border-t border-gray-200 bg-white hidden">
+            <div class="flex space-x-3">
+              <input type="text" id="messageInput" class="flex-1 px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="输入消息..." maxlength="1000">
+              <button id="sendBtn" class="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90"><i class="fa fa-paper-plane mr-2"></i>发送</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="bg-white border-t border-gray-200 py-4 mt-8">
+    <div class="container mx-auto px-4 text-center text-gray-500 text-sm">© 2025 请了吗 学生工作平台</div>
+  </footer>
+
+  <script>
+    (function() {
+      let currentContactId = null;
+      let pollingTimer = null;
+
+      async function loadContacts() {
+        try {
+          const resp = await fetch('/api/chat/contacts');
+          const result = await resp.json();
+          const container = document.getElementById('contactList');
+          if (!result.success || !result.data.length) {
+            container.innerHTML = '<div class="p-4 text-center text-gray-400">暂无辅导员</div>';
+            return;
+          }
+          container.innerHTML = result.data.map(c => `
+            <div class="contact-item p-4 border-b border-gray-100 hover:bg-primary/5 cursor-pointer ${currentContactId === c.id ? 'bg-primary/10' : ''}" data-id="${c.id}" data-name="${c.name}">
+              <div class="flex items-center">
+                <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-medium">${c.name.charAt(0)}</div>
+                <div class="ml-3 flex-1">
+                  <div class="flex items-center justify-between">
+                    <span class="font-medium text-gray-800">${c.name}</span>
+                    ${c.unread > 0 ? `<span class="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">${c.unread}</span>` : ''}
+                  </div>
+                  <div class="text-sm text-gray-400 truncate mt-1">${c.last_message || '暂无消息'}</div>
+                </div>
+              </div>
+            </div>
+          `).join('');
+          container.querySelectorAll('.contact-item').forEach(item => {
+            item.addEventListener('click', () => selectContact(item.dataset.id, item.dataset.name));
+          });
+          if (result.data.length === 1) selectContact(result.data[0].id, result.data[0].name);
+        } catch (e) { console.error(e); }
+      }
+
+      function selectContact(id, name) {
+        currentContactId = id;
+        document.getElementById('chatHeader').innerHTML = `<div class="flex items-center"><div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-medium mr-3">${name.charAt(0)}</div><span class="font-semibold">${name}</span><span class="ml-2 text-sm text-gray-400">辅导员</span></div>`;
+        document.getElementById('inputArea').classList.remove('hidden');
+        document.querySelectorAll('.contact-item').forEach(item => item.classList.toggle('bg-primary/10', item.dataset.id === id));
+        loadMessages();
+        if (pollingTimer) clearInterval(pollingTimer);
+        pollingTimer = setInterval(loadMessages, 3000);
+      }
+
+      async function loadMessages() {
+        if (!currentContactId) return;
+        try {
+          const resp = await fetch(`/api/chat/messages?contact_id=${currentContactId}`);
+          const result = await resp.json();
+          const container = document.getElementById('messageList');
+          if (!result.success || !result.data.length) {
+            container.innerHTML = '<div class="text-center text-gray-400 py-10">暂无消息</div>';
+            return;
+          }
+          container.innerHTML = result.data.map(m => `
+            <div class="flex ${m.is_self ? 'justify-end' : 'justify-start'} items-end space-x-2">
+              ${!m.is_self ? `<img src="/head_image/${m.avatar || 'boy.png'}" class="w-8 h-8 rounded-full object-cover flex-shrink-0" onerror="this.src='/head_image/boy.png'">` : ''}
+              <div class="max-w-[70%] ${m.is_self ? 'bg-primary text-white' : 'bg-white'} rounded-2xl px-4 py-3 shadow-sm">
+                <p class="break-words">${m.content.replace(/</g,'&lt;')}</p>
+                <p class="text-xs ${m.is_self ? 'text-white/70' : 'text-gray-400'} mt-1 text-right">${m.create_time.split(' ')[1]}</p>
+              </div>
+              ${m.is_self ? `<img src="/head_image/${m.avatar || 'boy.png'}" class="w-8 h-8 rounded-full object-cover flex-shrink-0" onerror="this.src='/head_image/boy.png'">` : ''}
+            </div>
+          `).join('');
+          container.scrollTop = container.scrollHeight;
+          loadContacts();
+        } catch (e) { console.error(e); }
+      }
+
+      async function sendMessage() {
+        const input = document.getElementById('messageInput');
+        const content = input.value.trim();
+        if (!content || !currentContactId) return;
+        try {
+          const resp = await fetch('/api/chat/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ receiver_id: currentContactId, content })
+          });
+          const result = await resp.json();
+          if (result.success) { input.value = ''; loadMessages(); }
+          else alert(result.message);
+        } catch (e) { alert('发送失败'); }
+      }
+
+      loadContacts();
+      document.getElementById('sendBtn').addEventListener('click', sendMessage);
+      document.getElementById('messageInput').addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(); });
+    })();
+  </script>
+</body>
+</html>

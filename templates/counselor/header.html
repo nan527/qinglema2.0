@@ -6,75 +6,228 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>辅导员工作平台 - {{ title }}</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
   <script>
-    // Tailwind配置
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            primary: '#4F46E5',
-            secondary: '#EEF2FF',
+            primary: '#0EA5E9',
+            'primary-light': '#38BDF8',
+            'primary-dark': '#0284C7',
+            accent: '#6366F1',
+            surface: '#F8FAFC',
             success: '#10B981',
             warning: '#F59E0B',
             danger: '#EF4444'
           },
           fontFamily: {
-            inter: ['Inter', 'system-ui', 'sans-serif']
+            sans: ['Inter', 'system-ui', 'sans-serif']
+          },
+          animation: {
+            'float': 'float 6s ease-in-out infinite',
+            'glow': 'glow 2s ease-in-out infinite alternate',
+            'slide-up': 'slideUp 0.5s ease-out',
+            'fade-in': 'fadeIn 0.6s ease-out',
           }
         }
       }
     };
   </script>
 
-  <style type="text/tailwindcss">
-    @layer utilities {
-      .content-auto {
-        content-visibility: auto;
-      }
-      .card-shadow {
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
-      }
-      .card-hover {
-        @apply hover:shadow-xl transition-all duration-300;
-      }
-      .btn-hover {
-        @apply hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 active:translate-y-0;
-      }
-      .nav-active {
-        @apply bg-primary text-white;
-      }
-      .nav-inactive {
-        @apply hover:bg-gray-100 transition-colors;
-      }
+  <style>
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+    }
+    @keyframes glow {
+      from { box-shadow: 0 0 20px rgba(14, 165, 233, 0.2); }
+      to { box-shadow: 0 0 30px rgba(14, 165, 233, 0.4); }
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    
+    .glass-card {
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+    .glass-nav {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+    }
+    .gradient-border {
+      position: relative;
+      background: linear-gradient(135deg, rgba(14,165,233,0.1), rgba(99,102,241,0.1));
+    }
+    .gradient-border::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(135deg, #0EA5E9, #6366F1);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+    }
+    .shimmer {
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+      background-size: 200% 100%;
+      animation: shimmer 2s infinite;
+    }
+    .hover-lift {
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .hover-lift:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(14, 165, 233, 0.15);
+    }
+    .btn-glow {
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-glow::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent);
+      transform: rotate(45deg);
+      transition: all 0.6s;
+      opacity: 0;
+    }
+    .btn-glow:hover::after {
+      animation: shimmer 1.5s;
+      opacity: 1;
+    }
+    .animate-in {
+      animation: slideUp 0.5s ease-out forwards;
+    }
+    .mesh-gradient {
+      background: 
+        radial-gradient(at 40% 20%, rgba(14, 165, 233, 0.08) 0px, transparent 50%),
+        radial-gradient(at 80% 0%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
+        radial-gradient(at 0% 50%, rgba(14, 165, 233, 0.05) 0px, transparent 50%),
+        radial-gradient(at 80% 50%, rgba(99, 102, 241, 0.05) 0px, transparent 50%),
+        radial-gradient(at 0% 100%, rgba(14, 165, 233, 0.08) 0px, transparent 50%),
+        linear-gradient(180deg, #F8FAFC 0%, #EFF6FF 100%);
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #0EA5E9, #6366F1);
+      border-radius: 10px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, #0284C7, #4F46E5);
+    }
+    .text-gradient {
+      background: linear-gradient(135deg, #0EA5E9, #6366F1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
   </style>
 </head>
 
-<body class="font-inter bg-gray-50 min-h-screen text-gray-800">
+<body class="font-sans mesh-gradient min-h-screen text-gray-700">
   <!-- 顶部导航 -->
-  <header class="bg-white shadow-sm sticky top-0 z-10">
-    <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-      <div class="flex items-center space-x-2">
-        <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-          <i class="fa fa-graduation-cap text-primary text-xl"></i>
+  <header class="glass-nav sticky top-0 z-50 border-b border-white/50 shadow-lg shadow-primary/5">
+    <div class="container mx-auto px-6 py-3">
+      <div class="flex justify-between items-center">
+        <!-- Logo区域 -->
+        <div class="flex items-center space-x-4">
+          <div class="relative group">
+            <div class="absolute -inset-1 bg-gradient-to-r from-primary via-accent to-primary-light rounded-2xl blur opacity-40 group-hover:opacity-70 transition duration-500"></div>
+            <div class="relative w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-xl">
+              <i class="fa-solid fa-user-tie text-white text-xl"></i>
+            </div>
+          </div>
+          <div>
+            <h1 class="text-xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">辅导员工作平台</h1>
+            <p class="text-xs text-gray-400 font-medium tracking-wide">STUDENT AFFAIRS</p>
+          </div>
         </div>
-        <h1 class="text-xl font-semibold">辅导员工作平台</h1>
-      </div>
-      <div class="text-sm flex items-center space-x-4">
-        <span class="text-gray-600">欢迎，<span class="font-medium" id="counselorName">{{ user_info.user_name }}</span></span>
-        <button id="logoutBtn" class="text-primary hover:text-primary/80 transition-colors flex items-center">
-          <i class="fa fa-sign-out mr-1"></i>退出登录
-        </button>
+        
+        <!-- 导航菜单 -->
+        <nav class="hidden md:flex items-center bg-white/50 rounded-2xl p-1.5 shadow-inner">
+          <a href="/counselor/all" class="nav-item px-5 py-2.5 rounded-xl text-gray-600 hover:text-primary hover:bg-white hover:shadow-md transition-all duration-300 text-sm font-medium flex items-center space-x-2">
+            <i class="fa-solid fa-clipboard-check"></i>
+            <span>审批中心</span>
+          </a>
+          <a href="/counselor/statistics" class="nav-item px-5 py-2.5 rounded-xl text-gray-600 hover:text-primary hover:bg-white hover:shadow-md transition-all duration-300 text-sm font-medium flex items-center space-x-2">
+            <i class="fa-solid fa-chart-line"></i>
+            <span>数据统计</span>
+          </a>
+          <a href="/counselor/chat" class="nav-item px-5 py-2.5 rounded-xl text-gray-600 hover:text-primary hover:bg-white hover:shadow-md transition-all duration-300 text-sm font-medium flex items-center space-x-2">
+            <i class="fa-solid fa-message"></i>
+            <span>消息</span>
+          </a>
+          <a href="/counselor/profile" class="nav-item px-5 py-2.5 rounded-xl text-gray-600 hover:text-primary hover:bg-white hover:shadow-md transition-all duration-300 text-sm font-medium flex items-center space-x-2">
+            <i class="fa-solid fa-sliders"></i>
+            <span>设置</span>
+          </a>
+        </nav>
+        
+        <!-- 用户信息 -->
+        <div class="flex items-center space-x-3">
+          <a href="/counselor/profile" class="flex items-center space-x-3 px-4 py-2 rounded-2xl glass-card hover-lift group cursor-pointer">
+            <div class="relative">
+              <img src="/head_image/{{ user_info.avatar or 'boy.png' }}" 
+                   alt="头像" 
+                   class="w-11 h-11 rounded-xl object-cover ring-2 ring-white shadow-lg group-hover:ring-primary/50 transition-all duration-300"
+                   onerror="this.src='/head_image/boy.png'">
+              <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+            </div>
+            <div class="hidden sm:block">
+              <div class="flex items-center space-x-2">
+                <p class="text-sm font-bold text-gray-800" id="counselorName">{{ user_info.user_name }}</p>
+                <div id="headerLevelBadge" class="hidden items-center px-2 py-0.5 rounded-full text-xs font-bold">
+                  <i id="headerLevelIcon" class="mr-1 text-xs"></i>
+                  <span id="headerLevelText"></span>
+                </div>
+              </div>
+              <p class="text-xs text-primary font-medium">辅导员</p>
+            </div>
+            <i class="fa-solid fa-chevron-down text-xs text-gray-400 group-hover:text-primary transition-colors"></i>
+          </a>
+          <button id="logoutBtn" class="w-10 h-10 rounded-xl glass-card flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all duration-300 hover:scale-105" title="退出登录">
+            <i class="fa-solid fa-power-off"></i>
+          </button>
+        </div>
       </div>
     </div>
   </header>
 
   <!-- 主内容区 -->
-  <main class="container mx-auto px-4 py-8 max-w-6xl">
+  <main class="container mx-auto px-6 py-10 max-w-6xl">
     <!-- 页面标题 -->
-    <div class="text-center mb-8">
-      <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold">请假审批管理</h2>
-      <p class="text-gray-500 mt-2">学生请假申请的查看与审批管理</p>
+    <div class="mb-10 animate-in">
+      <div class="flex items-center space-x-3 mb-2">
+        <div class="w-1.5 h-8 bg-gradient-to-b from-primary to-accent rounded-full"></div>
+        <h2 class="text-3xl font-bold bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 bg-clip-text text-transparent">请假审批管理</h2>
+      </div>
+      <p class="text-gray-500 ml-5">实时查看和处理学生的请假申请</p>
     </div>

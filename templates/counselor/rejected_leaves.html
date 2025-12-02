@@ -1,83 +1,101 @@
 {% include 'counselor/header.html' %}
 
+    <!-- 页面标题 -->
+    <div class="mb-8">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <div class="w-1.5 h-8 bg-gradient-to-b from-red-500 to-pink-500 rounded-full"></div>
+          <h2 class="text-2xl font-bold text-gray-800">已驳回假条</h2>
+        </div>
+        <div class="flex items-center space-x-3">
+          <a href="/counselor/statistics" class="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl text-sm font-medium shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center">
+            <i class="fa-solid fa-chart-line mr-2"></i>详细统计
+          </a>
+          <button id="exportBtn" class="px-4 py-2 bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-xl text-sm font-medium shadow-md hover:shadow-lg transition-all flex items-center">
+            <i class="fa-solid fa-download mr-2"></i>导出
+          </button>
+        </div>
+      </div>
+      <p class="text-gray-500 mt-2 ml-5">查看已驳回的学生请假申请记录</p>
+    </div>
+
     <!-- 快捷统计卡片区域 -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-      <div class="bg-white rounded-xl p-5 border border-gray-100 card-shadow card-hover">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div class="glass-card rounded-2xl p-5 hover-lift group cursor-pointer" onclick="window.location.href='/counselor/pending'">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm text-gray-500">待审批假条</p>
-            <p class="text-2xl font-bold mt-2 text-warning" id="pendingCount">0</p>
+            <p class="text-sm text-gray-500">待审批</p>
+            <p class="text-3xl font-bold mt-1 text-amber-500" id="pendingCount">0</p>
           </div>
-          <div class="w-12 h-12 rounded-full bg-warning/10 flex items-center justify-center">
-            <i class="fa fa-clock-o text-xl text-warning"></i>
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+            <i class="fa-solid fa-clock text-white text-lg"></i>
           </div>
         </div>
+        <p class="text-xs text-gray-400 mt-2">需要您审批</p>
       </div>
-      <div class="bg-white rounded-xl p-5 border border-gray-100 card-shadow card-hover">
+      <div class="glass-card rounded-2xl p-5 hover-lift group cursor-pointer" onclick="window.location.href='/counselor/approved'">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm text-gray-500">已批准假条</p>
-            <p class="text-2xl font-bold mt-2 text-success" id="approvedCount">0</p>
+            <p class="text-sm text-gray-500">已批准</p>
+            <p class="text-3xl font-bold mt-1 text-emerald-500" id="approvedCount">0</p>
           </div>
-          <div class="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center">
-            <i class="fa fa-check-circle text-xl text-success"></i>
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+            <i class="fa-solid fa-circle-check text-white text-lg"></i>
           </div>
         </div>
+        <p class="text-xs text-gray-400 mt-2">审批通过</p>
       </div>
-      <div class="bg-white rounded-xl p-5 border border-gray-100 card-shadow card-hover">
+      <div class="glass-card rounded-2xl p-5 hover-lift group cursor-pointer" onclick="window.location.href='/counselor/rejected'">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm text-gray-500">已驳回假条</p>
-            <p class="text-2xl font-bold mt-2 text-danger" id="rejectedCount">0</p>
+            <p class="text-sm text-gray-500">已驳回</p>
+            <p class="text-3xl font-bold mt-1 text-red-500" id="rejectedCount">0</p>
           </div>
-          <div class="w-12 h-12 rounded-full bg-danger/10 flex items-center justify-center">
-            <i class="fa fa-times-circle text-xl text-danger"></i>
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-pink-500 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+            <i class="fa-solid fa-circle-xmark text-white text-lg"></i>
           </div>
         </div>
+        <p class="text-xs text-gray-400 mt-2">审批驳回</p>
       </div>
-      <div class="bg-white rounded-xl p-5 border border-gray-100 card-shadow card-hover">
+      <div class="glass-card rounded-2xl p-5 hover-lift group">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm text-gray-500">本月请假总数</p>
-            <p class="text-2xl font-bold mt-2 text-primary" id="totalCount">0</p>
+            <p class="text-sm text-gray-500">总计</p>
+            <p class="text-3xl font-bold mt-1 text-primary" id="totalCount">0</p>
           </div>
-          <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-            <i class="fa fa-calendar-check-o text-xl text-primary"></i>
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+            <i class="fa-solid fa-chart-simple text-white text-lg"></i>
           </div>
         </div>
+        <p class="text-xs text-gray-400 mt-2">累计请假申请</p>
       </div>
     </div>
 
     <!-- 假条筛选区域 -->
-    <div class="bg-white rounded-xl p-5 mb-8 border border-gray-100 card-shadow">
-      <div class="flex flex-wrap items-center gap-4">
-        <h4 class="font-semibold text-lg">假条状态</h4>
-        <div class="flex flex-wrap gap-2">
-          <button id="filterAll" class="px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors btn-hover">
-            全部假条
+    <div class="glass-card rounded-2xl p-5 mb-6">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center bg-white/50 rounded-xl p-1 shadow-inner">
+          <button id="filterAll" class="px-5 py-2 text-gray-600 rounded-lg hover:bg-white hover:shadow-sm transition-all">
+            全部
           </button>
-          <button id="filterPending" class="px-4 py-2 bg-warning/10 text-warning rounded-lg hover:bg-warning/20 transition-colors btn-hover">
+          <button id="filterPending" class="px-5 py-2 text-gray-600 rounded-lg hover:bg-white hover:shadow-sm transition-all">
             待审批
           </button>
-          <button id="filterApproved" class="px-4 py-2 bg-success/10 text-success rounded-lg hover:bg-success/20 transition-colors btn-hover">
+          <button id="filterApproved" class="px-5 py-2 text-gray-600 rounded-lg hover:bg-white hover:shadow-sm transition-all">
             已批准
           </button>
-          <button id="filterRejected" class="px-4 py-2 bg-danger text-white rounded-lg btn-hover">
+          <button id="filterRejected" class="px-5 py-2 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-lg font-medium shadow-md transition-all">
             已驳回
           </button>
         </div>
-      </div>
-      
-      <div class="flex flex-wrap items-center gap-4 mt-6">
-        <div class="relative flex-grow max-w-md">
-          <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-            <i class="fa fa-search"></i>
-          </span>
-          <input type="text" id="searchInput" placeholder="搜索学生姓名或学号" 
-                 class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
-        </div>
-        <div class="w-full sm:w-auto">
-          <select id="gradeSelect" class="w-full border border-gray-200 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50">
+        
+        <div class="flex items-center gap-3">
+          <div class="relative">
+            <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+            <input type="text" id="searchInput" placeholder="搜索姓名或学号" 
+                   class="pl-11 pr-4 py-2.5 bg-white border-0 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 w-48 transition-all">
+          </div>
+          <select id="gradeSelect" class="px-4 py-2.5 bg-white border-0 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
             <option value="">全部年级</option>
           </select>
         </div>
@@ -85,32 +103,36 @@
     </div>
 
     <!-- 假条列表容器 -->
-    <div class="bg-white rounded-xl p-5 mb-6 border border-gray-100 card-shadow">
+    <div class="glass-card rounded-2xl p-5 mb-6">
       <div class="flex justify-between items-center mb-4">
-        <h4 class="font-semibold text-lg">已驳回假条</h4>
-        <p class="text-sm text-gray-500" id="recordCount">0条记录</p>
+        <h4 class="font-bold text-gray-700 flex items-center">
+          <i class="fa-solid fa-circle-xmark mr-2 text-red-500"></i>已驳回假条
+        </h4>
+        <span class="text-sm text-gray-400 bg-gray-100 px-3 py-1 rounded-full" id="recordCount">0条记录</span>
       </div>
       
-      <div id="leaveListContainer" class="space-y-4">
+      <div id="leaveListContainer" class="space-y-3">
         <!-- 加载状态 -->
-        <div class="text-center py-8 text-gray-500">
-          <i class="fa fa-spinner fa-spin text-xl mb-2"></i>
+        <div class="text-center py-12 text-gray-400">
+          <div class="w-12 h-12 mx-auto mb-3 rounded-xl bg-red-500/10 flex items-center justify-center">
+            <i class="fa-solid fa-spinner fa-spin text-red-500 text-xl"></i>
+          </div>
           <p>正在加载数据...</p>
         </div>
       </div>
     </div>
 
     <!-- 分页控件 -->
-    <div class="flex justify-between items-center">
+    <div class="flex justify-between items-center glass-card rounded-2xl p-4">
       <div class="text-sm text-gray-500">
-        第 <span id="currentPageDisplay">1</span> / <span id="totalPagesDisplay">0</span> 页
+        第 <span class="font-bold text-primary" id="currentPageDisplay">1</span> / <span id="totalPagesDisplay">0</span> 页
       </div>
       <div class="flex gap-2">
-        <button id="prevPage" disabled class="px-4 py-2 border border-gray-200 rounded-lg text-gray-400 cursor-not-allowed">
-          <i class="fa fa-chevron-left mr-1"></i> 上一页
+        <button id="prevPage" disabled class="px-5 py-2 bg-white border-0 rounded-xl shadow-sm text-gray-400 cursor-not-allowed transition-all">
+          <i class="fa-solid fa-chevron-left mr-1"></i> 上一页
         </button>
-        <button id="nextPage" disabled class="px-4 py-2 border border-gray-200 rounded-lg text-gray-400 cursor-not-allowed">
-          下一页 <i class="fa fa-chevron-right ml-1"></i>
+        <button id="nextPage" disabled class="px-5 py-2 bg-white border-0 rounded-xl shadow-sm text-gray-400 cursor-not-allowed transition-all">
+          下一页 <i class="fa-solid fa-chevron-right ml-1"></i>
         </button>
       </div>
     </div>

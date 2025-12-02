@@ -1,0 +1,463 @@
+{% include 'counselor/header.html' %}
+
+  <!-- 页面标题覆盖 -->
+  <script>document.querySelector('main > div:first-child').innerHTML = '<div class="flex items-center space-x-3 mb-2"><div class="w-1.5 h-8 bg-gradient-to-b from-primary to-accent rounded-full"></div><h2 class="text-3xl font-bold bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 bg-clip-text text-transparent">个人设置</h2></div><p class="text-gray-500 ml-5">管理您的个人信息和头像</p>';</script>
+
+  <!-- 返回按钮 -->
+  <div class="mb-8">
+    <a href="/counselor/all" class="group inline-flex items-center px-5 py-2.5 glass-card rounded-xl text-gray-600 hover:text-primary transition-all duration-300 hover-lift">
+      <i class="fa-solid fa-arrow-left mr-2 group-hover:-translate-x-1 transition-transform"></i>返回审批列表
+    </a>
+  </div>
+
+  <!-- 主要内容区域 -->
+  <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+    <!-- 左侧：个人信息主体 -->
+    <div class="lg:col-span-3 space-y-6">
+      <!-- 个人信息卡片 -->
+      <div class="glass-card rounded-3xl p-8 hover-lift">
+        <div class="flex items-center justify-between mb-6">
+          <h4 class="text-xl font-bold text-gray-800 flex items-center">
+            <i class="fa-solid fa-user-circle mr-3 text-primary text-2xl"></i>个人信息
+          </h4>
+          <div class="flex space-x-2">
+            <button id="editContactBtn" class="px-4 py-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-all duration-300 text-sm font-medium">
+              <i class="fa-solid fa-edit mr-2"></i>编辑联系方式
+            </button>
+            <button id="changeAvatarBtn" class="px-4 py-2 bg-accent/10 text-accent rounded-xl hover:bg-accent/20 transition-all duration-300 text-sm font-medium">
+              <i class="fa-solid fa-camera mr-2"></i>更换头像
+            </button>
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- 基本信息 -->
+          <div class="space-y-4">
+            <div class="group flex items-center p-4 rounded-xl hover:bg-primary/5 transition-all">
+              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+                <i class="fa-solid fa-id-badge text-primary text-lg"></i>
+              </div>
+              <div class="flex-1">
+                <p class="text-sm text-gray-500 font-medium">工号</p>
+                <p class="text-lg font-bold text-gray-800">{{ counselor.counselor_id }}</p>
+              </div>
+            </div>
+            
+            <div class="group flex items-center p-4 rounded-xl hover:bg-primary/5 transition-all">
+              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+                <i class="fa-solid fa-user text-primary text-lg"></i>
+              </div>
+              <div class="flex-1">
+                <p class="text-sm text-gray-500 font-medium">姓名</p>
+                <p class="text-lg font-bold text-gray-800">{{ counselor.counselor_name }}</p>
+              </div>
+            </div>
+            
+            <div class="group flex items-center p-4 rounded-xl hover:bg-primary/5 transition-all">
+              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+                <i class="fa-solid fa-building-columns text-primary text-lg"></i>
+              </div>
+              <div class="flex-1">
+                <p class="text-sm text-gray-500 font-medium">所属部门</p>
+                <p class="text-lg font-bold text-gray-800">{{ counselor.dept }}</p>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 工作信息 -->
+          <div class="space-y-4">
+            <div class="group flex items-center p-4 rounded-xl hover:bg-primary/5 transition-all">
+              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+                <i class="fa-solid fa-calendar-days text-primary text-lg"></i>
+              </div>
+              <div class="flex-1">
+                <p class="text-sm text-gray-500 font-medium">负责年级</p>
+                <p class="text-lg font-bold text-gray-800">{{ counselor.responsible_grade }}级</p>
+              </div>
+            </div>
+            
+            <div class="group flex items-center p-4 rounded-xl hover:bg-primary/5 transition-all">
+              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+                <i class="fa-solid fa-graduation-cap text-primary text-lg"></i>
+              </div>
+              <div class="flex-1">
+                <p class="text-sm text-gray-500 font-medium">负责专业</p>
+                <p class="text-lg font-bold text-gray-800">{{ counselor.responsible_major }}</p>
+              </div>
+            </div>
+            
+            <div class="group flex items-center p-4 rounded-xl hover:bg-primary/5 transition-all">
+              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+                <i class="fa-solid fa-mobile-screen text-primary text-lg"></i>
+              </div>
+              <div class="flex-1">
+                <p class="text-sm text-gray-500 font-medium">联系方式</p>
+                <p id="contactDisplay" class="text-lg font-bold text-gray-800">{{ counselor.contact }}</p>
+                <div id="contactEdit" class="hidden">
+                  <input type="text" id="contactInput" value="{{ counselor.contact }}" 
+                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                  <div class="flex space-x-2 mt-2">
+                    <button id="saveContactBtn" class="px-3 py-1 bg-primary text-white rounded-lg text-sm hover:bg-primary/80">保存</button>
+                    <button id="cancelContactBtn" class="px-3 py-1 bg-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-400">取消</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="group flex items-center p-4 rounded-xl hover:bg-primary/5 transition-all">
+              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+                <i class="fa-solid fa-clock text-primary text-lg"></i>
+              </div>
+              <div class="flex-1">
+                <p class="text-sm text-gray-500 font-medium">任职时间</p>
+                <p id="workYears" class="text-lg font-bold text-gray-800">计算中...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 审批等级卡片 -->
+      <div class="glass-card rounded-3xl p-8 hover-lift">
+        <div class="flex items-center justify-between mb-6">
+          <h4 class="text-xl font-bold text-gray-800 flex items-center">
+            <i class="fa-solid fa-trophy mr-3 text-accent text-2xl"></i>审批等级
+          </h4>
+        </div>
+        
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-4">
+            <div id="levelBadge" class="inline-flex items-center px-6 py-3 rounded-full shadow-lg">
+              <i id="levelIcon" class="mr-3 text-2xl"></i>
+              <span id="levelText" class="font-bold text-lg">加载中...</span>
+            </div>
+            <div class="text-gray-600">
+              <p class="text-sm">本月审批 <span id="monthlyCount" class="font-bold text-primary text-lg">0</span> 份</p>
+              <p id="nextTarget" class="text-sm mt-1"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右侧：头像和快捷操作 -->
+    <div class="lg:col-span-1">
+      <!-- 头像卡片 -->
+      <div class="glass-card rounded-3xl p-6 hover-lift text-center">
+        <div class="relative inline-block mb-4">
+          <div class="absolute -inset-2 bg-gradient-to-r from-primary via-accent to-primary-light rounded-3xl blur-lg opacity-30"></div>
+          {% if avatar %}
+          <img id="currentAvatarImg" src="{{ url_for('serve_head_image', filename=avatar) }}" alt="当前头像"
+               class="relative w-24 h-24 rounded-2xl object-cover ring-4 ring-white shadow-2xl">
+          {% else %}
+          <div class="relative w-24 h-24 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white shadow-2xl">
+            <i class="fa-solid fa-user text-3xl"></i>
+          </div>
+          {% endif %}
+          <div class="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-xl border-3 border-white flex items-center justify-center shadow-lg">
+            <i class="fa-solid fa-check text-white text-xs"></i>
+          </div>
+        </div>
+        
+        <h3 class="text-lg font-bold text-gray-800 mb-2">{{ counselor.counselor_name }}</h3>
+        <div class="inline-flex items-center px-3 py-1 bg-primary/10 rounded-full mb-4">
+          <i class="fa-solid fa-shield-check text-primary mr-2 text-sm"></i>
+          <span class="text-sm text-primary font-medium">辅导员</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 更换头像模态框 -->
+  <div id="avatarModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
+    <div class="flex items-center justify-center min-h-screen p-4">
+      <div class="bg-white rounded-3xl p-8 max-w-4xl w-full max-h-[80vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-2xl font-bold text-gray-800">更换头像</h3>
+          <button id="closeAvatarModal" class="w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-all">
+            <i class="fa-solid fa-times text-gray-600"></i>
+          </button>
+        </div>
+        
+        <!-- 上传自定义头像 -->
+        <div class="mb-8 p-6 border-2 border-dashed border-gray-300 rounded-2xl text-center hover:border-primary transition-all">
+          <input type="file" id="avatarUpload" accept="image/png,image/jpeg,image/gif" class="hidden">
+          <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-primary/10 flex items-center justify-center">
+            <i class="fa-solid fa-cloud-arrow-up text-primary text-2xl"></i>
+          </div>
+          <h4 class="text-lg font-bold text-gray-800 mb-2">上传自定义头像</h4>
+          <p class="text-gray-500 mb-4">支持 PNG、JPG、GIF，最大 2MB</p>
+          <button onclick="document.getElementById('avatarUpload').click()" 
+                  class="px-6 py-3 bg-gradient-to-r from-primary to-accent text-white rounded-xl font-medium shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
+            选择文件
+          </button>
+        </div>
+        
+        <!-- 预设头像选择 -->
+        <div>
+          <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+            <i class="fa-solid fa-images mr-2 text-accent"></i>选择预设头像
+          </h4>
+          {% if avatars %}
+          <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-4">
+            {% for img in avatars %}
+            <button type="button"
+                    class="group focus:outline-none transform hover:scale-105 transition-all duration-300"
+                    data-avatar="{{ img }}">
+              <div class="relative aspect-square rounded-2xl overflow-hidden {% if img == avatar %}ring-4 ring-primary shadow-xl shadow-primary/30{% else %}ring-2 ring-transparent hover:ring-primary/50{% endif %} transition-all duration-300">
+                <img src="{{ url_for('serve_head_image', filename=img) }}" alt="头像"
+                     class="w-full h-full object-cover">
+                {% if img == avatar %}
+                <div class="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                  <div class="w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-lg">
+                    <i class="fa-solid fa-check text-primary text-xs"></i>
+                  </div>
+                </div>
+                {% endif %}
+              </div>
+            </button>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="text-center py-8">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gray-100 flex items-center justify-center">
+              <i class="fa-solid fa-image text-2xl text-gray-300"></i>
+            </div>
+            <p class="text-gray-400">暂无可用头像</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const buttons = document.querySelectorAll('[data-avatar]');
+      const currentImg = document.getElementById('currentAvatarImg');
+      const avatarModal = document.getElementById('avatarModal');
+      const changeAvatarBtn = document.getElementById('changeAvatarBtn');
+      const closeAvatarModal = document.getElementById('closeAvatarModal');
+      
+      // 联系方式编辑相关元素
+      const editContactBtn = document.getElementById('editContactBtn');
+      const contactDisplay = document.getElementById('contactDisplay');
+      const contactEdit = document.getElementById('contactEdit');
+      const contactInput = document.getElementById('contactInput');
+      const saveContactBtn = document.getElementById('saveContactBtn');
+      const cancelContactBtn = document.getElementById('cancelContactBtn');
+
+      function showToast(message, isError) {
+        const div = document.createElement('div');
+        div.className = 'fixed top-20 right-6 px-6 py-3 rounded-xl shadow-lg text-sm text-white z-50 transform translate-x-0';
+        div.style.backgroundColor = isError ? '#EF4444' : '#10B981';
+        div.innerHTML = `<i class="fa-solid ${isError ? 'fa-exclamation-circle' : 'fa-check-circle'} mr-2"></i>${message}`;
+        document.body.appendChild(div);
+        
+        // 动画效果
+        setTimeout(() => {
+          div.style.transform = 'translateX(100%)';
+          setTimeout(() => div.remove(), 300);
+        }, 2500);
+      }
+
+      // 头像模态框控制
+      changeAvatarBtn?.addEventListener('click', () => {
+        avatarModal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+      });
+
+      closeAvatarModal?.addEventListener('click', () => {
+        avatarModal.classList.add('hidden');
+        document.body.style.overflow = 'auto';
+      });
+
+      // 点击模态框背景关闭
+      avatarModal?.addEventListener('click', (e) => {
+        if (e.target === avatarModal) {
+          avatarModal.classList.add('hidden');
+          document.body.style.overflow = 'auto';
+        }
+      });
+
+      // 联系方式编辑功能
+      editContactBtn?.addEventListener('click', () => {
+        contactDisplay.classList.add('hidden');
+        contactEdit.classList.remove('hidden');
+        contactInput.focus();
+      });
+
+      cancelContactBtn?.addEventListener('click', () => {
+        contactEdit.classList.add('hidden');
+        contactDisplay.classList.remove('hidden');
+        contactInput.value = contactDisplay.textContent;
+      });
+
+      saveContactBtn?.addEventListener('click', async () => {
+        const newContact = contactInput.value.trim();
+        if (!newContact) {
+          showToast('联系方式不能为空', true);
+          return;
+        }
+
+        try {
+          const resp = await fetch('/api/counselor/update_contact', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contact: newContact })
+          });
+          const result = await resp.json();
+          
+          if (result.success) {
+            contactDisplay.textContent = newContact;
+            contactEdit.classList.add('hidden');
+            contactDisplay.classList.remove('hidden');
+            showToast('联系方式更新成功', false);
+          } else {
+            showToast(result.message || '更新失败', true);
+          }
+        } catch (e) {
+          showToast('更新失败，请稍后重试', true);
+        }
+      });
+
+      // 预设头像选择
+      buttons.forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const avatar = btn.getAttribute('data-avatar');
+          try {
+            const resp = await fetch('/api/counselor/avatar', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ avatar })
+            });
+            const result = await resp.json();
+            if (!result.success) {
+              showToast(result.message || '更新头像失败', true);
+              return;
+            }
+
+            if (currentImg) {
+              currentImg.src = '/head_image/' + avatar + '?t=' + Date.now();
+            }
+
+            // 更新选中样式
+            buttons.forEach(b => {
+              const wrapper = b.querySelector('div');
+              if (b === btn) {
+                wrapper.classList.add('ring-4', 'ring-primary', 'shadow-xl', 'shadow-primary/30');
+                wrapper.classList.remove('ring-2', 'ring-transparent');
+              } else {
+                wrapper.classList.remove('ring-4', 'ring-primary', 'shadow-xl', 'shadow-primary/30');
+                wrapper.classList.add('ring-2', 'ring-transparent');
+              }
+            });
+
+            showToast('头像已更新', false);
+            
+            // 3秒后关闭模态框
+            setTimeout(() => {
+              avatarModal.classList.add('hidden');
+              document.body.style.overflow = 'auto';
+            }, 1500);
+          } catch (e) {
+            console.error('更新头像失败', e);
+            showToast('更新头像失败，请稍后重试', true);
+          }
+        });
+      });
+
+      // 上传自定义头像
+      document.getElementById('avatarUpload')?.addEventListener('change', async function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        if (file.size > 2 * 1024 * 1024) {
+          showToast('图片大小不能超过 2MB', true);
+          return;
+        }
+        
+        const formData = new FormData();
+        formData.append('avatar', file);
+        
+        try {
+          const resp = await fetch('/api/user/avatar/upload', {
+            method: 'POST',
+            body: formData
+          });
+          const result = await resp.json();
+          
+          if (result.success) {
+            if (currentImg) {
+              currentImg.src = '/head_image/' + result.avatar + '?t=' + Date.now();
+            }
+            showToast('头像上传成功', false);
+            
+            // 3秒后关闭模态框并刷新
+            setTimeout(() => {
+              avatarModal.classList.add('hidden');
+              document.body.style.overflow = 'auto';
+              location.reload();
+            }, 1500);
+          } else {
+            showToast(result.message || '上传失败', true);
+          }
+        } catch (e) {
+          showToast('上传失败', true);
+        }
+      });
+    })();
+
+    // 加载审批等级数据
+    async function loadApprovalLevel() {
+      try {
+        const response = await fetch('/api/counselor/approval_level');
+        const result = await response.json();
+        
+        if (result.success) {
+          const data = result.data;
+          
+          // 更新等级徽章
+          const badge = document.getElementById('levelBadge');
+          const icon = document.getElementById('levelIcon');
+          const text = document.getElementById('levelText');
+          
+          badge.style.backgroundColor = data.color + '20';
+          badge.style.borderColor = data.color;
+          badge.style.border = '2px solid';
+          
+          icon.className = `fa-solid ${data.icon} mr-2 text-lg`;
+          icon.style.color = data.color;
+          
+          text.textContent = data.level;
+          text.style.color = data.color;
+          
+          // 更新统计数据
+          document.getElementById('monthlyCount').textContent = data.monthly_count;
+          
+          const nextTarget = document.getElementById('nextTarget');
+          if (data.next_target) {
+            nextTarget.textContent = `距离下一级还需 ${data.next_target - data.monthly_count} 份`;
+            nextTarget.className = 'ml-2 text-amber-600 font-medium';
+          } else {
+            nextTarget.textContent = '已达最高等级';
+            nextTarget.className = 'ml-2 text-purple-600 font-medium';
+          }
+          
+          // 更新任职时间
+          const workYearsEl = document.getElementById('workYears');
+          workYearsEl.textContent = `任职时间: ${data.work_years}年 (${data.work_start_year}年入职)`;
+          
+        } else {
+          console.error('加载审批等级失败:', result.message);
+        }
+      } catch (error) {
+        console.error('加载审批等级失败:', error);
+      }
+    }
+    
+    // 页面加载时获取数据
+    loadApprovalLevel();
+  </script>
+
+{% include 'counselor/footer.html' %}

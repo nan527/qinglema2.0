@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>个人信息 - 学生工作平台</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+  <script>
+    tailwind.config = { theme: { extend: { colors: { primary: '#7B61FF' } } } }
+  </script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
+    <div class="container mx-auto px-4 py-4 max-w-6xl flex justify-between items-center">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+          <i class="fa fa-user-graduate text-primary text-xl"></i>
+        </div>
+        <h1 class="text-xl font-semibold">学生工作平台</h1>
+      </div>
+      <div class="text-sm flex items-center space-x-4">
+        <div class="flex items-center space-x-2">
+          <img src="/head_image/{{ current_avatar }}" alt="头像" class="w-8 h-8 rounded-full object-cover border-2 border-gray-200" onerror="this.src='/head_image/boy.png'">
+          <span class="text-gray-600">{{ user_info.user_name }}</span>
+        </div>
+        <a href="/student" class="text-primary hover:text-primary/80"><i class="fa fa-home mr-1"></i>首页</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container mx-auto px-4 py-8 max-w-6xl">
+    <div class="text-center mb-8">
+      <h2 class="text-2xl font-bold">个人信息</h2>
+      <p class="text-gray-500 mt-2">查看和修改您的个人资料</p>
+    </div>
+
+    <div class="mb-6">
+      <a href="/student" class="inline-flex items-center px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-primary transition-colors shadow-sm">
+        <i class="fa fa-arrow-left mr-2"></i>返回
+      </a>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- 头像设置 -->
+      <div class="lg:col-span-1">
+        <div class="bg-white rounded-xl shadow-lg p-6">
+          <h3 class="text-lg font-semibold mb-4 flex items-center">
+            <i class="fa fa-camera mr-2 text-primary"></i>头像设置
+          </h3>
+          
+          <div class="text-center mb-6">
+            <img id="currentAvatar" src="/head_image/{{ current_avatar }}" alt="当前头像" 
+                 class="w-32 h-32 rounded-full mx-auto object-cover border-4 border-primary/20 shadow-lg"
+                 onerror="this.src='/head_image/boy.png'">
+            <p class="mt-3 text-gray-600 font-medium">{{ user_info.user_name }}</p>
+            <p class="text-sm text-gray-400">{{ user_info.user_account }}</p>
+          </div>
+
+          <!-- 上传自定义头像 -->
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2">上传自定义头像</label>
+            <div class="flex items-center space-x-2">
+              <input type="file" id="avatarUpload" accept="image/png,image/jpeg,image/gif" class="hidden">
+              <button onclick="document.getElementById('avatarUpload').click()" 
+                      class="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                <i class="fa fa-upload mr-2"></i>选择图片
+              </button>
+            </div>
+            <p class="text-xs text-gray-400 mt-2">支持 png/jpg/gif 格式</p>
+          </div>
+
+          <!-- 预设头像 -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">或选择预设头像</label>
+            <div class="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto">
+              {% for avatar in available_avatars %}
+              <img src="/head_image/{{ avatar }}" 
+                   class="w-12 h-12 rounded-full cursor-pointer object-cover border-2 hover:border-primary transition-colors {% if avatar == current_avatar %}border-primary ring-2 ring-primary/30{% else %}border-gray-200{% endif %}"
+                   onclick="selectAvatar('{{ avatar }}')"
+                   onerror="this.style.display='none'">
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 个人信息 -->
+      <div class="lg:col-span-2">
+        <div class="bg-white rounded-xl shadow-lg p-6">
+          <h3 class="text-lg font-semibold mb-6 flex items-center">
+            <i class="fa fa-id-card mr-2 text-primary"></i>基本信息
+          </h3>
+          
+          <div id="infoLoading" class="text-center py-8 text-gray-400">
+            <i class="fa fa-spinner fa-spin text-2xl"></i>
+            <p class="mt-2">加载中...</p>
+          </div>
+          
+          <div id="infoContent" class="hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-4">
+                <div class="flex items-center p-4 bg-gray-50 rounded-lg">
+                  <i class="fa fa-id-badge text-primary w-8"></i>
+                  <div>
+                    <p class="text-xs text-gray-400">学号</p>
+                    <p class="font-medium" id="info_student_id">-</p>
+                  </div>
+                </div>
+                <div class="flex items-center p-4 bg-gray-50 rounded-lg">
+                  <i class="fa fa-user text-primary w-8"></i>
+                  <div>
+                    <p class="text-xs text-gray-400">姓名</p>
+                    <p class="font-medium" id="info_student_name">-</p>
+                  </div>
+                </div>
+                <div class="flex items-center p-4 bg-gray-50 rounded-lg">
+                  <i class="fa fa-lock text-primary w-8"></i>
+                  <div>
+                    <p class="text-xs text-gray-400">密码</p>
+                    <p class="font-medium" id="info_password">-</p>
+                  </div>
+                </div>
+              </div>
+              <div class="space-y-4">
+                <div class="flex items-center p-4 bg-gray-50 rounded-lg">
+                  <i class="fa fa-building text-primary w-8"></i>
+                  <div>
+                    <p class="text-xs text-gray-400">学院</p>
+                    <p class="font-medium" id="info_dept">-</p>
+                  </div>
+                </div>
+                <div class="flex items-center p-4 bg-gray-50 rounded-lg">
+                  <i class="fa fa-graduation-cap text-primary w-8"></i>
+                  <div>
+                    <p class="text-xs text-gray-400">专业</p>
+                    <p class="font-medium" id="info_major">-</p>
+                  </div>
+                </div>
+                <div class="flex items-center p-4 bg-gray-50 rounded-lg">
+                  <i class="fa fa-users text-primary w-8"></i>
+                  <div>
+                    <p class="text-xs text-gray-400">班级</p>
+                    <p class="font-medium" id="info_class_name">-</p>
+                  </div>
+                </div>
+                <div class="flex items-center p-4 bg-gray-50 rounded-lg">
+                  <i class="fa fa-phone text-primary w-8"></i>
+                  <div>
+                    <p class="text-xs text-gray-400">联系方式</p>
+                    <p class="font-medium" id="info_contact">-</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="bg-white border-t border-gray-200 py-4 mt-8">
+    <div class="container mx-auto px-4 text-center text-gray-500 text-sm">© 2025 请了吗 学生工作平台</div>
+  </footer>
+
+  <script>
+    // 加载个人信息
+    async function loadInfo() {
+      try {
+        const resp = await fetch('/api/student/info');
+        const result = await resp.json();
+        
+        document.getElementById('infoLoading').classList.add('hidden');
+        document.getElementById('infoContent').classList.remove('hidden');
+        
+        if (result.success && result.data) {
+          const d = result.data;
+          document.getElementById('info_student_id').textContent = d.student_id || '-';
+          document.getElementById('info_student_name').textContent = d.student_name || '-';
+          document.getElementById('info_password').textContent = d.password || '-';
+          document.getElementById('info_dept').textContent = d.dept || '-';
+          document.getElementById('info_major').textContent = d.major || '-';
+          document.getElementById('info_class_name').textContent = d.class_name || '-';
+          document.getElementById('info_contact').textContent = d.contact || '-';
+        }
+      } catch (e) {
+        console.error('加载失败', e);
+        document.getElementById('infoLoading').innerHTML = '<p class="text-red-500">加载失败</p>';
+      }
+    }
+
+    // 选择预设头像
+    async function selectAvatar(avatar) {
+      try {
+        const resp = await fetch('/api/user/avatar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ avatar })
+        });
+        const result = await resp.json();
+        
+        if (result.success) {
+          document.getElementById('currentAvatar').src = '/head_image/' + avatar;
+          document.querySelectorAll('.grid img').forEach(img => {
+            img.classList.remove('border-primary', 'ring-2', 'ring-primary/30');
+            img.classList.add('border-gray-200');
+            if (img.src.includes(avatar)) {
+              img.classList.add('border-primary', 'ring-2', 'ring-primary/30');
+              img.classList.remove('border-gray-200');
+            }
+          });
+          alert('头像已更新');
+        } else {
+          alert(result.message || '更新失败');
+        }
+      } catch (e) {
+        alert('更新失败');
+      }
+    }
+
+    // 上传自定义头像
+    document.getElementById('avatarUpload').addEventListener('change', async function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      if (file.size > 2 * 1024 * 1024) {
+        alert('图片大小不能超过 2MB');
+        return;
+      }
+      
+      const formData = new FormData();
+      formData.append('avatar', file);
+      
+      try {
+        const resp = await fetch('/api/user/avatar/upload', {
+          method: 'POST',
+          body: formData
+        });
+        const result = await resp.json();
+        
+        if (result.success) {
+          document.getElementById('currentAvatar').src = '/head_image/' + result.avatar + '?t=' + Date.now();
+          alert('头像上传成功');
+          location.reload();
+        } else {
+          alert(result.message || '上传失败');
+        }
+      } catch (e) {
+        alert('上传失败');
+      }
+    });
+
+    loadInfo();
+  </script>
+</body>
+</html>

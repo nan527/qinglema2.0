@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生信息列表 - 学生信息管理系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        :root {
+            --primary: #3b82f6;
+            --primary-light: #60a5fa;
+            --accent: #2563eb;
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px) saturate(180%);
+            box-shadow: 0 8px 32px rgba(59, 130, 246, 0.15), 
+                        0 4px 16px rgba(0, 0, 0, 0.1),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .hover-lift {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .hover-lift:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 60px rgba(59, 130, 246, 0.25),
+                        0 8px 24px rgba(0, 0, 0, 0.15);
+        }
+        
+        .animate-in {
+            animation: slideIn 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .table-row:hover {
+            background-color: #eff6ff;
+        }
+        
+        .shimmer-btn {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .shimmer-btn::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(255, 255, 255, 0.3), 
+                transparent);
+            transition: left 0.5s;
+        }
+        
+        .shimmer-btn:hover::after {
+            left: 100%;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        'primary-light': '#60a5fa',
+                        accent: '#8b5cf6',
+                        cyan: '#06b6d4'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gradient-to-br from-blue-50 via-indigo-50 to-cyan-50 min-h-screen">
+    <!-- Toast通知 -->
+    <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl shadow-lg z-50 transition-opacity opacity-0 pointer-events-none"></div>
+
+    <!-- Header -->
+    <header class="glass-card sticky top-0 z-40 border-b border-gray-200">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <a href="/admin" class="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors">
+                        <i class="fa-solid fa-arrow-left"></i>
+                        <span>返回管理页面</span>
+                    </a>
+                    <div class="h-6 w-px bg-gray-300"></div>
+                    <div>
+                        <h1 class="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                            学生信息列表
+                        </h1>
+                        <p class="text-sm text-gray-500">查看所有学生的详细信息</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2 px-4 py-2 rounded-lg bg-blue-100">
+                        <i class="fa-solid fa-user-shield text-primary"></i>
+                        <span class="font-medium text-gray-700" id="userName">管理员</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 py-8">
+        <div class="glass-card rounded-3xl p-8 animate-in">
+            <!-- 统计信息 -->
+            <div class="mb-6 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/20 to-indigo-500/10 flex items-center justify-center">
+                        <i class="fa-solid fa-database text-primary text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">共找到</p>
+                        <p class="text-2xl font-bold text-gray-800"><span id="totalCount">0</span> 条记录</p>
+                    </div>
+                </div>
+                
+                <!-- 搜索框 -->
+                <div class="flex items-center space-x-3">
+                    <div class="relative group">
+                        <input type="text" id="searchInput" placeholder="搜索学号、姓名..." 
+                               class="pl-10 pr-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all w-64 hover:border-primary/50">
+                        <i class="fa-solid fa-search absolute left-3 top-3.5 text-gray-400 group-hover:text-primary transition-colors"></i>
+                    </div>
+                    <button onclick="loadStudents()" class="shimmer-btn px-5 py-2.5 bg-gradient-to-r from-primary via-primary-light to-accent text-white rounded-xl font-semibold hover:shadow-xl hover:scale-105 transition-all">
+                        <i class="fa-solid fa-refresh mr-2"></i>刷新
+                    </button>
+                </div>
+            </div>
+
+            <!-- 加载状态 -->
+            <div id="loadingState" class="text-center py-16">
+                <div class="relative inline-block mb-6">
+                    <div class="absolute inset-0 animate-ping rounded-full bg-primary/30"></div>
+                    <div class="relative p-6 rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 backdrop-blur-sm border border-primary/20">
+                        <i class="fa-solid fa-spinner fa-spin text-4xl text-primary"></i>
+                    </div>
+                </div>
+                <p class="text-lg font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent animate-pulse">正在加载数据...</p>
+                <p class="text-sm text-gray-500 mt-2">请稍候片刻</p>
+            </div>
+
+            <!-- 学生信息表格 -->
+            <div id="studentTable" class="hidden">
+                <div class="overflow-x-auto mb-6">
+                <div class="overflow-hidden rounded-2xl border border-gray-200 shadow-sm">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="bg-gradient-to-r from-blue-100 to-indigo-100">
+                                <th class="px-4 py-4 text-left text-sm font-bold text-gray-700">
+                                    <div class="flex items-center">
+                                        <i class="fa-solid fa-hashtag mr-2 text-primary"></i>序号
+                                    </div>
+                                </th>
+                                <th class="px-4 py-4 text-left text-sm font-bold text-gray-700">
+                                    <div class="flex items-center">
+                                        <i class="fa-solid fa-id-card mr-2 text-primary"></i>学号
+                                    </div>
+                                </th>
+                                <th class="px-4 py-4 text-left text-sm font-bold text-gray-700">
+                                    <div class="flex items-center">
+                                        <i class="fa-solid fa-user mr-2 text-primary"></i>姓名
+                                    </div>
+                                </th>
+                                <th class="px-4 py-4 text-left text-sm font-bold text-gray-700">
+                                    <div class="flex items-center">
+                                        <i class="fa-solid fa-building mr-2 text-primary"></i>部门
+                                    </div>
+                                </th>
+                                <th class="px-4 py-4 text-left text-sm font-bold text-gray-700">
+                                    <div class="flex items-center">
+                                        <i class="fa-solid fa-calendar mr-2 text-primary"></i>年级
+                                    </div>
+                                </th>
+                                <th class="px-4 py-4 text-left text-sm font-bold text-gray-700">
+                                    <div class="flex items-center">
+                                        <i class="fa-solid fa-graduation-cap mr-2 text-primary"></i>专业
+                                    </div>
+                                </th>
+                                <th class="px-4 py-4 text-left text-sm font-bold text-gray-700">
+                                    <div class="flex items-center">
+                                        <i class="fa-solid fa-users mr-2 text-primary"></i>班级
+                                    </div>
+                                </th>
+                                <th class="px-4 py-4 text-left text-sm font-bold text-gray-700">
+                                    <div class="flex items-center">
+                                        <i class="fa-solid fa-phone mr-2 text-primary"></i>联系方式
+                                    </div>
+                                </th>
+                                <th class="px-4 py-4 text-center text-sm font-bold text-gray-700">
+                                    <div class="flex items-center justify-center">
+                                        <i class="fa-solid fa-cog mr-2 text-primary"></i>操作
+                                    </div>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentTableBody" class="bg-white divide-y divide-gray-100">
+                            <!-- 数据将通过JavaScript动态填充 -->
+                        </tbody>
+                    </table>
+                </div>
+                </div>
+                
+                <!-- 分页控制 -->
+                <div id="pagination" class="flex items-center justify-between mt-6">
+                    <div class="text-sm text-gray-600">
+                        显示第 <span id="pageStart" class="font-semibold text-primary">1</span> - <span id="pageEnd" class="font-semibold text-primary">15</span> 条，共 <span id="pageTotal" class="font-semibold text-primary">0</span> 条
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button id="prevPage" onclick="changePage(-1)" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-blue-500 hover:text-white hover:border-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                            <i class="fa-solid fa-chevron-left mr-1"></i>上一页
+                        </button>
+                        <div id="pageNumbers" class="flex items-center space-x-1">
+                            <!-- 页码将通过JavaScript动态生成 -->
+                        </div>
+                        <button id="nextPage" onclick="changePage(1)" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-blue-500 hover:text-white hover:border-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                            下一页<i class="fa-solid fa-chevron-right ml-1"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 空状态 -->
+            <div id="emptyState" class="hidden text-center py-16">
+                <div class="inline-block p-6 rounded-3xl bg-gray-50 mb-6">
+                    <i class="fa-solid fa-inbox text-6xl text-gray-300"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-600 mb-2">暂无数据</h3>
+                <p class="text-gray-400">当前没有学生信息</p>
+            </div>
+
+            <!-- 错误状态 -->
+            <div id="errorState" class="hidden text-center py-12">
+                <div class="inline-block p-4 rounded-2xl bg-red-50 mb-4">
+                    <i class="fa-solid fa-triangle-exclamation text-3xl text-red-500"></i>
+                </div>
+                <p class="text-lg font-medium text-red-600">加载数据失败</p>
+                <p id="errorMessage" class="text-sm text-gray-500 mt-2"></p>
+            </div>
+        </div>
+    </main>
+
+    <!-- 编辑用户模态框 -->
+    <div id="editModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl w-full max-w-md shadow-2xl animate-in">
+            <div class="bg-gradient-to-r from-primary to-accent p-6 rounded-t-3xl">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                            <i class="fa-solid fa-user-pen text-white text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-2xl font-bold text-white">编辑用户信息</h3>
+                            <p class="text-sm text-white/80">修改用户的姓名或密码</p>
+                        </div>
+                    </div>
+                    <button onclick="closeEditModal()" class="w-10 h-10 rounded-xl bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-all">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <form id="editForm" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fa-solid fa-id-card mr-2 text-primary"></i>学号
+                    </label>
+                    <input type="text" id="editAccount" readonly 
+                           class="w-full px-4 py-2 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fa-solid fa-user mr-2 text-primary"></i>姓名
+                    </label>
+                    <input type="text" id="editName" required 
+                           class="w-full px-4 py-2 rounded-xl border-2 border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fa-solid fa-building mr-2 text-primary"></i>部门/院系
+                    </label>
+                    <select id="editDept" class="w-full px-4 py-2 rounded-xl border-2 border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all">
+                        <option value="">请选择院系</option>
+                        <option value="计算机学院">计算机学院</option>
+                        <option value="软件学院">软件学院</option>
+                        <option value="信息工程学院">信息工程学院</option>
+                        <option value="电子工程学院">电子工程学院</option>
+                        <option value="机械工程学院">机械工程学院</option>
+                        <option value="材料科学学院">材料科学学院</option>
+                        <option value="经济管理学院">经济管理学院</option>
+                        <option value="外国语学院">外国语学院</option>
+                        <option value="数学与统计学院">数学与统计学院</option>
+                        <option value="物理学院">物理学院</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fa-solid fa-calendar mr-2 text-primary"></i>年级
+                    </label>
+                    <select id="editGrade" class="w-full px-4 py-2 rounded-xl border-2 border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all">
+                        <option value="">请选择年级</option>
+                        <option value="2024级">2024级</option>
+                        <option value="2023级">2023级</option>
+                        <option value="2022级">2022级</option>
+                        <option value="2021级">2021级</option>
+                        <option value="2020级">2020级</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fa-solid fa-graduation-cap mr-2 text-primary"></i>专业
+                    </label>
+                    <select id="editMajor" class="w-full px-4 py-2 rounded-xl border-2 border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all">
+                        <option value="">请选择专业</option>
+                        <option value="计算机科学与技术">计算机科学与技术</option>
+                        <option value="软件工程">软件工程</option>
+                        <option value="网络工程">网络工程</option>
+                        <option value="信息安全">信息安全</option>
+                        <option value="数据科学与大数据技术">数据科学与大数据技术</option>
+                        <option value="人工智能">人工智能</option>
+                        <option value="物联网工程">物联网工程</option>
+                        <option value="电子信息工程">电子信息工程</option>
+                        <option value="通信工程">通信工程</option>
+                        <option value="自动化">自动化</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fa-solid fa-users mr-2 text-primary"></i>班级
+                    </label>
+                    <select id="editClassNum" class="w-full px-4 py-2 rounded-xl border-2 border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all">
+                        <option value="">请选择班级</option>
+                        <option value="01">01班</option>
+                        <option value="02">02班</option>
+                        <option value="03">03班</option>
+                        <option value="04">04班</option>
+                        <option value="05">05班</option>
+                        <option value="06">06班</option>
+                        <option value="07">07班</option>
+                        <option value="08">08班</option>
+                        <option value="09">09班</option>
+                        <option value="10">10班</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fa-solid fa-phone mr-2 text-primary"></i>联系方式
+                    </label>
+                    <input type="text" id="editContact" placeholder="请输入联系方式"
+                           class="w-full px-4 py-2 rounded-xl border-2 border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fa-solid fa-lock mr-2 text-primary"></i>新密码（留空表示不修改）
+                    </label>
+                    <input type="password" id="editPassword" placeholder="留空则不修改密码"
+                           class="w-full px-4 py-2 rounded-xl border-2 border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all">
+                </div>
+                
+                <div id="editMessage" class="hidden p-3 rounded-xl text-sm"></div>
+                
+                <div class="flex gap-3 pt-4">
+                    <button type="submit" 
+                            class="flex-1 py-3 bg-gradient-to-r from-primary to-accent text-white rounded-xl font-semibold hover:shadow-lg transition-all">
+                        <i class="fa-solid fa-save mr-2"></i>保存修改
+                    </button>
+                    <button type="button" onclick="closeEditModal()" 
+                            class="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all">
+                        取消
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let allStudents = []; // 存储所有学生数据
+        let filteredStudents = []; // 存储筛选后的学生数据
+        let currentPage = 1; // 当前页码
+        const itemsPerPage = 15; // 每页显示数量
+
+        // Toast提示函数
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `fixed top-20 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl shadow-lg z-50 transition-opacity ${type === 'success' ? 'bg-primary text-white' : 'bg-red-500 text-white'}`;
+            toast.style.opacity = '1';
+            toast.style.pointerEvents = 'auto';
+            setTimeout(() => { toast.style.opacity = '0'; toast.style.pointerEvents = 'none'; }, 3000);
+        }
+
+        // 加载学生数据
+        async function loadStudents() {
+            const loadingState = document.getElementById('loadingState');
+            const studentTable = document.getElementById('studentTable');
+            const emptyState = document.getElementById('emptyState');
+            const errorState = document.getElementById('errorState');
+
+            // 显示加载状态
+            loadingState.classList.remove('hidden');
+            studentTable.classList.add('hidden');
+            emptyState.classList.add('hidden');
+            errorState.classList.add('hidden');
+
+            try {
+                const response = await fetch('/api/admin/users');
+                const result = await response.json();
+
+                if (!result.success) {
+                    throw new Error(result.message);
+                }
+
+                // 筛选学生数据 (role_type = 1)
+                allStudents = result.data.filter(user => user.role_type === 1);
+
+                if (allStudents.length === 0) {
+                    loadingState.classList.add('hidden');
+                    emptyState.classList.remove('hidden');
+                    return;
+                }
+
+                // 显示表格
+                filteredStudents = allStudents;
+                currentPage = 1;
+                renderStudents();
+                loadingState.classList.add('hidden');
+                studentTable.classList.remove('hidden');
+
+            } catch (error) {
+                console.error('加载学生数据失败:', error);
+                loadingState.classList.add('hidden');
+                errorState.classList.remove('hidden');
+                document.getElementById('errorMessage').textContent = error.message;
+            }
+        }
+
+        // 渲染学生表格
+        function renderStudents() {
+            const tbody = document.getElementById('studentTableBody');
+            const totalCount = document.getElementById('totalCount');
+            
+            totalCount.textContent = filteredStudents.length;
+            tbody.innerHTML = '';
+
+            // 计算当前页的数据范围
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = Math.min(startIndex + itemsPerPage, filteredStudents.length);
+            const pageData = filteredStudents.slice(startIndex, endIndex);
+
+            pageData.forEach((student, index) => {
+                const globalIndex = startIndex + index + 1;
+                const row = document.createElement('tr');
+                row.className = 'table-row border-b border-gray-100';
+                row.innerHTML = `
+                    <td class="px-4 py-4">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                                <span class="text-blue-600 font-bold text-sm">${globalIndex}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-4 py-4">
+                        <span class="font-mono text-sm font-semibold text-gray-700">${student.user_account}</span>
+                    </td>
+                    <td class="px-4 py-4">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center mr-3">
+                                <span class="text-white font-bold text-xs">${student.user_name.charAt(0)}</span>
+                            </div>
+                            <span class="font-medium text-gray-800">${student.user_name}</span>
+                        </div>
+                    </td>
+                    <td class="px-4 py-4">
+                        <span class="text-sm text-gray-700">${student.dept || '-'}</span>
+                    </td>
+                    <td class="px-4 py-4">
+                        <span class="text-sm text-gray-700">${student.grade || '-'}</span>
+                    </td>
+                    <td class="px-4 py-4">
+                        <span class="text-sm text-gray-700">${student.major || '-'}</span>
+                    </td>
+                    <td class="px-4 py-4">
+                        <span class="text-sm text-gray-700">${student.class_num || '-'}</span>
+                    </td>
+                    <td class="px-4 py-4">
+                        <span class="text-sm text-gray-700">${student.contact || '-'}</span>
+                    </td>
+                    <td class="px-4 py-4 text-center">
+                        <button onclick="openEditModal('${student.user_account}', '${student.user_name}', '${student.dept || ''}', '${student.grade || ''}', '${student.major || ''}', '${student.class_num || ''}', '${student.contact || ''}')" 
+                                class="shimmer-btn px-4 py-2 bg-gradient-to-r from-primary to-accent text-white rounded-lg hover:shadow-lg hover:scale-105 transition-all text-sm font-medium">
+                            <i class="fa-solid fa-edit mr-1"></i>编辑
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            // 更新分页控制
+            updatePagination();
+        }
+
+        // 更新分页控制
+        function updatePagination() {
+            const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
+            const startIndex = (currentPage - 1) * itemsPerPage + 1;
+            const endIndex = Math.min(currentPage * itemsPerPage, filteredStudents.length);
+            
+            // 更新显示范围
+            document.getElementById('pageStart').textContent = filteredStudents.length > 0 ? startIndex : 0;
+            document.getElementById('pageEnd').textContent = endIndex;
+            document.getElementById('pageTotal').textContent = filteredStudents.length;
+            
+            // 更新按钮状态
+            document.getElementById('prevPage').disabled = currentPage === 1;
+            document.getElementById('nextPage').disabled = currentPage === totalPages || totalPages === 0;
+            
+            // 生成页码
+            const pageNumbers = document.getElementById('pageNumbers');
+            pageNumbers.innerHTML = '';
+            
+            if (totalPages <= 7) {
+                // 页数少于7页，显示所有页码
+                for (let i = 1; i <= totalPages; i++) {
+                    pageNumbers.appendChild(createPageButton(i));
+                }
+            } else {
+                // 页数多于7页，显示部分页码
+                pageNumbers.appendChild(createPageButton(1));
+                
+                if (currentPage > 3) {
+                    pageNumbers.appendChild(createEllipsis());
+                }
+                
+                let startPage = Math.max(2, currentPage - 1);
+                let endPage = Math.min(totalPages - 1, currentPage + 1);
+                
+                for (let i = startPage; i <= endPage; i++) {
+                    pageNumbers.appendChild(createPageButton(i));
+                }
+                
+                if (currentPage < totalPages - 2) {
+                    pageNumbers.appendChild(createEllipsis());
+                }
+                
+                pageNumbers.appendChild(createPageButton(totalPages));
+            }
+        }
+        
+        // 创建页码按钮
+        function createPageButton(pageNum) {
+            const button = document.createElement('button');
+            button.textContent = pageNum;
+            button.onclick = () => goToPage(pageNum);
+            button.className = pageNum === currentPage
+                ? 'w-10 h-10 rounded-lg bg-blue-500 text-white font-semibold'
+                : 'w-10 h-10 rounded-lg border border-gray-300 text-gray-600 hover:bg-blue-500 hover:text-white hover:border-blue-500 transition-colors';
+            return button;
+        }
+        
+        // 创建省略号
+        function createEllipsis() {
+            const span = document.createElement('span');
+            span.textContent = '...';
+            span.className = 'px-2 text-gray-400';
+            return span;
+        }
+        
+        // 切换页码
+        function changePage(delta) {
+            const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
+            const newPage = currentPage + delta;
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentPage = newPage;
+                renderStudents();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+        
+        // 跳转到指定页
+        function goToPage(pageNum) {
+            currentPage = pageNum;
+            renderStudents();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // 打开编辑模态框
+        function openEditModal(account, name, dept, grade, major, classNum, contact) {
+            document.getElementById('editAccount').value = account;
+            document.getElementById('editName').value = name;
+            document.getElementById('editDept').value = dept || '';
+            document.getElementById('editGrade').value = grade || '';
+            document.getElementById('editMajor').value = major || '';
+            document.getElementById('editClassNum').value = classNum || '';
+            document.getElementById('editContact').value = contact || '';
+            document.getElementById('editPassword').value = '';
+            document.getElementById('editMessage').classList.add('hidden');
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+        
+        // 关闭编辑模态框
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+            document.getElementById('editForm').reset();
+        }
+        
+        // 提交编辑表单
+        document.getElementById('editForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const account = document.getElementById('editAccount').value;
+            const newName = document.getElementById('editName').value.trim();
+            const newDept = document.getElementById('editDept').value.trim();
+            const newGrade = document.getElementById('editGrade').value.trim();
+            const newMajor = document.getElementById('editMajor').value.trim();
+            const newClassNum = document.getElementById('editClassNum').value.trim();
+            const newContact = document.getElementById('editContact').value.trim();
+            const newPassword = document.getElementById('editPassword').value.trim();
+            const messageEl = document.getElementById('editMessage');
+            
+            if (!newName) {
+                messageEl.textContent = '姓名不能为空';
+                messageEl.className = 'p-3 rounded-xl text-sm bg-red-50 text-red-600';
+                messageEl.classList.remove('hidden');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/admin/users/${account}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        new_name: newName,
+                        new_dept: newDept || null,
+                        new_grade: newGrade || null,
+                        new_major: newMajor || null,
+                        new_class_num: newClassNum || null,
+                        new_contact: newContact || null,
+                        new_password: newPassword || null
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showToast('用户信息修改成功', 'success');
+                    closeEditModal();
+                    // 重新加载数据
+                    await loadStudents();
+                } else {
+                    messageEl.textContent = result.message;
+                    messageEl.className = 'p-3 rounded-xl text-sm bg-red-50 text-red-600';
+                    messageEl.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('修改用户信息失败:', error);
+                messageEl.textContent = '网络错误，请重试';
+                messageEl.className = 'p-3 rounded-xl text-sm bg-red-50 text-red-600';
+                messageEl.classList.remove('hidden');
+            }
+        });
+
+        // 搜索功能
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase().trim();
+            
+            if (searchTerm === '') {
+                filteredStudents = allStudents;
+                currentPage = 1;
+                renderStudents();
+                return;
+            }
+
+            filteredStudents = allStudents.filter(student => {
+                return student.user_account.toLowerCase().includes(searchTerm) ||
+                       student.user_name.toLowerCase().includes(searchTerm) ||
+                       (student.dept && student.dept.toLowerCase().includes(searchTerm)) ||
+                       (student.major && student.major.toLowerCase().includes(searchTerm));
+            });
+
+            currentPage = 1;
+            renderStudents();
+        });
+
+        // 页面加载时获取用户信息并加载数据
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const response = await fetch('/api/check_login');
+                const result = await response.json();
+                
+                if (!result.logged_in || result.user_info.role_name !== '管理员') {
+                    window.location.href = '/login';
+                    return;
+                }
+                
+                // 显示用户名
+                document.getElementById('userName').textContent = result.user_info.user_name;
+                
+                // 加载学生数据
+                loadStudents();
+                
+            } catch (error) {
+                console.error('获取用户信息失败:', error);
+                alert('会话已过期，请重新登录');
+                window.location.href = '/login';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理员信息列表 - 学生信息管理系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        :root {
+            --primary: #ef4444;
+            --primary-light: #f87171;
+            --accent: #dc2626;
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px) saturate(180%);
+            box-shadow: 0 8px 32px rgba(239, 68, 68, 0.15), 
+                        0 4px 16px rgba(0, 0, 0, 0.1),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .hover-lift {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .hover-lift:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 60px rgba(239, 68, 68, 0.25),
+                        0 8px 24px rgba(0, 0, 0, 0.15);
+        }
+        
+        .animate-in {
+            animation: slideIn 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .table-row:hover {
+            background-color: #fef2f2;
+        }
+        
+        .shimmer-btn {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .shimmer-btn::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(255, 255, 255, 0.3), 
+                transparent);
+            transition: left 0.5s;
+        }
+        
+        .shimmer-btn:hover::after {
+            left: 100%;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#ef4444',
+                        'primary-light': '#f87171',
+                        accent: '#dc2626',
+                        red: '#ef4444'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gradient-to-br from-red-50 via-rose-50 to-pink-50 min-h-screen">
+    <!-- Toast通知 -->
+    <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl shadow-lg z-50 transition-opacity opacity-0 pointer-events-none"></div>
+
+    <!-- Header -->
+    <header class="glass-card sticky top-0 z-40 border-b border-gray-200">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <a href="/admin" class="flex items-center space-x-2 text-gray-600 hover:text-primary transition-colors">
+                        <i class="fa-solid fa-arrow-left"></i>
+                        <span>返回管理页面</span>
+                    </a>
+                    <div class="h-6 w-px bg-gray-300"></div>
+                    <div>
+                        <h1 class="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                            管理员信息列表
+                        </h1>
+                        <p class="text-sm text-gray-500">查看所有管理员的详细信息</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2 px-4 py-2 rounded-xl bg-red-100">
+                        <i class="fa-solid fa-user-shield text-primary"></i>
+                        <span class="font-medium text-gray-700" id="userName">管理员</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 py-8">
+        <div class="glass-card rounded-3xl p-8 animate-in">
+            <!-- 统计信息 -->
+            <div class="mb-6 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500/20 to-rose-500/10 flex items-center justify-center">
+                        <i class="fa-solid fa-database text-primary text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">共找到</p>
+                        <p class="text-2xl font-bold text-gray-800"><span id="totalCount">0</span> 条记录</p>
+                    </div>
+                </div>
+                
+                <!-- 搜索框 -->
+                <div class="flex items-center space-x-3">
+                    <div class="relative group">
+                        <input type="text" id="searchInput" placeholder="搜索工号、姓名..." 
+                               class="pl-10 pr-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all w-64 hover:border-primary/50">
+                        <i class="fa-solid fa-search absolute left-3 top-3.5 text-gray-400 group-hover:text-primary transition-colors"></i>
+                    </div>
+                    <button onclick="loadAdmins()" class="shimmer-btn px-5 py-2.5 bg-gradient-to-r from-primary via-primary-light to-accent text-white rounded-xl font-semibold hover:shadow-xl hover:scale-105 transition-all">
+                        <i class="fa-solid fa-refresh mr-2"></i>刷新
+                    </button>
+                </div>
+            </div>
+
+            <!-- 加载状态 -->
+            <div id="loadingState" class="text-center py-16">
+                <div class="relative inline-block mb-6">
+                    <div class="absolute inset-0 animate-ping rounded-full bg-primary/30"></div>
+                    <div class="relative p-6 rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 backdrop-blur-sm border border-primary/20">
+                        <i class="fa-solid fa-spinner fa-spin text-4xl text-primary"></i>
+                    </div>
+                </div>
+                <p class="text-lg font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent animate-pulse">正在加载数据...</p>
+                <p class="text-sm text-gray-500 mt-2">请稍候片刻</p>
+            </div>
+
+            <!-- 管理员信息表格 -->
+            <div id="adminTable" class="hidden overflow-x-auto">
+                <div class="overflow-hidden rounded-2xl border border-gray-200 shadow-sm">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="bg-gradient-to-r from-red-100 to-rose-100">
+                                <th class="px-4 py-4 text-left text-sm font-bold text-gray-700">
+                                    <div class="flex items-center">
+                                        <i class="fa-solid fa-hashtag mr-2 text-primary"></i>序号
+                                    </div>
+                                </th>
+                                <th class="px-4 py-4 text-left text-sm font-bold text-gray-700">
+                                    <div class="flex items-center">
+                                        <i class="fa-solid fa-id-card mr-2 text-primary"></i>工号
+                                    </div>
+                                </th>
+                                <th class="px-4 py-4 text-left text-sm font-bold text-gray-700">
+                                    <div class="flex items-center">
+                                        <i class="fa-solid fa-user mr-2 text-primary"></i>姓名
+                                    </div>
+                                </th>
+                                <th class="px-4 py-4 text-center text-sm font-bold text-gray-700">
+                                    <div class="flex items-center justify-center">
+                                        <i class="fa-solid fa-cog mr-2 text-primary"></i>操作
+                                    </div>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminTableBody" class="bg-white divide-y divide-gray-100">
+                            <!-- 数据将通过JavaScript动态填充 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 空状态 -->
+            <div id="emptyState" class="hidden text-center py-16">
+                <div class="inline-block p-6 rounded-3xl bg-gray-50 mb-6">
+                    <i class="fa-solid fa-inbox text-6xl text-gray-300"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-600 mb-2">暂无数据</h3>
+                <p class="text-gray-400">当前没有管理员信息</p>
+            </div>
+
+            <!-- 错误状态 -->
+            <div id="errorState" class="hidden text-center py-12">
+                <div class="inline-block p-4 rounded-2xl bg-red-50 mb-4">
+                    <i class="fa-solid fa-triangle-exclamation text-3xl text-red-500"></i>
+                </div>
+                <p class="text-lg font-medium text-red-600">加载数据失败</p>
+                <p id="errorMessage" class="text-sm text-gray-500 mt-2"></p>
+            </div>
+        </div>
+    </main>
+
+    <!-- 编辑用户模态框 -->
+    <div id="editModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl w-full max-w-md shadow-2xl animate-in">
+            <div class="bg-gradient-to-r from-primary to-accent p-6 rounded-t-3xl">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                            <i class="fa-solid fa-user-pen text-white text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-2xl font-bold text-white">编辑管理员信息</h3>
+                            <p class="text-sm text-white/80">修改管理员的姓名或密码</p>
+                        </div>
+                    </div>
+                    <button onclick="closeEditModal()" class="w-10 h-10 rounded-xl bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-all">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <form id="editForm" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fa-solid fa-id-card mr-2 text-primary"></i>工号
+                    </label>
+                    <input type="text" id="editAccount" readonly 
+                           class="w-full px-4 py-2 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fa-solid fa-user mr-2 text-primary"></i>姓名
+                    </label>
+                    <input type="text" id="editName" required 
+                           class="w-full px-4 py-2 rounded-xl border-2 border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fa-solid fa-lock mr-2 text-primary"></i>新密码（留空表示不修改）
+                    </label>
+                    <input type="password" id="editPassword" placeholder="留空则不修改密码"
+                           class="w-full px-4 py-2 rounded-xl border-2 border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all">
+                </div>
+                
+                <div id="editMessage" class="hidden p-3 rounded-xl text-sm"></div>
+                
+                <div class="flex gap-3 pt-4">
+                    <button type="submit" 
+                            class="flex-1 py-3 bg-gradient-to-r from-primary to-accent text-white rounded-xl font-semibold hover:shadow-lg transition-all">
+                        <i class="fa-solid fa-save mr-2"></i>保存修改
+                    </button>
+                    <button type="button" onclick="closeEditModal()" 
+                            class="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all">
+                        取消
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let allAdmins = []; // 存储所有管理员数据
+
+        // Toast提示函数
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `fixed top-20 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl shadow-lg z-50 transition-opacity ${type === 'success' ? 'bg-primary text-white' : 'bg-red-500 text-white'}`;
+            toast.style.opacity = '1';
+            toast.style.pointerEvents = 'auto';
+            setTimeout(() => { toast.style.opacity = '0'; toast.style.pointerEvents = 'none'; }, 3000);
+        }
+
+        // 加载管理员数据
+        async function loadAdmins() {
+            const loadingState = document.getElementById('loadingState');
+            const adminTable = document.getElementById('adminTable');
+            const emptyState = document.getElementById('emptyState');
+            const errorState = document.getElementById('errorState');
+
+            // 显示加载状态
+            loadingState.classList.remove('hidden');
+            adminTable.classList.add('hidden');
+            emptyState.classList.add('hidden');
+            errorState.classList.add('hidden');
+
+            try {
+                const response = await fetch('/api/admin/users');
+                const result = await response.json();
+
+                if (!result.success) {
+                    throw new Error(result.message);
+                }
+
+                // 筛选管理员数据 (role_type = 4)
+                allAdmins = result.data.filter(user => user.role_type === 4);
+
+                if (allAdmins.length === 0) {
+                    loadingState.classList.add('hidden');
+                    emptyState.classList.remove('hidden');
+                    return;
+                }
+
+                // 显示表格
+                renderAdmins(allAdmins);
+                loadingState.classList.add('hidden');
+                adminTable.classList.remove('hidden');
+
+            } catch (error) {
+                console.error('加载管理员数据失败:', error);
+                loadingState.classList.add('hidden');
+                errorState.classList.remove('hidden');
+                document.getElementById('errorMessage').textContent = error.message;
+            }
+        }
+
+        // 渲染管理员表格
+        function renderAdmins(admins) {
+            const tbody = document.getElementById('adminTableBody');
+            const totalCount = document.getElementById('totalCount');
+            
+            totalCount.textContent = admins.length;
+            tbody.innerHTML = '';
+
+            admins.forEach((admin, index) => {
+                const row = document.createElement('tr');
+                row.className = 'table-row border-b border-gray-100';
+                row.innerHTML = `
+                    <td class="px-4 py-4">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
+                                <span class="text-red-600 font-bold text-sm">${index + 1}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-4 py-4">
+                        <span class="font-mono text-sm font-semibold text-gray-700">${admin.user_account}</span>
+                    </td>
+                    <td class="px-4 py-4">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center mr-3">
+                                <span class="text-white font-bold text-xs">${admin.user_name.charAt(0)}</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="font-medium text-gray-800">${admin.user_name}</span>
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-md animate-pulse">
+                                    <i class="fa-solid fa-shield-halved mr-1"></i>系统保护
+                                </span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-4 py-4 text-center">
+                        <div class="inline-block relative group">
+                            <button disabled
+                                    class="px-4 py-2 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed text-sm font-medium opacity-60">
+                                <i class="fa-solid fa-lock mr-1"></i>不可编辑
+                            </button>
+                            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                                <div class="flex items-center space-x-1">
+                                    <i class="fa-solid fa-info-circle"></i>
+                                    <span>管理员账户受系统保护，不可编辑或删除</span>
+                                </div>
+                                <div class="absolute top-full left-1/2 -translate-x-1/2 -mt-1">
+                                    <div class="border-4 border-transparent border-t-gray-900"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // 打开编辑模态框
+        function openEditModal(account, name) {
+            document.getElementById('editAccount').value = account;
+            document.getElementById('editName').value = name;
+            document.getElementById('editPassword').value = '';
+            document.getElementById('editMessage').classList.add('hidden');
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+        
+        // 关闭编辑模态框
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+            document.getElementById('editForm').reset();
+        }
+        
+        // 提交编辑表单
+        document.getElementById('editForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const account = document.getElementById('editAccount').value;
+            const newName = document.getElementById('editName').value.trim();
+            const newPassword = document.getElementById('editPassword').value.trim();
+            const messageEl = document.getElementById('editMessage');
+            
+            if (!newName) {
+                messageEl.textContent = '姓名不能为空';
+                messageEl.className = 'p-3 rounded-xl text-sm bg-red-50 text-red-600';
+                messageEl.classList.remove('hidden');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/admin/users/${account}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        new_name: newName,
+                        new_password: newPassword || null
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showToast('管理员信息修改成功', 'success');
+                    closeEditModal();
+                    // 重新加载数据
+                    await loadAdmins();
+                } else {
+                    messageEl.textContent = result.message;
+                    messageEl.className = 'p-3 rounded-xl text-sm bg-red-50 text-red-600';
+                    messageEl.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('修改管理员信息失败:', error);
+                messageEl.textContent = '网络错误，请重试';
+                messageEl.className = 'p-3 rounded-xl text-sm bg-red-50 text-red-600';
+                messageEl.classList.remove('hidden');
+            }
+        });
+
+        // 搜索功能
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase().trim();
+            
+            if (searchTerm === '') {
+                renderAdmins(allAdmins);
+                return;
+            }
+
+            const filteredAdmins = allAdmins.filter(admin => {
+                return admin.user_account.toLowerCase().includes(searchTerm) ||
+                       admin.user_name.toLowerCase().includes(searchTerm);
+            });
+
+            renderAdmins(filteredAdmins);
+        });
+
+        // 页面加载时获取用户信息并加载数据
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const response = await fetch('/api/check_login');
+                const result = await response.json();
+                
+                if (!result.logged_in || result.user_info.role_name !== '管理员') {
+                    window.location.href = '/login';
+                    return;
+                }
+                
+                // 显示用户名
+                document.getElementById('userName').textContent = result.user_info.user_name;
+                
+                // 加载管理员数据
+                loadAdmins();
+                
+            } catch (error) {
+                console.error('获取用户信息失败:', error);
+                alert('会话已过期，请重新登录');
+                window.location.href = '/login';
+            }
+        });
+    </script>
+</body>
+</html>

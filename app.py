@@ -110,6 +110,30 @@ def admin_page():
     """管理员页面"""
     return render_template('admin.html', user_info=session['user_info'])
 
+@app.route('/admin/students')
+@login_required(role='管理员')
+def student_list_page():
+    """学生信息列表页面（仅管理员可访问）"""
+    return render_template('student_list.html', user_info=session['user_info'])
+
+@app.route('/admin/teachers')
+@login_required(role='管理员')
+def teacher_list_page():
+    """教师信息列表页面（仅管理员可访问）"""
+    return render_template('teacher_list.html', user_info=session['user_info'])
+
+@app.route('/admin/counselors')
+@login_required(role='管理员')
+def counselor_list_page():
+    """辅导员信息列表页面（仅管理员可访问）"""
+    return render_template('counselor_list.html', user_info=session['user_info'])
+
+@app.route('/admin/admins')
+@login_required(role='管理员')
+def admin_list_page():
+    """管理员信息列表页面（仅管理员可访问）"""
+    return render_template('admin_list.html', user_info=session['user_info'])
+
 @app.route('/student')
 @login_required(role='学生')
 def student_page():
@@ -696,19 +720,450 @@ def get_all_users():
         conn = get_db_connection()
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         cursor.execute("""
-            SELECT '管理员' as role, admin_id as id, admin_name as name FROM admin_info
+            SELECT admin_id as user_account, admin_name as user_name, 4 as role_type,
+                   dept, NULL as dept_id, NULL as grade, NULL as major, NULL as major_code, 
+                   NULL as class_num, NULL as contact, NULL as avatar
+            FROM admin_info
             UNION ALL
-            SELECT '辅导员' as role, counselor_id as id, counselor_name as name FROM counselor_info
+            SELECT counselor_id as user_account, counselor_name as user_name, 2 as role_type,
+                   dept, NULL as dept_id, responsible_grade as grade, responsible_major as major, NULL as major_code,
+                   NULL as class_num, contact, avatar
+            FROM counselor_info
             UNION ALL
-            SELECT '讲师' as role, teacher_id as id, teacher_name as name FROM teacher_info
+            SELECT teacher_id as user_account, teacher_name as user_name, 3 as role_type,
+                   dept, NULL as dept_id, NULL as grade, NULL as major, NULL as major_code,
+                   NULL as class_num, contact, avatar
+            FROM teacher_info
             UNION ALL
-            SELECT '学生' as role, student_id as id, student_name as name FROM student_info
+            SELECT student_id as user_account, student_name as user_name, 1 as role_type,
+                   dept, dept_id, grade, major, major_code, class_num, contact, avatar
+            FROM student_info
         """)
         users = cursor.fetchall()
         conn.close()
         return jsonify({"success": True, "data": users})
     except pymysql.MySQLError as e:
         return jsonify({"success": False, "message": f"查询失败：{str(e)}"})
+
+# 管理员专用接口 - 新增用户
+@app.route('/api/admin/users', methods=['POST'])
+@login_required(role='管理员')
+def add_user():
+    """新增用户（仅管理员）"""
+    try:
+        data = request.json
+        account = data.get('account', '').strip()
+        user_name = data.get('user_name', '').strip()
+        password = data.get('password', '').strip()
+        role_type = data.get('role_type')  # 1=学生，2=辅导员，3=教师，4=管理员
+        
+        if not account or not user_name or not password or not role_type:
+            return jsonify({"success": False, "message": "所有字段都是必填的"})
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 根据角色类型插入到对应的表
+        if role_type == 1:  # 学生
+            if len(account) != 12:
+                return jsonify({"success": False, "message": "学生账号必须是12位"})
+            
+            # 获取学生额外信息
+            dept = data.get('dept', 'SC')  # 默认SC
+            grade = data.get('grade', '2024级')
+            major = data.get('major', '计算机科学与技术')
+            class_num = data.get('class_num', '01')
+            contact = data.get('contact', '')
+            
+            # 生成专业代码（根据专业名称映射）
+            major_code_map = {
+                '计算机科学与技术': '01',
+                '软件工程': '02',
+                '网络工程': '03',
+                '信息安全': '04',
+                '数据科学与大数据技术': '05',
+                '人工智能': '06',
+                '物联网工程': '07',
+                '电子信息工程': '08',
+                '通信工程': '09',
+                '自动化': '10'
+            }
+            major_code = major_code_map.get(major, '01')  # 默认01
+            
+            cursor.execute("""
+                INSERT INTO student_info (student_id, student_name, password, dept, dept_id, grade, major, major_code, class_num, contact)
+                VALUES (%s, %s, %s, %s, 1, %s, %s, %s, %s, %s)
+            """, (account, user_name, password, dept, grade, major, major_code, class_num, contact))
+        elif role_type == 2:  # 辅导员
+            if len(account) != 8:
+                return jsonify({"success": False, "message": "辅导员账号必须是8位"})
+            
+            # 获取辅导员额外信息
+            dept = data.get('dept', '')
+            responsible_grade = data.get('responsible_grade', '')
+            responsible_major = data.get('responsible_major', '')
+            contact = data.get('contact', '')
+            
+            cursor.execute("""
+                INSERT INTO counselor_info (counselor_id, counselor_name, password, dept, responsible_grade, responsible_major, contact)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (account, user_name, password, dept, responsible_grade, responsible_major, contact))
+        elif role_type == 3:  # 教师
+            if len(account) != 9:
+                return jsonify({"success": False, "message": "教师账号必须是9位"})
+            
+            # 获取教师额外信息
+            dept = data.get('dept', '')
+            contact = data.get('contact', '')
+            
+            cursor.execute("""
+                INSERT INTO teacher_info (teacher_id, teacher_name, password, dept, contact)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (account, user_name, password, dept, contact))
+        elif role_type == 4:  # 管理员
+            if len(account) != 4:
+                return jsonify({"success": False, "message": "管理员账号必须是4位"})
+            
+            # 获取管理员额外信息
+            dept = data.get('dept', '')
+            
+            cursor.execute("""
+                INSERT INTO admin_info (admin_id, admin_name, password, dept)
+                VALUES (%s, %s, %s, %s)
+            """, (account, user_name, password, dept))
+        else:
+            return jsonify({"success": False, "message": "无效的角色类型"})
+        
+        conn.commit()
+        conn.close()
+        
+        # 记录操作日志
+        role_map = {1: 'student', 2: 'counselor', 3: 'teacher', 4: 'admin'}
+        role_name_map = {1: '学生', 2: '辅导员', 3: '教师', 4: '管理员'}
+        details = f"新增{role_name_map.get(role_type, '用户')}：{user_name}"
+        
+        print(f"[DEBUG] 准备记录日志 - 账号:{account}, 姓名:{user_name}, 角色:{role_map.get(role_type)}")
+        log_admin_operation(
+            operation_type='ADD',
+            target_account=account,
+            target_name=user_name,
+            target_role=role_map.get(role_type, 'unknown'),
+            details=details,
+            status='SUCCESS'
+        )
+        print(f"[DEBUG] 日志记录完成")
+        
+        return jsonify({"success": True, "message": "用户添加成功"})
+        
+    except pymysql.IntegrityError:
+        # 记录失败日志
+        role_map = {1: 'student', 2: 'counselor', 3: 'teacher', 4: 'admin'}
+        log_admin_operation(
+            operation_type='ADD',
+            target_account=account,
+            target_name=user_name,
+            target_role=role_map.get(role_type, 'unknown'),
+            details=f"尝试新增用户：{user_name}",
+            status='FAILED',
+            error_msg='该账号已存在'
+        )
+        return jsonify({"success": False, "message": "该账号已存在"})
+    except Exception as e:
+        # 记录失败日志
+        role_map = {1: 'student', 2: 'counselor', 3: 'teacher', 4: 'admin'}
+        log_admin_operation(
+            operation_type='ADD',
+            target_account=account if 'account' in locals() else 'unknown',
+            target_name=user_name if 'user_name' in locals() else 'unknown',
+            target_role=role_map.get(role_type, 'unknown') if 'role_type' in locals() else 'unknown',
+            details=f"尝试新增用户失败",
+            status='FAILED',
+            error_msg=str(e)
+        )
+        return jsonify({"success": False, "message": f"添加失败：{str(e)}"})
+
+# 管理员专用接口 - 修改用户
+@app.route('/api/admin/users/<account>', methods=['PUT'])
+@login_required(role='管理员')
+def update_user(account):
+    """修改用户信息（仅管理员）"""
+    try:
+        # 检查是否为管理员账户（4位账号）
+        if len(account) == 4:
+            return jsonify({"success": False, "message": "🛡️ 系统保护：管理员账户不可编辑！"})
+        
+        data = request.json
+        new_name = (data.get('new_name') or '').strip()
+        new_password = (data.get('new_password') or '').strip()
+        new_contact = (data.get('new_contact') or '').strip()
+        new_role = data.get('new_role')
+        new_dept = (data.get('new_dept') or '').strip()
+        new_grade = (data.get('new_grade') or '').strip()
+        new_major = (data.get('new_major') or '').strip()
+        new_class_num = (data.get('new_class_num') or '').strip()
+        
+        if not new_name and not new_password and not new_contact and not new_role and not new_dept and not new_grade and not new_major and not new_class_num:
+            return jsonify({"success": False, "message": "至少需要提供一个要修改的字段"})
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 首先确定用户在哪个表中
+        tables = [
+            ('student_info', 'student_id', 'student_name', 1),
+            ('counselor_info', 'counselor_id', 'counselor_name', 2),
+            ('teacher_info', 'teacher_id', 'teacher_name', 3),
+            ('admin_info', 'admin_id', 'admin_name', 4)
+        ]
+        
+        user_found = False
+        current_role = None
+        
+        for table, id_col, name_col, role in tables:
+            cursor.execute(f"SELECT {id_col} FROM {table} WHERE {id_col} = %s", (account,))
+            if cursor.fetchone():
+                user_found = True
+                current_role = role
+                
+                # 如果需要修改角色且角色不同，需要先删除再插入
+                if new_role and new_role != current_role:
+                    # 获取当前用户信息
+                    cursor.execute(f"SELECT {name_col}, password FROM {table} WHERE {id_col} = %s", (account,))
+                    user_info = cursor.fetchone()
+                    old_name = user_info[0]
+                    old_password = user_info[1]
+                    
+                    # 删除旧记录
+                    cursor.execute(f"DELETE FROM {table} WHERE {id_col} = %s", (account,))
+                    
+                    # 插入到新表
+                    new_table_info = tables[new_role - 1]
+                    new_table = new_table_info[0]
+                    new_id_col = new_table_info[1]
+                    new_name_col = new_table_info[2]
+                    
+                    final_name = new_name if new_name else old_name
+                    final_password = new_password if new_password else old_password
+                    
+                    cursor.execute(f"""
+                        INSERT INTO {new_table} ({new_id_col}, {new_name_col}, password)
+                        VALUES (%s, %s, %s)
+                    """, (account, final_name, final_password))
+                else:
+                    # 只修改名称、密码和/或联系方式
+                    updates = []
+                    params = []
+                    
+                    if new_name:
+                        updates.append(f"{name_col} = %s")
+                        params.append(new_name)
+                    if new_password:
+                        updates.append("password = %s")
+                        params.append(new_password)
+                    if new_contact and table != 'admin_info':  # 管理员表没有contact字段
+                        updates.append("contact = %s")
+                        params.append(new_contact)
+                    
+                    # 如果是学生表，还可以修改部门、年级、专业、班级
+                    if table == 'student_info':
+                        if new_dept:
+                            updates.append("dept = %s")
+                            params.append(new_dept)
+                        if new_grade:
+                            updates.append("grade = %s")
+                            params.append(new_grade)
+                        if new_major:
+                            updates.append("major = %s")
+                            params.append(new_major)
+                            # 同时更新专业代码
+                            major_code_map = {
+                                '计算机科学与技术': '01',
+                                '软件工程': '02',
+                                '网络工程': '03',
+                                '信息安全': '04',
+                                '数据科学与大数据技术': '05',
+                                '人工智能': '06',
+                                '物联网工程': '07',
+                                '电子信息工程': '08',
+                                '通信工程': '09',
+                                '自动化': '10'
+                            }
+                            major_code = major_code_map.get(new_major, '01')
+                            updates.append("major_code = %s")
+                            params.append(major_code)
+                        if new_class_num:
+                            updates.append("class_num = %s")
+                            params.append(new_class_num)
+                    
+                    # 如果是教师表，可以修改部门
+                    if table == 'teacher_info':
+                        if new_dept:
+                            updates.append("dept = %s")
+                            params.append(new_dept)
+                    
+                    # 如果是辅导员表，可以修改部门、负责年级、负责专业
+                    if table == 'counselor_info':
+                        if new_dept:
+                            updates.append("dept = %s")
+                            params.append(new_dept)
+                        if new_grade:
+                            updates.append("responsible_grade = %s")
+                            params.append(new_grade)
+                        if new_major:
+                            updates.append("responsible_major = %s")
+                            params.append(new_major)
+                    
+                    if updates:
+                        params.append(account)
+                        cursor.execute(f"UPDATE {table} SET {', '.join(updates)} WHERE {id_col} = %s", params)
+                
+                break
+        
+        if not user_found:
+            conn.close()
+            # 记录失败日志
+            log_admin_operation(
+                operation_type='UPDATE',
+                target_account=account,
+                target_name='unknown',
+                target_role='unknown',
+                details=f"尝试修改用户：{account}",
+                status='FAILED',
+                error_msg='用户不存在'
+            )
+            return jsonify({"success": False, "message": "用户不存在"})
+        
+        conn.commit()
+        conn.close()
+        
+        # 记录成功日志
+        role_map = {1: 'student', 2: 'counselor', 3: 'teacher', 4: 'admin'}
+        role_name_map = {1: '学生', 2: '辅导员', 3: '教师', 4: '管理员'}
+        update_details = []
+        if new_name: update_details.append(f"姓名→{new_name}")
+        if new_password: update_details.append("密码已更新")
+        if new_contact: update_details.append(f"联系方式→{new_contact}")
+        if new_dept: update_details.append(f"部门→{new_dept}")
+        if new_grade: update_details.append(f"年级→{new_grade}")
+        if new_major: update_details.append(f"专业→{new_major}")
+        if new_class_num: update_details.append(f"班级→{new_class_num}")
+        if new_role: update_details.append(f"角色变更→{role_name_map.get(new_role, '未知')}")
+        
+        details = f"修改{role_name_map.get(current_role, '用户')}信息：" + "，".join(update_details)
+        log_admin_operation(
+            operation_type='UPDATE',
+            target_account=account,
+            target_name=new_name if new_name else 'unknown',
+            target_role=role_map.get(current_role, 'unknown'),
+            details=details,
+            status='SUCCESS'
+        )
+        
+        return jsonify({"success": True, "message": "用户信息修改成功"})
+        
+    except Exception as e:
+        # 记录失败日志
+        log_admin_operation(
+            operation_type='UPDATE',
+            target_account=account if 'account' in locals() else 'unknown',
+            target_name='unknown',
+            target_role='unknown',
+            details=f"尝试修改用户失败",
+            status='FAILED',
+            error_msg=str(e)
+        )
+        return jsonify({"success": False, "message": f"修改失败：{str(e)}"})
+
+# 管理员专用接口 - 删除用户
+@app.route('/api/admin/users/<account>', methods=['DELETE'])
+@login_required(role='管理员')
+def delete_user(account):
+    """删除用户（仅管理员）"""
+    try:
+        # 检查是否为管理员账户（4位账号）
+        if len(account) == 4:
+            # 记录失败日志
+            log_admin_operation(
+                operation_type='DELETE',
+                target_account=account,
+                target_name='unknown',
+                target_role='admin',
+                details=f"尝试删除管理员账户：{account}",
+                status='FAILED',
+                error_msg='管理员账户受系统保护，不可删除'
+            )
+            return jsonify({"success": False, "message": "⚠️ 系统保护：管理员账户不可删除！❌"})
+        
+        conn = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        # 尝试从所有表中删除，先获取用户信息
+        tables = [
+            ('student_info', 'student_id', 'student_name', 1, 'student'),
+            ('counselor_info', 'counselor_id', 'counselor_name', 2, 'counselor'),
+            ('teacher_info', 'teacher_id', 'teacher_name', 3, 'teacher'),
+            ('admin_info', 'admin_id', 'admin_name', 4, 'admin')
+        ]
+        
+        deleted = False
+        deleted_user_name = 'unknown'
+        deleted_user_role = 'unknown'
+        role_name_map = {1: '学生', 2: '辅导员', 3: '教师', 4: '管理员'}
+        
+        for table, id_col, name_col, role_type, role_str in tables:
+            # 先查询用户信息
+            cursor.execute(f"SELECT {name_col} FROM {table} WHERE {id_col} = %s", (account,))
+            user_info = cursor.fetchone()
+            
+            if user_info:
+                deleted_user_name = user_info[name_col]
+                deleted_user_role = role_str
+                
+                # 删除用户
+                cursor.execute(f"DELETE FROM {table} WHERE {id_col} = %s", (account,))
+                if cursor.rowcount > 0:
+                    deleted = True
+                    # 记录成功日志
+                    log_admin_operation(
+                        operation_type='DELETE',
+                        target_account=account,
+                        target_name=deleted_user_name,
+                        target_role=deleted_user_role,
+                        details=f"删除{role_name_map.get(role_type, '用户')}：{deleted_user_name}（账号：{account}）",
+                        status='SUCCESS'
+                    )
+                    break
+        
+        if not deleted:
+            conn.close()
+            # 记录失败日志
+            log_admin_operation(
+                operation_type='DELETE',
+                target_account=account,
+                target_name='unknown',
+                target_role='unknown',
+                details=f"尝试删除用户：{account}",
+                status='FAILED',
+                error_msg='用户不存在'
+            )
+            return jsonify({"success": False, "message": "用户不存在"})
+        
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True, "message": "用户删除成功"})
+        
+    except Exception as e:
+        # 记录失败日志
+        log_admin_operation(
+            operation_type='DELETE',
+            target_account=account if 'account' in locals() else 'unknown',
+            target_name='unknown',
+            target_role='unknown',
+            details=f"尝试删除用户失败",
+            status='FAILED',
+            error_msg=str(e)
+        )
+        return jsonify({"success": False, "message": f"删除失败：{str(e)}"})
 
 # 教师获取请假记录接口
 @app.route('/api/teacher/leave_requests', methods=['GET'])
@@ -2647,6 +3102,100 @@ def update_counselor_contact():
         
     except Exception as e:
         return jsonify({"success": False, "message": f"更新失败: {str(e)}"})
+
+# 管理员专用接口 - 获取操作日志
+@app.route('/api/admin/operation-logs', methods=['GET'])
+@login_required(role='管理员')
+def get_operation_logs():
+    """获取管理员操作日志（仅管理员）"""
+    try:
+        # 获取筛选参数
+        operation_type = request.args.get('operation_type', '')
+        user_role = request.args.get('user_role', '')
+        time_range = request.args.get('time_range', 'all')
+        
+        # 基础查询
+        query = "SELECT * FROM admin_operation_logs WHERE 1=1"
+        params = []
+        
+        # 添加操作类型筛选
+        if operation_type:
+            query += " AND operation_type = %s"
+            params.append(operation_type)
+        
+        # 添加用户角色筛选
+        if user_role:
+            query += " AND target_user_role = %s"
+            params.append(user_role)
+        
+        # 添加时间范围筛选
+        if time_range == 'today':
+            query += " AND DATE(operation_time) = CURDATE()"
+        elif time_range == 'week':
+            query += " AND operation_time >= DATE_SUB(NOW(), INTERVAL 7 DAY)"
+        elif time_range == 'month':
+            query += " AND operation_time >= DATE_SUB(NOW(), INTERVAL 30 DAY)"
+        
+        # 按时间倒序排列
+        query += " ORDER BY operation_time DESC LIMIT 1000"
+        
+        conn = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        cursor.execute(query, params)
+        logs = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        
+        # 转换datetime为字符串
+        for log in logs:
+            if log.get('operation_time'):
+                log['operation_time'] = log['operation_time'].strftime('%Y-%m-%d %H:%M:%S')
+        
+        return jsonify({"success": True, "data": logs})
+        
+    except Exception as e:
+        print(f"获取日志失败详情: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "message": f"获取日志失败：{str(e)}", "data": []})
+
+# 管理员专用接口 - 记录操作日志（辅助函数）
+def log_admin_operation(operation_type, target_account=None, target_name=None, target_role=None, details=None, status='SUCCESS', error_msg=None):
+    """记录管理员操作日志"""
+    try:
+        # 获取当前登录的管理员信息
+        admin_account = session.get('user_info', {}).get('user_account', 'unknown')
+        admin_name = session.get('user_info', {}).get('user_name', 'unknown')
+        
+        print(f"[LOG] 开始记录日志 - 管理员:{admin_name}({admin_account}), 操作:{operation_type}, 目标:{target_name}({target_account}), 角色:{target_role}")
+        
+        # 获取客户端IP
+        ip_address = request.remote_addr
+        
+        # 创建新的数据库连接
+        print(f"[LOG] 正在连接数据库...")
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        print(f"[LOG] 正在执行INSERT语句...")
+        cursor.execute("""
+            INSERT INTO admin_operation_logs 
+            (admin_account, admin_name, operation_type, target_user_account, target_user_name, 
+             target_user_role, operation_details, ip_address, status, error_message)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (admin_account, admin_name, operation_type, target_account, target_name, 
+              target_role, details, ip_address, status, error_msg))
+        
+        print(f"[LOG] 正在提交事务...")
+        conn.commit()
+        cursor.close()
+        conn.close()
+        print(f"[LOG] ✓ 日志记录成功！")
+    except Exception as e:
+        print(f"[LOG] ✗ 记录操作日志失败: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        # 日志记录失败不影响主业务
 
 # 启动应用
 if __name__ == '__main__':

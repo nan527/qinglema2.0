@@ -1,370 +1,1127 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>管理员操作中心</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        body {
-            background-color: #f5f7fa;
-            color: #333;
-        }
-        
-        .header {
-            background-color: #165DFF;
-            color: white;
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        }
-        
-        .logo {
-            font-size: 1.5rem;
-            font-weight: bold;
-        }
-        
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-        
-        .logout-btn {
-            background-color: rgba(255, 255, 255, 0.2);
-            border: none;
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        
-        .logout-btn:hover {
-            background-color: rgba(255, 255, 255, 0.3);
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-        }
-        
-        .page-title {
-            margin-bottom: 2rem;
-            color: #165DFF;
-            border-bottom: 2px solid #165DFF;
-            padding-bottom: 0.5rem;
-        }
-        
-        .menu-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 1.5rem;
-        }
-        
-        .menu-card {
-            background-color: white;
-            border-radius: 8px;
-            padding: 1.5rem;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            transition: transform 0.3s, box-shadow 0.3s;
-            cursor: pointer;
-            text-align: center;
-        }
-        
-        .menu-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-        }
-        
-        .menu-icon {
-            font-size: 2rem;
-            color: #165DFF;
-            margin-bottom: 1rem;
-        }
-        
-        .menu-title {
-            font-size: 1.2rem;
-            font-weight: 500;
-        }
-        
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        
-        .modal-content {
-            background-color: white;
-            padding: 2rem;
-            border-radius: 8px;
-            width: 100%;
-            max-width: 600px;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-        
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .close-btn {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: #666;
-        }
-        
-        .footer {
-            text-align: center;
-            margin-top: 3rem;
-            padding: 1rem;
-            color: #666;
-            font-size: 0.9rem;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理员操作中心 - 学生信息管理系统</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-        /* 表格样式 */
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1rem;
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#165DFF',
+            'primary-light': '#4080FF',
+            'primary-dark': '#0E42D2',
+            accent: '#00D4FF',
+            surface: '#F0F5FF',
+            success: '#10B981',
+            warning: '#F59E0B',
+            danger: '#EF4444'
+          },
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          animation: {
+            'float': 'float 6s ease-in-out infinite',
+            'glow': 'glow 2s ease-in-out infinite alternate',
+            'slide-up': 'slideUp 0.5s ease-out',
+            'fade-in': 'fadeIn 0.6s ease-out',
+            'scaleIn': 'scaleIn 0.3s ease-out'
+          }
         }
-        
-        .data-table th, .data-table td {
-            padding: 0.8rem;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .data-table th {
-            background-color: #f5f7fa;
-            font-weight: 500;
-        }
-        
-        .data-table tr:hover {
-            background-color: #f9f9f9;
-        }
+      }
+    };
+  </script>
 
-        /* 表单样式 */
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-            color: #555;
-        }
-        
-        .form-control {
-            width: 100%;
-            padding: 0.7rem;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 1rem;
-        }
-        
-        .form-control:focus {
-            outline: none;
-            border-color: #165DFF;
-            box-shadow: 0 0 0 2px rgba(22, 93, 255, 0.2);
-        }
-        
-        .btn {
-            padding: 0.7rem 1.2rem;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: background-color 0.3s;
-        }
-        
-        .btn-primary {
-            background-color: #165DFF;
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background-color: #0E42D2;
-        }
-        
-        .btn-danger {
-            background-color: #f5222d;
-            color: white;
-        }
-        
-        .btn-danger:hover {
-            background-color: #d91e2a;
-        }
-        
-        .btn-group {
-            margin-top: 1.5rem;
-            display: flex;
-            gap: 1rem;
-        }
-
-        /* 消息提示样式 */
-        .message {
-            padding: 0.8rem;
-            border-radius: 4px;
-            margin-bottom: 1rem;
-            display: none;
-        }
-        
-        .message-success {
-            background-color: #f6ffed;
-            color: #52c41a;
-            display: block;
-        }
-        
-        .message-error {
-            background-color: #fff1f0;
-            color: #cf1322;
-            display: block;
-        }
-    </style>
+  <style>
+    /* 动态粒子背景 */
+    body {
+      position: relative;
+      overflow-x: hidden;
+    }
+    
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(circle at 20% 30%, rgba(22, 93, 255, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 80% 70%, rgba(0, 212, 255, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 40% 80%, rgba(22, 93, 255, 0.1) 0%, transparent 40%),
+        radial-gradient(circle at 90% 20%, rgba(0, 212, 255, 0.1) 0%, transparent 40%);
+      animation: gradientShift 20s ease infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+    
+    @keyframes gradientShift {
+      0%, 100% { opacity: 1; transform: scale(1) rotate(0deg); }
+      50% { opacity: 0.8; transform: scale(1.1) rotate(5deg); }
+    }
+    
+    /* 发光文字效果 */
+    .glow-text {
+      text-shadow: 
+        0 0 10px rgba(22, 93, 255, 0.5),
+        0 0 20px rgba(22, 93, 255, 0.3),
+        0 0 30px rgba(22, 93, 255, 0.2);
+      animation: textGlow 3s ease-in-out infinite;
+    }
+    
+    @keyframes textGlow {
+      0%, 100% { 
+        text-shadow: 
+          0 0 10px rgba(22, 93, 255, 0.5),
+          0 0 20px rgba(22, 93, 255, 0.3),
+          0 0 30px rgba(22, 93, 255, 0.2);
+      }
+      50% { 
+        text-shadow: 
+          0 0 20px rgba(22, 93, 255, 0.8),
+          0 0 30px rgba(22, 93, 255, 0.5),
+          0 0 40px rgba(22, 93, 255, 0.3);
+      }
+    }
+    
+    @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
+    @keyframes glow { from { box-shadow: 0 0 20px rgba(22, 93, 255, 0.2); } to { box-shadow: 0 0 30px rgba(22, 93, 255, 0.4); } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(30px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+    @keyframes scaleIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+    @keyframes pulse-subtle { 
+      0%, 100% { transform: scale(1); opacity: 1; } 
+      50% { transform: scale(1.05); opacity: 0.9; } 
+    }
+    @keyframes bounce-gentle { 
+      0%, 100% { transform: translateY(0); } 
+      50% { transform: translateY(-5px); } 
+    }
+    
+    /* 流光边框效果 */
+    @keyframes borderFlow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    
+    /* 3D透视效果 */
+    .card-3d {
+      transform-style: preserve-3d;
+      perspective: 1000px;
+    }
+    
+    .card-3d:hover {
+      transform: rotateX(2deg) rotateY(-2deg) scale(1.02);
+    }
+    
+    .glass-card { 
+      background: rgba(255, 255, 255, 0.95); 
+      backdrop-filter: blur(30px) saturate(180%); 
+      -webkit-backdrop-filter: blur(30px) saturate(180%); 
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      box-shadow: 0 8px 32px rgba(22, 93, 255, 0.12), 
+                  0 4px 16px rgba(0, 0, 0, 0.08),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    }
+    .glass-nav { 
+      background: rgba(255, 255, 255, 0.9); 
+      backdrop-filter: blur(25px) saturate(180%); 
+      -webkit-backdrop-filter: blur(25px) saturate(180%);
+      box-shadow: 0 4px 24px rgba(22, 93, 255, 0.08);
+    }
+    .gradient-border { 
+      position: relative; 
+      background: linear-gradient(135deg, rgba(22,93,255,0.08), rgba(0,212,255,0.08)); 
+    }
+    .gradient-border::before { 
+      content: ''; 
+      position: absolute; 
+      inset: 0; 
+      border-radius: inherit; 
+      padding: 1px; 
+      background: linear-gradient(135deg, #165DFF, #00D4FF); 
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); 
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); 
+      -webkit-mask-composite: xor; 
+      mask-composite: exclude; 
+    }
+    .shimmer { 
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent); 
+      background-size: 200% 100%; 
+      animation: shimmer 2s infinite; 
+    }
+    .hover-lift { 
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); 
+      position: relative;
+    }
+    .hover-lift:hover { 
+      transform: translateY(-8px) scale(1.02); 
+      box-shadow: 0 24px 48px rgba(22, 93, 255, 0.2),
+                  0 12px 24px rgba(0, 0, 0, 0.12); 
+    }
+    .hover-lift::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      opacity: 0;
+      background: linear-gradient(135deg, rgba(22, 93, 255, 0.1), rgba(0, 212, 255, 0.1));
+      transition: opacity 0.5s;
+    }
+    .hover-lift:hover::after {
+      opacity: 1;
+    }
+    .btn-glow { position: relative; overflow: hidden; }
+    .btn-glow::after { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent); transform: rotate(45deg); transition: all 0.6s; opacity: 0; }
+    .btn-glow:hover::after { animation: shimmer 1.5s; opacity: 1; }
+    .animate-in { animation: slideUp 0.5s ease-out forwards; }
+    .animate-scaleIn { animation: scaleIn 0.3s ease-out; }
+    .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
+    .mesh-gradient { background: radial-gradient(at 40% 20%, rgba(22, 93, 255, 0.08) 0px, transparent 50%), radial-gradient(at 80% 0%, rgba(0, 212, 255, 0.08) 0px, transparent 50%), radial-gradient(at 0% 50%, rgba(22, 93, 255, 0.05) 0px, transparent 50%), radial-gradient(at 80% 50%, rgba(0, 212, 255, 0.05) 0px, transparent 50%), radial-gradient(at 0% 100%, rgba(22, 93, 255, 0.08) 0px, transparent 50%), linear-gradient(180deg, #F0F5FF 0%, #E6F0FF 100%); }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #165DFF, #00D4FF); border-radius: 10px; }
+    .text-gradient { background: linear-gradient(135deg, #165DFF, #0E42D2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    
+    /* Form styles */
+    .form-group { margin-bottom: 1.25rem; }
+    .form-group label { display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem; }
+    .form-group small { font-size: 0.75rem; color: #6B7280; margin-top: 0.25rem; display: block; }
+    .form-control { width: 100%; padding: 0.75rem 1rem; border-radius: 0.75rem; border: 1px solid #E5E7EB; background-color: white; transition: all 0.3s; }
+    .form-control:focus { outline: none; border-color: #165DFF; box-shadow: 0 0 0 3px rgba(22, 93, 255, 0.1); }
+    
+    /* Button styles */
+    .btn { 
+      padding: 0.75rem 1.25rem; 
+      border: none; 
+      border-radius: 0.75rem; 
+      cursor: pointer; 
+      font-weight: 500; 
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
+      position: relative;
+      overflow: hidden;
+    }
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.3);
+      transform: translate(-50%, -50%);
+      transition: width 0.6s, height 0.6s;
+    }
+    .btn:hover::before {
+      width: 300px;
+      height: 300px;
+    }
+    .btn-primary { 
+      background: linear-gradient(135deg, #165DFF, #00D4FF); 
+      color: white; 
+      box-shadow: 0 4px 12px rgba(22, 93, 255, 0.3),
+                  0 2px 4px rgba(22, 93, 255, 0.2); 
+    }
+    .btn-primary:hover { 
+      box-shadow: 0 8px 24px rgba(22, 93, 255, 0.4),
+                  0 4px 8px rgba(22, 93, 255, 0.3); 
+      transform: translateY(-2px) scale(1.02); 
+    }
+    .btn-danger { 
+      background: linear-gradient(135deg, #EF4444, #DC2626); 
+      color: white; 
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3),
+                  0 2px 4px rgba(239, 68, 68, 0.2); 
+    }
+    .btn-danger:hover { 
+      box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4),
+                  0 4px 8px rgba(239, 68, 68, 0.3); 
+      transform: translateY(-2px) scale(1.02); 
+    }
+    .btn-group { margin-top: 1.5rem; display: flex; gap: 0.75rem; }
+    
+    /* Table styles */
+    .data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+    .data-table thead th { background: linear-gradient(135deg, #F0F5FF, #E6F0FF); padding: 1rem; text-align: left; font-weight: 600; color: #165DFF; border-bottom: 2px solid #165DFF; }
+    .data-table thead th:first-child { border-top-left-radius: 0.75rem; }
+    .data-table thead th:last-child { border-top-right-radius: 0.75rem; }
+    .data-table tbody td { padding: 0.875rem 1rem; border-bottom: 1px solid #E5E7EB; color: #374151; }
+    .data-table tbody tr:hover { background-color: #F9FAFB; }
+    .data-table tbody tr:last-child td:first-child { border-bottom-left-radius: 0.75rem; }
+    .data-table tbody tr:last-child td:last-child { border-bottom-right-radius: 0.75rem; }
+    
+    /* Message styles */
+    .message { padding: 0.75rem 1rem; border-radius: 0.75rem; margin-bottom: 1rem; display: none; }
+    .message-success { display: block; background-color: #D1FAE5; color: #065F46; border: 1px solid #A7F3D0; }
+    .message-error { display: block; background-color: #FEE2E2; color: #991B1B; border: 1px solid #FECACA; }
+    .text-danger { color: #EF4444; font-size: 0.875rem; margin-top: 0.5rem; }
+    
+    /* Page content styles */
+    .page-content.hidden { display: none; }
+  </style>
 </head>
-<body>
-    <header class="header">
-        <div class="logo">学生信息管理系统</div>
-        <div class="user-info">
-            <span id="userName"></span>
-            <button class="logout-btn" id="logoutBtn">退出登录</button>
-        </div>
-    </header>
-    
-    <div class="container">
-        <h2 class="page-title">管理员操作中心</h2>
-        
-        <div class="menu-grid">
-            <div class="menu-card" data-action="view-students">
-                <div class="menu-icon">🎓</div>
-                <div class="menu-title">查看学生信息</div>
-            </div>
-            <div class="menu-card" data-action="view-teachers">
-                <div class="menu-icon">👨‍🏫</div>
-                <div class="menu-title">查看教师信息</div>
-            </div>
-            <div class="menu-card" data-action="view-counselors">
-                <div class="menu-icon">👨‍💼</div>
-                <div class="menu-title">查看辅导员信息</div>
-            </div>
-            <div class="menu-card" data-action="view-admins">
-                <div class="menu-icon">🔑</div>
-                <div class="menu-title">查看管理员信息</div>
-            </div>
-            <div class="menu-card" data-action="add-user">
-                <div class="menu-icon">➕</div>
-                <div class="menu-title">新增用户</div>
-            </div>
-            <div class="menu-card" data-action="update-user">
-                <div class="menu-icon">✏️</div>
-                <div class="menu-title">修改用户信息</div>
-            </div>
-            <div class="menu-card" data-action="delete-user">
-                <div class="menu-icon">🗑️</div>
-                <div class="menu-title">删除用户</div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- 操作模态框 -->
-    <div class="modal" id="actionModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="modalTitle">操作窗口</h3>
-                <button class="close-btn" id="closeModal">&times;</button>
-            </div>
-            <div id="modalBody">
-                <!-- 这里将根据选择的操作动态加载内容 -->
-                加载中...
-            </div>
-        </div>
-    </div>
-    
-    <footer class="footer">
-        学生信息管理系统 &copy; 2023
-    </footer>
+<body class="font-sans mesh-gradient min-h-screen text-gray-700">
+  <!-- Toast提示 -->
+  <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl shadow-lg z-50 transition-opacity opacity-0 pointer-events-none"></div>
 
-    <script>
-        // 页面加载时获取用户信息
-        document.addEventListener('DOMContentLoaded', async function() {
-            try {
-                const response = await fetch('/api/check_login');
-                const result = await response.json();
+  <!-- 顶部导航 -->
+  <header class="glass-nav sticky top-0 z-50 border-b border-white/50 shadow-lg shadow-primary/5">
+    <div class="container mx-auto px-6 py-3">
+      <div class="flex justify-between items-center">
+        <!-- Logo区域 -->
+        <div class="flex items-center space-x-4">
+          <div class="relative group">
+            <div class="absolute -inset-1 bg-gradient-to-r from-primary via-accent to-primary-light rounded-2xl blur opacity-40 group-hover:opacity-70 transition duration-500"></div>
+            <div class="relative w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-xl">
+              <i class="fa-solid fa-user-shield text-white text-xl"></i>
+            </div>
+          </div>
+          <div>
+            <h1 class="text-xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">管理员操作中心</h1>
+            <p class="text-xs text-gray-400 font-medium tracking-wide">ADMIN PORTAL</p>
+          </div>
+        </div>
+        
+        <!-- 导航菜单 -->
+        <nav class="hidden md:flex items-center bg-white/50 rounded-2xl p-1.5 shadow-inner">
+          <button onclick="switchTab('management')" id="tab-management" class="nav-tab px-5 py-2.5 rounded-xl text-primary bg-white shadow-md text-sm font-medium flex items-center space-x-2">
+            <i class="fa-solid fa-users-gear"></i><span>用户管理</span>
+          </button>
+          <button onclick="switchTab('logs')" id="tab-logs" class="nav-tab px-5 py-2.5 rounded-xl text-gray-600 hover:text-primary hover:bg-white hover:shadow-md transition-all duration-300 text-sm font-medium flex items-center space-x-2">
+            <i class="fa-solid fa-clipboard-list"></i><span>工作记录</span>
+          </button>
+
+          <button onclick="switchTab('profile')" id="tab-profile" class="nav-tab px-5 py-2.5 rounded-xl text-gray-600 hover:text-primary hover:bg-white hover:shadow-md transition-all duration-300 text-sm font-medium flex items-center space-x-2">
+
+            <i class="fa-solid fa-user-gear"></i><span>个人信息</span>
+
+          </button>
+
+        </nav>
+
+        <!-- 用户信息 -->
+
+        <div class="flex items-center space-x-3">
+
+          <div onclick="switchTab('profile')" class="flex items-center space-x-3 px-4 py-2 rounded-2xl glass-card hover-lift group cursor-pointer transition-all hover:scale-105" title="点击查看个人信息">
+
+            <div class="relative">
+
+              <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:shadow-xl transition-all">
+
+                A
+
+              </div>
+
+              <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
+
+            </div>
+
+            <div class="hidden sm:block">
+
+              <p id="userName" class="text-sm font-bold text-gray-800 group-hover:text-primary transition-colors">管理员</p>
+
+              <p class="text-xs text-primary font-medium">管理员</p>
+
+            </div>
+
+          </div>
+
+          <button id="logoutBtn" class="w-10 h-10 rounded-xl glass-card flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all duration-300 hover:scale-105" title="退出登录">
+
+            <i class="fa-solid fa-power-off"></i>
+
+          </button>
+
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- 主内容区 -->
+  <main class="container mx-auto px-6 py-10 max-w-7xl">
+    <!-- 页面标题 -->
+    <div class="mb-10 animate-in">
+      <div class="flex items-center space-x-3 mb-2">
+        <div class="w-1.5 h-8 bg-gradient-to-b from-primary to-accent rounded-full"></div>
+        <h2 id="pageTitle" class="text-3xl font-bold bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 bg-clip-text text-transparent">系统管理</h2>
+      </div>
+      <p id="pageSubtitle" class="text-gray-500 ml-5">管理系统用户和查看用户信息</p>
+    </div>
+
+    <!-- 用户管理页面 -->
+    <div id="page-management" class="page-content">
+      <!-- 功能板块 - 列布局 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- 列1: 查看信息 -->
+        <div class="glass-card rounded-3xl p-6 animate-in flex flex-col" style="animation-delay: 0.1s">
+          <div class="flex items-center mb-6 pb-4 border-b border-gray-200">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mr-3">
+              <i class="fa-solid fa-eye text-white text-lg"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-gray-800">查看信息</h3>
+            <p class="text-xs text-gray-500">用户详细信息</p>
+          </div>
+        </div>
+        <div class="space-y-3 flex-1">
+          <!-- 查看学生信息 -->
+          <a href="/admin/students" class="block bg-white/50 rounded-xl p-4 hover-lift cursor-pointer group border border-blue-100">
+            <div class="flex items-center">
+              <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500/20 to-blue-600/10 flex items-center justify-center mr-3 group-hover:scale-110 transition-transform">
+                <i class="fa-solid fa-user-graduate text-blue-600 text-lg"></i>
+              </div>
+              <div class="flex-1">
+                <h4 class="font-bold text-gray-800 text-sm">学生信息</h4>
+                <p class="text-xs text-gray-500">查看学生账户</p>
+              </div>
+              <i class="fa-solid fa-arrow-right text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all"></i>
+            </div>
+          </a>
+
+          <!-- 查看教师信息 -->
+          <a href="/admin/teachers" class="block bg-white/50 rounded-xl p-4 hover-lift cursor-pointer group border border-amber-100">
+            <div class="flex items-center">
+              <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-amber-500/20 to-amber-600/10 flex items-center justify-center mr-3 group-hover:scale-110 transition-transform">
+                <i class="fa-solid fa-chalkboard-user text-amber-600 text-lg"></i>
+              </div>
+              <div class="flex-1">
+                <h4 class="font-bold text-gray-800 text-sm">教师信息</h4>
+                <p class="text-xs text-gray-500">查看教师账户</p>
+              </div>
+              <i class="fa-solid fa-arrow-right text-gray-400 group-hover:text-amber-600 group-hover:translate-x-1 transition-all"></i>
+            </div>
+          </a>
+
+          <!-- 查看辅导员信息 -->
+          <a href="/admin/counselors" class="block bg-white/50 rounded-xl p-4 hover-lift cursor-pointer group border border-purple-100">
+            <div class="flex items-center">
+              <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500/20 to-purple-600/10 flex items-center justify-center mr-3 group-hover:scale-110 transition-transform">
+                <i class="fa-solid fa-user-tie text-purple-600 text-lg"></i>
+              </div>
+              <div class="flex-1">
+                <h4 class="font-bold text-gray-800 text-sm">辅导员信息</h4>
+                <p class="text-xs text-gray-500">查看辅导员账户</p>
+              </div>
+              <i class="fa-solid fa-arrow-right text-gray-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all"></i>
+            </div>
+          </a>
+
+          <!-- 查看管理员信息 -->
+          <a href="/admin/admins" class="block bg-white/50 rounded-xl p-4 hover-lift cursor-pointer group border border-red-100">
+            <div class="flex items-center">
+              <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-red-500/20 to-red-600/10 flex items-center justify-center mr-3 group-hover:scale-110 transition-transform">
+                <i class="fa-solid fa-user-shield text-red-600 text-lg"></i>
+              </div>
+              <div class="flex-1">
+                <h4 class="font-bold text-gray-800 text-sm">管理员信息</h4>
+                <p class="text-xs text-gray-500">查看管理员账户</p>
+              </div>
+              <i class="fa-solid fa-arrow-right text-gray-400 group-hover:text-red-600 group-hover:translate-x-1 transition-all"></i>
+            </div>
+          </a>
+        </div>
+      </div>
+
+      <!-- 列2: 新增用户 -->
+      <div class="glass-card rounded-3xl p-6 animate-in flex flex-col" style="animation-delay: 0.2s">
+        <div class="flex items-center mb-6 pb-4 border-b border-gray-200">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center mr-3">
+            <i class="fa-solid fa-user-plus text-white text-lg"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-gray-800">新增用户</h3>
+            <p class="text-xs text-gray-500">添加新账户</p>
+          </div>
+        </div>
+        <div class="flex-1">
+          <div class="bg-white/50 rounded-xl p-5 hover-lift cursor-pointer group border border-green-100 h-full flex items-center" data-action="add-user">
+            <div class="w-full">
+              <div class="flex items-center justify-center mb-4">
+                <div class="w-16 h-16 rounded-xl bg-gradient-to-br from-green-500/20 to-green-600/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <i class="fa-solid fa-user-plus text-green-600 text-2xl"></i>
+                </div>
+              </div>
+              <div class="text-center">
+                <h4 class="text-base font-bold text-gray-800 mb-2">添加新用户</h4>
+                <p class="text-sm text-gray-500">创建学生、教师、辅导员或管理员账户</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 列3: 修改用户信息 -->
+      <div class="glass-card rounded-3xl p-6 animate-in flex flex-col" style="animation-delay: 0.3s">
+        <div class="flex items-center mb-6 pb-4 border-b border-gray-200">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center mr-3">
+            <i class="fa-solid fa-user-pen text-white text-lg"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-gray-800">修改信息</h3>
+            <p class="text-xs text-gray-500">编辑用户资料</p>
+          </div>
+        </div>
+        <div class="flex-1">
+          <div class="bg-white/50 rounded-xl p-5 hover-lift cursor-pointer group border border-cyan-100 h-full flex items-center" data-action="update-user">
+            <div class="w-full">
+              <div class="flex items-center justify-center mb-4">
+                <div class="w-16 h-16 rounded-xl bg-gradient-to-br from-cyan-500/20 to-cyan-600/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <i class="fa-solid fa-user-pen text-cyan-600 text-2xl"></i>
+                </div>
+              </div>
+              <div class="text-center">
+                <h4 class="text-base font-bold text-gray-800 mb-2">编辑用户资料</h4>
+                <p class="text-sm text-gray-500">修改用户姓名、密码或角色类型</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 列4: 删除用户 -->
+      <div class="glass-card rounded-3xl p-6 animate-in flex flex-col" style="animation-delay: 0.4s">
+        <div class="flex items-center mb-6 pb-4 border-b border-gray-200">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center mr-3">
+            <i class="fa-solid fa-user-xmark text-white text-lg"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-gray-800">删除用户</h3>
+            <p class="text-xs text-gray-500">移除账户</p>
+          </div>
+        </div>
+        <div class="flex-1">
+          <div class="bg-white/50 rounded-xl p-5 hover-lift cursor-pointer group border border-rose-100 h-full flex items-center" data-action="delete-user">
+            <div class="w-full">
+              <div class="flex items-center justify-center mb-4">
+                <div class="w-16 h-16 rounded-xl bg-gradient-to-br from-rose-500/20 to-rose-600/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <i class="fa-solid fa-user-xmark text-rose-600 text-2xl"></i>
+                </div>
+              </div>
+              <div class="text-center">
+                <h4 class="text-base font-bold text-gray-800 mb-2">移除用户账户</h4>
+                <p class="text-sm text-gray-500">永久删除用户，此操作不可恢复</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    <!-- 工作记录页面 -->
+    <div id="page-logs" class="page-content hidden">
+      <!-- 统计卡片区 -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <!-- 总操作数 -->
+        <div class="glass-card rounded-2xl p-6 animate-in" style="animation-delay: 0.1s">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-gray-500 mb-1">总操作数</p>
+              <p id="statTotal" class="text-3xl font-bold text-gray-800">0</p>
+            </div>
+            <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
+              <i class="fa-solid fa-chart-line text-white text-2xl"></i>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 新增操作 -->
+        <div class="glass-card rounded-2xl p-6 animate-in" style="animation-delay: 0.2s">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-gray-500 mb-1">新增操作</p>
+              <p id="statAdd" class="text-3xl font-bold text-green-600">0</p>
+            </div>
+            <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg">
+              <i class="fa-solid fa-user-plus text-white text-2xl"></i>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 修改操作 -->
+        <div class="glass-card rounded-2xl p-6 animate-in" style="animation-delay: 0.3s">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-gray-500 mb-1">修改操作</p>
+              <p id="statUpdate" class="text-3xl font-bold text-cyan-600">0</p>
+            </div>
+            <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center shadow-lg">
+              <i class="fa-solid fa-user-pen text-white text-2xl"></i>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 删除操作 -->
+        <div class="glass-card rounded-2xl p-6 animate-in" style="animation-delay: 0.4s">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-gray-500 mb-1">删除操作</p>
+              <p id="statDelete" class="text-3xl font-bold text-rose-600">0</p>
+            </div>
+            <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center shadow-lg">
+              <i class="fa-solid fa-user-xmark text-white text-2xl"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 筛选区 -->
+      <div class="glass-card rounded-3xl p-6 mb-6 animate-in" style="animation-delay: 0.5s">
+        <div class="flex items-center mb-4">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center mr-3">
+            <i class="fa-solid fa-filter text-white"></i>
+          </div>
+          <h3 class="text-lg font-bold text-gray-800">筛选条件</h3>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-2">
+              <i class="fa-solid fa-list mr-1 text-primary"></i>操作类型
+            </label>
+            <select id="filterOperationType" class="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all text-sm hover:border-primary/50">
+              <option value="">全部操作</option>
+              <option value="ADD">✨ 新增用户</option>
+              <option value="UPDATE">📝 修改用户</option>
+              <option value="DELETE">🗑️ 删除用户</option>
+              <option value="VIEW">👁️ 查看信息</option>
+            </select>
+          </div>
+          
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-2">
+              <i class="fa-solid fa-user-tag mr-1 text-primary"></i>目标角色
+            </label>
+            <select id="filterUserRole" class="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all text-sm hover:border-primary/50">
+              <option value="">全部角色</option>
+              <option value="student">🎓 学生</option>
+              <option value="counselor">👨‍🏫 辅导员</option>
+              <option value="teacher">👩‍🏫 教师</option>
+              <option value="admin">👑 管理员</option>
+            </select>
+          </div>
+          
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-2">
+              <i class="fa-solid fa-calendar mr-1 text-primary"></i>时间范围
+            </label>
+            <select id="filterTimeRange" class="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all text-sm hover:border-primary/50">
+              <option value="all">📅 全部时间</option>
+              <option value="today">☀️ 今天</option>
+              <option value="week">📆 最近一周</option>
+              <option value="month">📊 最近一月</option>
+            </select>
+          </div>
+          
+          <div class="flex items-end">
+            <button id="refreshLogsBtn" class="w-full px-4 py-2.5 bg-gradient-to-r from-primary to-accent text-white rounded-xl font-semibold hover:shadow-xl transition-all btn-glow flex items-center justify-center space-x-2 hover:scale-105">
+              <i class="fa-solid fa-arrows-rotate"></i>
+              <span>刷新数据</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 日志列表 -->
+      <div class="glass-card rounded-3xl p-6 animate-in" style="animation-delay: 0.6s">
+        <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
+          <div class="flex items-center">
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center mr-3 shadow-lg">
+              <i class="fa-solid fa-history text-white text-xl"></i>
+            </div>
+            <div>
+              <h3 class="text-xl font-bold text-gray-800">操作日志</h3>
+              <p class="text-xs text-gray-500 mt-0.5">Operation Logs</p>
+            </div>
+          </div>
+          <div id="logsCount" class="px-5 py-2.5 bg-gradient-to-r from-primary/10 to-accent/10 rounded-xl border-2 border-primary/20">
+            <span class="text-sm font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">共 0 条记录</span>
+          </div>
+        </div>
+
+        <!-- 加载状态 -->
+        <div id="logsLoading" class="text-center py-16">
+          <div class="inline-block p-5 rounded-2xl bg-gradient-to-br from-primary/5 to-accent/5 mb-4">
+            <i class="fa-solid fa-spinner fa-spin text-4xl text-primary"></i>
+          </div>
+          <p class="text-lg font-semibold text-gray-700 mb-1">正在加载日志数据</p>
+          <p class="text-sm text-gray-400">请稍候...</p>
+        </div>
+
+        <!-- 日志表格 -->
+        <div id="logsTableContainer" class="hidden overflow-x-auto custom-scrollbar">
+          <table class="w-full border-collapse">
+            <thead>
+              <tr class="bg-gradient-to-r from-primary/10 via-primary/5 to-accent/10">
+                <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <i class="fa-solid fa-clock mr-2 text-primary"></i>操作时间
+                </th>
+                <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <i class="fa-solid fa-user-shield mr-2 text-primary"></i>操作管理员
+                </th>
+                <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <i class="fa-solid fa-list mr-2 text-primary"></i>操作类型
+                </th>
+                <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <i class="fa-solid fa-user mr-2 text-primary"></i>目标用户
+                </th>
+                <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <i class="fa-solid fa-user-tag mr-2 text-primary"></i>用户角色
+                </th>
+                <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <i class="fa-solid fa-info-circle mr-2 text-primary"></i>操作详情
+                </th>
+                <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <i class="fa-solid fa-check-circle mr-2 text-primary"></i>状态
+                </th>
+              </tr>
+            </thead>
+            <tbody id="logsTableBody" class="bg-white divide-y divide-gray-100">
+              <!-- 日志内容将通过JavaScript动态填充 -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 空状态 -->
+        <div id="logsEmpty" class="hidden text-center py-20">
+          <div class="inline-block p-8 rounded-3xl bg-gradient-to-br from-gray-50 to-gray-100 mb-6 shadow-inner">
+            <i class="fa-solid fa-inbox text-7xl text-gray-300"></i>
+          </div>
+          <h3 class="text-2xl font-bold text-gray-700 mb-2">暂无操作记录</h3>
+          <p class="text-gray-400 mb-4">当前筛选条件下没有找到任何操作日志</p>
+          <button onclick="document.getElementById('refreshLogsBtn').click()" class="px-6 py-2.5 bg-primary/10 hover:bg-primary text-primary hover:text-white rounded-xl font-medium transition-all">
+            <i class="fa-solid fa-arrows-rotate mr-2"></i>重新加载
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 个人信息页面 -->
+    <div id="page-profile" class="page-content hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- 左侧：个人信息 -->
+        <div class="lg:col-span-2 space-y-6">
+          <div class="glass-card rounded-3xl p-8 hover-lift">
+            <div class="flex items-center justify-between mb-6">
+              <h3 class="text-xl font-bold text-gray-800 flex items-center">
+                <i class="fa-solid fa-user-circle mr-3 text-primary text-2xl"></i>个人信息
+              </h3>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="group flex items-center p-4 rounded-xl hover:bg-primary/5 transition-all">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+                  <i class="fa-solid fa-id-badge text-primary text-lg"></i>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-500">工号</p>
+                  <p id="profileAccount" class="text-lg font-bold text-gray-800">加载中...</p>
+                </div>
+              </div>
+              <div class="group flex items-center p-4 rounded-xl hover:bg-primary/5 transition-all">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+                  <i class="fa-solid fa-user text-primary text-lg"></i>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-500">姓名</p>
+                  <p id="profileName" class="text-lg font-bold text-gray-800">加载中...</p>
+                </div>
+              </div>
+              <div class="group flex items-center p-4 rounded-xl hover:bg-primary/5 transition-all">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+                  <i class="fa-solid fa-user-tag text-primary text-lg"></i>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-500">角色</p>
+                  <p id="profileRole" class="text-lg font-bold text-gray-800">管理员</p>
+                </div>
+              </div>
+              <div class="group flex items-center p-4 rounded-xl hover:bg-primary/5 transition-all">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+                  <i class="fa-solid fa-shield-halved text-primary text-lg"></i>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-500">权限级别</p>
+                  <p class="text-lg font-bold text-gray-800">最高权限</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 右侧：头像和快捷操作 -->
+        <div class="space-y-6">
+          <div class="glass-card rounded-3xl p-6 text-center card-3d">
+            <div class="relative inline-block mb-4 group">
+              <!-- 发光背景 -->
+              <div class="absolute -inset-2 bg-gradient-to-r from-primary via-accent to-primary-light rounded-3xl blur-lg opacity-30 group-hover:opacity-50 transition-opacity"></div>
+              
+              <!-- 头像容器 -->
+              <div class="relative cursor-pointer" onclick="document.getElementById('avatarInput').click()">
+                <div id="profileAvatarLarge" class="relative w-32 h-32 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-4xl font-bold shadow-xl overflow-hidden group-hover:scale-105 transition-transform">
+                  <img id="avatarPreview" class="hidden w-full h-full object-cover" />
+                  <span id="avatarText">A</span>
+                </div>
                 
-                if (!result.logged_in || result.user_info.role_name !== '管理员') {
-                    window.location.href = '/login';
-                    return;
-                }
+                <!-- 悬停提示 -->
+                <div class="absolute inset-0 bg-black/50 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm">
+                  <div class="text-white text-center">
+                    <i class="fa-solid fa-camera text-2xl mb-1"></i>
+                    <p class="text-xs font-medium">更换头像</p>
+                  </div>
+                </div>
                 
-                // 显示用户名
-                document.getElementById('userName').textContent = 
-                    `${result.user_info.user_name}（管理员）`;
-                
-                // 绑定菜单点击事件
-                document.querySelectorAll('.menu-card').forEach(card => {
-                    card.addEventListener('click', function() {
-                        const action = this.getAttribute('data-action');
-                        showActionModal(action);
-                    });
-                });
-                
-                // 绑定退出登录事件
-                document.getElementById('logoutBtn').addEventListener('click', async function() {
-                    if (confirm('确定要退出登录吗？')) {
-                        await fetch('/api/logout', { method: 'POST' });
-                        window.location.href = '/login';
-                    }
-                });
-                
-                // 绑定关闭模态框事件
-                document.getElementById('closeModal').addEventListener('click', function() {
-                    document.getElementById('actionModal').style.display = 'none';
-                });
-                
-                // 点击模态框外部关闭
-                window.addEventListener('click', function(event) {
-                    const modal = document.getElementById('actionModal');
-                    if (event.target === modal) {
-                        modal.style.display = 'none';
-                    }
-                });
-                
-            } catch (error) {
-                console.error('获取用户信息失败:', error);
-                alert('会话已过期，请重新登录');
-                window.location.href = '/login';
-            }
+                <!-- 在线状态指示器 -->
+                <div class="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-4 border-white shadow-lg animate-pulse"></div>
+              </div>
+              
+              <!-- 隐藏的文件输入 -->
+              <input type="file" id="avatarInput" accept="image/*" class="hidden" onchange="handleAvatarChange(event)">
+            </div>
+            
+            <h4 id="profileNameDisplay" class="font-bold text-xl text-gray-800 glow-text">管理员</h4>
+            <p class="text-primary font-medium">系统管理员</p>
+            
+            <div class="mt-6 pt-4 border-t border-gray-100">
+              <p id="profileAccountDisplay" class="text-xs text-gray-400">工号：--</p>
+            </div>
+          </div>
+          
+          <!-- 快捷操作 -->
+          <div class="glass-card rounded-3xl p-6 card-3d">
+            <h4 class="font-bold text-gray-800 mb-4 flex items-center">
+              <i class="fa-solid fa-bolt mr-2 text-accent"></i>快捷操作
+            </h4>
+            <div class="space-y-3">
+              <button onclick="switchTab('management')" class="group w-full p-4 rounded-xl bg-gradient-to-r from-primary/10 to-accent/10 text-primary hover:from-primary hover:to-accent hover:text-white transition-all duration-300 text-left flex items-center justify-between border-2 border-primary/20 hover:border-primary hover:shadow-lg hover:scale-105">
+                <div class="flex items-center">
+                  <div class="w-10 h-10 rounded-lg bg-primary/20 group-hover:bg-white/20 flex items-center justify-center mr-3 transition-all">
+                    <i class="fa-solid fa-users-gear text-lg"></i>
+                  </div>
+                  <span class="font-semibold">返回用户管理</span>
+                </div>
+                <i class="fa-solid fa-arrow-right text-sm group-hover:translate-x-1 transition-transform"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 操作模态框 -->
+  <div id="actionModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="glass-card rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-hidden animate-scaleIn shadow-2xl">
+      <!-- 模态框标题 - 渐变背景 -->
+      <div class="relative bg-gradient-to-r from-primary via-primary-light to-accent p-6 overflow-hidden">
+        <!-- 装饰性背景元素 -->
+        <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
+        <div class="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2 blur-2xl"></div>
+        
+        <!-- 标题内容 -->
+        <div class="relative flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <div class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+              <i id="modalIcon" class="fa-solid fa-cog text-white text-xl"></i>
+            </div>
+            <div>
+              <h3 id="modalTitle" class="text-2xl font-bold text-white drop-shadow-lg">操作窗口</h3>
+              <p id="modalSubtitle" class="text-sm text-white/80 mt-0.5">请填写相关信息</p>
+            </div>
+          </div>
+          <button id="closeModal" class="w-10 h-10 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-sm flex items-center justify-center text-white transition-all hover:scale-110">
+            <i class="fa-solid fa-xmark text-xl"></i>
+          </button>
+        </div>
+      </div>
+      
+      <!-- 模态框内容 -->
+      <div id="modalBody" class="p-8 overflow-y-auto custom-scrollbar bg-gradient-to-b from-gray-50/50 to-white" style="max-height: calc(90vh - 140px);">
+        <div class="text-center py-12 text-gray-400">
+          <div class="inline-block p-4 rounded-2xl bg-primary/5 mb-4">
+            <i class="fa-solid fa-spinner fa-spin text-3xl text-primary"></i>
+          </div>
+          <p class="text-lg font-medium">加载中...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="text-center py-6 text-gray-500 text-sm">
+    学生信息管理系统 &copy; 2023
+  </footer>
+
+  <script>
+    // Toast提示函数
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = `fixed top-20 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl shadow-lg z-50 transition-opacity ${type === 'success' ? 'bg-primary text-white' : 'bg-red-500 text-white'}`;
+      toast.style.opacity = '1';
+      toast.style.pointerEvents = 'auto';
+      setTimeout(() => { toast.style.opacity = '0'; toast.style.pointerEvents = 'none'; }, 3000);
+    }
+
+    // 页面切换函数
+    function switchTab(tabName) {
+      // 隐藏所有页面
+      document.querySelectorAll('.page-content').forEach(page => {
+        page.classList.add('hidden');
+      });
+      
+      // 移除所有tab的激活状态
+      document.querySelectorAll('.nav-tab').forEach(tab => {
+        tab.classList.remove('text-primary', 'bg-white', 'shadow-md');
+        tab.classList.add('text-gray-600');
+      });
+      
+      // 显示选中的页面
+      if (tabName === 'management') {
+        document.getElementById('page-management').classList.remove('hidden');
+        document.getElementById('tab-management').classList.add('text-primary', 'bg-white', 'shadow-md');
+        document.getElementById('tab-management').classList.remove('text-gray-600');
+        document.getElementById('pageTitle').textContent = '系统管理';
+        document.getElementById('pageSubtitle').textContent = '管理系统用户和查看用户信息';
+      } else if (tabName === 'logs') {
+        document.getElementById('page-logs').classList.remove('hidden');
+        document.getElementById('tab-logs').classList.add('text-primary', 'bg-white', 'shadow-md');
+        document.getElementById('tab-logs').classList.remove('text-gray-600');
+        document.getElementById('pageTitle').textContent = '工作记录';
+        document.getElementById('pageSubtitle').textContent = '查看管理员操作日志和审计记录';
+        loadOperationLogs(); // 加载日志数据
+      } else if (tabName === 'profile') {
+        document.getElementById('page-profile').classList.remove('hidden');
+        document.getElementById('tab-profile').classList.add('text-primary', 'bg-white', 'shadow-md');
+        document.getElementById('tab-profile').classList.remove('text-gray-600');
+        document.getElementById('pageTitle').textContent = '个人信息';
+        document.getElementById('pageSubtitle').textContent = '查看和管理您的个人资料';
+      }
+    }
+
+    // 加载操作日志
+    async function loadOperationLogs() {
+      const logsLoading = document.getElementById('logsLoading');
+      const logsTableContainer = document.getElementById('logsTableContainer');
+      const logsEmpty = document.getElementById('logsEmpty');
+      const logsTableBody = document.getElementById('logsTableBody');
+      const logsCount = document.getElementById('logsCount');
+      
+      // 显示加载状态
+      logsLoading.classList.remove('hidden');
+      logsTableContainer.classList.add('hidden');
+      logsEmpty.classList.add('hidden');
+      
+      try {
+        // 获取筛选条件
+        const operationType = document.getElementById('filterOperationType').value;
+        const userRole = document.getElementById('filterUserRole').value;
+        const timeRange = document.getElementById('filterTimeRange').value;
+        
+        // 构建查询参数
+        const params = new URLSearchParams();
+        if (operationType) params.append('operation_type', operationType);
+        if (userRole) params.append('user_role', userRole);
+        if (timeRange) params.append('time_range', timeRange);
+        
+        const response = await fetch(`/api/admin/operation-logs?${params.toString()}`);
+        const result = await response.json();
+        
+        logsLoading.classList.add('hidden');
+        
+        if (result.success && result.data && result.data.length > 0) {
+          // 更新统计卡片
+          const stats = {
+            total: result.data.length,
+            add: result.data.filter(log => log.operation_type === 'ADD').length,
+            update: result.data.filter(log => log.operation_type === 'UPDATE').length,
+            delete: result.data.filter(log => log.operation_type === 'DELETE').length
+          };
+          
+          document.getElementById('statTotal').textContent = stats.total;
+          document.getElementById('statAdd').textContent = stats.add;
+          document.getElementById('statUpdate').textContent = stats.update;
+          document.getElementById('statDelete').textContent = stats.delete;
+          
+          // 显示日志表格
+          logsTableContainer.classList.remove('hidden');
+          logsCount.innerHTML = `<span class="text-sm font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">共 ${result.data.length} 条记录</span>`;
+          
+          // 渲染日志数据
+          logsTableBody.innerHTML = result.data.map(log => {
+            const operationTypeMap = {
+              'ADD': { text: '新增用户', color: 'green', icon: 'fa-user-plus' },
+              'UPDATE': { text: '修改用户', color: 'blue', icon: 'fa-user-pen' },
+              'DELETE': { text: '删除用户', color: 'red', icon: 'fa-user-xmark' },
+              'VIEW': { text: '查看信息', color: 'gray', icon: 'fa-eye' }
+            };
+            
+            const roleMap = {
+              'student': { text: '学生', color: 'blue' },
+              'counselor': { text: '辅导员', color: 'purple' },
+              'teacher': { text: '教师', color: 'amber' },
+              'admin': { text: '管理员', color: 'red' }
+            };
+            
+            const operation = operationTypeMap[log.operation_type] || { text: log.operation_type, color: 'gray', icon: 'fa-question' };
+            const role = roleMap[log.target_user_role] || { text: log.target_user_role, color: 'gray' };
+            const statusColor = log.status === 'SUCCESS' ? 'green' : 'red';
+            
+            return `
+              <tr class="hover:bg-gray-50 transition-colors">
+                <td class="px-4 py-4 text-sm text-gray-700">
+                  <div class="flex items-center">
+                    <i class="fa-solid fa-clock mr-2 text-gray-400"></i>
+                    ${new Date(log.operation_time).toLocaleString('zh-CN')}
+                  </div>
+                </td>
+                <td class="px-4 py-4">
+                  <div class="flex items-center">
+                    <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center mr-2">
+                      <i class="fa-solid fa-user-shield text-primary text-sm"></i>
+                    </div>
+                    <div>
+                      <div class="font-semibold text-gray-800 text-sm">${log.admin_name || '-'}</div>
+                      <div class="text-xs text-gray-500">${log.admin_account}</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-4">
+                  <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-${operation.color}-100 text-${operation.color}-700">
+                    <i class="fa-solid ${operation.icon} mr-1"></i>
+                    ${operation.text}
+                  </span>
+                </td>
+                <td class="px-4 py-4">
+                  <div class="text-sm">
+                    <div class="font-semibold text-gray-800">${log.target_user_name || '-'}</div>
+                    <div class="text-xs text-gray-500">${log.target_user_account || '-'}</div>
+                  </div>
+                </td>
+                <td class="px-4 py-4">
+                  <span class="inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium bg-${role.color}-100 text-${role.color}-700">
+                    ${role.text}
+                  </span>
+                </td>
+                <td class="px-4 py-4 text-sm text-gray-600 max-w-xs truncate" title="${log.operation_details || '-'}">
+                  ${log.operation_details || '-'}
+                </td>
+                <td class="px-4 py-4">
+                  <span class="inline-flex items-center px-2 py-1 rounded-lg text-xs font-semibold bg-${statusColor}-100 text-${statusColor}-700">
+                    <i class="fa-solid fa-${log.status === 'SUCCESS' ? 'check' : 'xmark'}-circle mr-1"></i>
+                    ${log.status === 'SUCCESS' ? '成功' : '失败'}
+                  </span>
+                </td>
+              </tr>
+            `;
+          }).join('');
+          
+        } else {
+          // 显示空状态
+          logsEmpty.classList.remove('hidden');
+          logsCount.innerHTML = `<span class="text-sm font-bold text-primary">共 0 条记录</span>`;
+        }
+        
+      } catch (error) {
+        console.error('加载日志失败:', error);
+        logsLoading.classList.add('hidden');
+        logsEmpty.classList.remove('hidden');
+        logsCount.innerHTML = `<span class="text-sm font-bold text-red-600">加载失败</span>`;
+      }
+    }
+
+    // 绑定刷新和筛选事件
+    document.addEventListener('DOMContentLoaded', function() {
+      // 刷新按钮
+      const refreshBtn = document.getElementById('refreshLogsBtn');
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', loadOperationLogs);
+      }
+      
+      // 筛选器变化时重新加载
+      const filters = ['filterOperationType', 'filterUserRole', 'filterTimeRange'];
+      filters.forEach(filterId => {
+        const filter = document.getElementById(filterId);
+        if (filter) {
+          filter.addEventListener('change', loadOperationLogs);
+        }
+      });
+    });
+
+    // 页面加载时获取用户信息
+    document.addEventListener('DOMContentLoaded', async function() {
+      try {
+        const response = await fetch('/api/check_login');
+        const result = await response.json();
+        
+        if (!result.logged_in || result.user_info.role_name !== '管理员') {
+          window.location.href = '/login';
+          return;
+        }
+        
+        // 显示用户名
+        document.getElementById('userName').textContent = result.user_info.user_name;
+        
+        // 更新个人信息页面数据
+        const userAccount = result.user_info.user_account;
+        const userName = result.user_info.user_name;
+        const firstLetter = userName.charAt(0).toUpperCase();
+        
+        document.getElementById('profileAccount').textContent = userAccount;
+        document.getElementById('profileName').textContent = userName;
+        document.getElementById('profileNameDisplay').textContent = userName;
+        document.getElementById('profileAccountDisplay').textContent = `工号：${userAccount}`;
+        document.getElementById('profileAvatarLarge').textContent = firstLetter;
+        
+        // 绑定菜单点击事件
+        document.querySelectorAll('[data-action]').forEach(card => {
+          card.addEventListener('click', function() {
+            const action = this.getAttribute('data-action');
+            showActionModal(action);
+          });
         });
+        
+        // 绑定退出登录事件
+        document.getElementById('logoutBtn').addEventListener('click', async function() {
+          if (confirm('确定要退出登录吗？')) {
+            await fetch('/api/logout', { method: 'POST' });
+            window.location.href = '/login';
+          }
+        });
+        
+        // 绑定关闭模态框事件
+        document.getElementById('closeModal').addEventListener('click', function() {
+          document.getElementById('actionModal').classList.add('hidden');
+        });
+        
+        // 点击模态框外部关闭
+        window.addEventListener('click', function(event) {
+          const modal = document.getElementById('actionModal');
+          if (event.target === modal) {
+            modal.classList.add('hidden');
+          }
+        });
+        
+      } catch (error) {
+        console.error('获取用户信息失败:', error);
+        alert('会话已过期，请重新登录');
+        window.location.href = '/login';
+      }
+    });
         
         // 显示操作模态框
         async function showActionModal(action) {
             const modal = document.getElementById('actionModal');
             const modalTitle = document.getElementById('modalTitle');
+            const modalSubtitle = document.getElementById('modalSubtitle');
+            const modalIcon = document.getElementById('modalIcon');
             const modalBody = document.getElementById('modalBody');
             
             // 清空之前的消息
@@ -374,53 +1131,341 @@
             switch(action) {
                 case 'view-students':
                     modalTitle.textContent = '查看学生信息';
+                    modalSubtitle.textContent = '浏览所有学生账户信息';
+                    modalIcon.className = 'fa-solid fa-user-graduate text-white text-xl';
                     await loadUserData(modalBody, 'student');
                     break;
                 case 'view-teachers':
                     modalTitle.textContent = '查看教师信息';
+                    modalSubtitle.textContent = '浏览所有教师账户信息';
+                    modalIcon.className = 'fa-solid fa-chalkboard-user text-white text-xl';
                     await loadUserData(modalBody, 'teacher');
                     break;
                 case 'view-counselors':
                     modalTitle.textContent = '查看辅导员信息';
+                    modalSubtitle.textContent = '浏览所有辅导员账户信息';
+                    modalIcon.className = 'fa-solid fa-user-tie text-white text-xl';
                     await loadUserData(modalBody, 'counselor');
                     break;
                 case 'view-admins':
                     modalTitle.textContent = '查看管理员信息';
+                    modalSubtitle.textContent = '浏览所有管理员账户信息';
+                    modalIcon.className = 'fa-solid fa-user-shield text-white text-xl';
                     await loadUserData(modalBody, 'admin');
                     break;
                 case 'add-user':
                     modalTitle.textContent = '新增用户';
+                    modalSubtitle.textContent = '创建新的用户账户';
+                    modalIcon.className = 'fa-solid fa-user-plus text-white text-xl';
                     modalBody.innerHTML = `
-                        <div class="message"></div>
-                        <form id="addUserForm">
-                            <div class="form-group">
-                                <label for="addUserType">用户类型</label>
-                                <select id="addUserType" class="form-control" required>
-                                    <option value="student">学生</option>
-                                    <option value="teacher">教师</option>
-                                    <option value="counselor">辅导员</option>
-                                    <option value="admin">管理员</option>
+                        <div class="message hidden mb-4 p-4 rounded-xl"></div>
+                        <form id="addUserForm" class="space-y-5">
+                            <div class="bg-gradient-to-r from-primary/5 to-accent/5 rounded-2xl p-6 border border-primary/10">
+                                <div class="flex items-center mb-4">
+                                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center mr-3">
+                                        <i class="fa-solid fa-user-tag text-white"></i>
+                                    </div>
+                                    <h4 class="font-bold text-gray-800">用户类型</h4>
+                                </div>
+                                <select id="addUserType" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all text-gray-700 font-medium" required>
+                                    <option value="">请选择用户类型</option>
+                                    <option value="student">👨‍🎓 学生</option>
+                                    <option value="teacher">👨‍🏫 教师</option>
+                                    <option value="counselor">👔 辅导员</option>
+                                    <option value="admin">🛡️ 管理员</option>
                                 </select>
                             </div>
-                            <div class="form-group">
-                                <label for="addAccount">账号</label>
-                                <input type="text" id="addAccount" class="form-control" placeholder="请输入账号" required>
-                                <small>规则：4位(管理员)/8位(辅导员)/9位(讲师)/12位(学生)</small>
+                            
+                            <div class="relative">
+                                <label for="addAccount" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                    <i class="fa-solid fa-id-card mr-2 text-primary"></i>账号
+                                </label>
+                                <input type="text" id="addAccount" class="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="请输入账号" required>
+                                <i class="fa-solid fa-hashtag absolute left-4 top-[42px] text-gray-400"></i>
+                                <p class="text-xs text-gray-500 mt-2 ml-1 flex items-center">
+                                    <i class="fa-solid fa-circle-info mr-1 text-primary"></i>
+                                    规则：4位(管理员) / 8位(辅导员) / 9位(教师) / 12位(学生)
+                                </p>
                             </div>
-                            <div class="form-group">
-                                <label for="addName">姓名</label>
-                                <input type="text" id="addName" class="form-control" placeholder="请输入姓名" required>
+                            
+                            <div class="relative">
+                                <label for="addName" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                    <i class="fa-solid fa-user mr-2 text-primary"></i>姓名
+                                </label>
+                                <input type="text" id="addName" class="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="请输入姓名" required>
+                                <i class="fa-solid fa-signature absolute left-4 top-[42px] text-gray-400"></i>
                             </div>
-                            <div class="form-group">
-                                <label for="addPassword">密码</label>
-                                <input type="password" id="addPassword" class="form-control" placeholder="请输入密码" required>
+                            
+                            <div class="relative">
+                                <label for="addPassword" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                    <i class="fa-solid fa-lock mr-2 text-primary"></i>密码
+                                </label>
+                                <input type="password" id="addPassword" class="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="请输入密码" required>
+                                <i class="fa-solid fa-key absolute left-4 top-[42px] text-gray-400"></i>
                             </div>
-                            <div class="btn-group">
-                                <button type="submit" class="btn btn-primary">确认新增</button>
+                            
+                            <!-- 学生额外属性 -->
+                            <div id="studentFields" class="hidden bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border-2 border-blue-200 space-y-4">
+                                <div class="flex items-center mb-3">
+                                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mr-3">
+                                        <i class="fa-solid fa-graduation-cap text-white"></i>
+                                    </div>
+                                    <h4 class="font-bold text-gray-800">学生信息</h4>
+                                </div>
+                                
+                                <div>
+                                    <label for="addDept" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                        <i class="fa-solid fa-building mr-2 text-blue-600"></i>部门/院系
+                                    </label>
+                                    <select id="addDept" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all">
+                                        <option value="">请选择院系</option>
+                                        <option value="计算机学院">计算机学院</option>
+                                        <option value="软件学院">软件学院</option>
+                                        <option value="信息工程学院">信息工程学院</option>
+                                        <option value="电子工程学院">电子工程学院</option>
+                                        <option value="机械工程学院">机械工程学院</option>
+                                        <option value="材料科学学院">材料科学学院</option>
+                                        <option value="经济管理学院">经济管理学院</option>
+                                        <option value="外国语学院">外国语学院</option>
+                                        <option value="数学与统计学院">数学与统计学院</option>
+                                        <option value="物理学院">物理学院</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label for="addGrade" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                        <i class="fa-solid fa-calendar mr-2 text-blue-600"></i>年级
+                                    </label>
+                                    <select id="addGrade" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all">
+                                        <option value="">请选择年级</option>
+                                        <option value="2024级">2024级</option>
+                                        <option value="2023级">2023级</option>
+                                        <option value="2022级">2022级</option>
+                                        <option value="2021级">2021级</option>
+                                        <option value="2020级">2020级</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label for="addMajor" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                        <i class="fa-solid fa-book mr-2 text-blue-600"></i>专业
+                                    </label>
+                                    <select id="addMajor" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all">
+                                        <option value="">请选择专业</option>
+                                        <option value="计算机科学与技术">计算机科学与技术</option>
+                                        <option value="软件工程">软件工程</option>
+                                        <option value="网络工程">网络工程</option>
+                                        <option value="信息安全">信息安全</option>
+                                        <option value="数据科学与大数据技术">数据科学与大数据技术</option>
+                                        <option value="人工智能">人工智能</option>
+                                        <option value="物联网工程">物联网工程</option>
+                                        <option value="电子信息工程">电子信息工程</option>
+                                        <option value="通信工程">通信工程</option>
+                                        <option value="自动化">自动化</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label for="addClassNum" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                        <i class="fa-solid fa-users mr-2 text-blue-600"></i>班级
+                                    </label>
+                                    <select id="addClassNum" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all">
+                                        <option value="">请选择班级</option>
+                                        <option value="01">01班</option>
+                                        <option value="02">02班</option>
+                                        <option value="03">03班</option>
+                                        <option value="04">04班</option>
+                                        <option value="05">05班</option>
+                                        <option value="06">06班</option>
+                                        <option value="07">07班</option>
+                                        <option value="08">08班</option>
+                                        <option value="09">09班</option>
+                                        <option value="10">10班</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="relative">
+                                    <label for="addContact" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                        <i class="fa-solid fa-phone mr-2 text-blue-600"></i>联系方式
+                                    </label>
+                                    <input type="text" id="addContact" class="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all" placeholder="例如：13800138001">
+                                    <i class="fa-solid fa-phone absolute left-4 top-[42px] text-gray-400"></i>
+                                </div>
+                            </div>
+                            
+                            <!-- 辅导员额外属性 -->
+                            <div id="counselorFields" class="hidden bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 border-2 border-purple-200 space-y-4">
+                                <div class="flex items-center mb-3">
+                                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center mr-3">
+                                        <i class="fa-solid fa-user-tie text-white"></i>
+                                    </div>
+                                    <h4 class="font-bold text-gray-800">辅导员信息</h4>
+                                </div>
+                                
+                                <div>
+                                    <label for="addCounselorDept" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                        <i class="fa-solid fa-building mr-2 text-purple-600"></i>部门/院系
+                                    </label>
+                                    <select id="addCounselorDept" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition-all">
+                                        <option value="">请选择院系</option>
+                                        <option value="计算机学院">计算机学院</option>
+                                        <option value="软件学院">软件学院</option>
+                                        <option value="信息工程学院">信息工程学院</option>
+                                        <option value="电子工程学院">电子工程学院</option>
+                                        <option value="机械工程学院">机械工程学院</option>
+                                        <option value="材料科学学院">材料科学学院</option>
+                                        <option value="经济管理学院">经济管理学院</option>
+                                        <option value="外国语学院">外国语学院</option>
+                                        <option value="数学与统计学院">数学与统计学院</option>
+                                        <option value="物理学院">物理学院</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label for="addCounselorGrade" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                        <i class="fa-solid fa-calendar mr-2 text-purple-600"></i>负责年级
+                                    </label>
+                                    <select id="addCounselorGrade" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition-all">
+                                        <option value="">请选择负责年级</option>
+                                        <option value="2024">2024级</option>
+                                        <option value="2023">2023级</option>
+                                        <option value="2022">2022级</option>
+                                        <option value="2021">2021级</option>
+                                        <option value="2020">2020级</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label for="addCounselorMajor" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                        <i class="fa-solid fa-book mr-2 text-purple-600"></i>负责专业
+                                    </label>
+                                    <select id="addCounselorMajor" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition-all">
+                                        <option value="">请选择负责专业</option>
+                                        <option value="计算机科学与技术">计算机科学与技术</option>
+                                        <option value="软件工程">软件工程</option>
+                                        <option value="网络工程">网络工程</option>
+                                        <option value="信息安全">信息安全</option>
+                                        <option value="数据科学与大数据技术">数据科学与大数据技术</option>
+                                        <option value="人工智能">人工智能</option>
+                                        <option value="物联网工程">物联网工程</option>
+                                        <option value="电子信息工程">电子信息工程</option>
+                                        <option value="通信工程">通信工程</option>
+                                        <option value="自动化">自动化</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="relative">
+                                    <label for="addCounselorContact" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                        <i class="fa-solid fa-phone mr-2 text-purple-600"></i>联系方式
+                                    </label>
+                                    <input type="text" id="addCounselorContact" class="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition-all" placeholder="例如：13800138001">
+                                    <i class="fa-solid fa-phone absolute left-4 top-[42px] text-gray-400"></i>
+                                </div>
+                            </div>
+                            
+                            <!-- 教师额外属性 -->
+                            <div id="teacherFields" class="hidden bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-6 border-2 border-amber-200 space-y-4">
+                                <div class="flex items-center mb-3">
+                                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center mr-3">
+                                        <i class="fa-solid fa-chalkboard-user text-white"></i>
+                                    </div>
+                                    <h4 class="font-bold text-gray-800">教师信息</h4>
+                                </div>
+                                
+                                <div>
+                                    <label for="addTeacherDept" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                        <i class="fa-solid fa-building mr-2 text-amber-600"></i>部门/院系
+                                    </label>
+                                    <select id="addTeacherDept" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition-all">
+                                        <option value="">请选择院系</option>
+                                        <option value="计算机学院">计算机学院</option>
+                                        <option value="软件学院">软件学院</option>
+                                        <option value="信息工程学院">信息工程学院</option>
+                                        <option value="电子工程学院">电子工程学院</option>
+                                        <option value="机械工程学院">机械工程学院</option>
+                                        <option value="材料科学学院">材料科学学院</option>
+                                        <option value="经济管理学院">经济管理学院</option>
+                                        <option value="外国语学院">外国语学院</option>
+                                        <option value="数学与统计学院">数学与统计学院</option>
+                                        <option value="物理学院">物理学院</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="relative">
+                                    <label for="addTeacherContact" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                        <i class="fa-solid fa-phone mr-2 text-amber-600"></i>联系方式
+                                    </label>
+                                    <input type="text" id="addTeacherContact" class="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition-all" placeholder="例如：13800138001">
+                                    <i class="fa-solid fa-phone absolute left-4 top-[42px] text-gray-400"></i>
+                                </div>
+                            </div>
+                            
+                            <!-- 管理员额外属性 -->
+                            <div id="adminFields" class="hidden bg-gradient-to-r from-red-50 to-rose-50 rounded-2xl p-6 border-2 border-red-200 space-y-4">
+                                <div class="flex items-center mb-3">
+                                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center mr-3">
+                                        <i class="fa-solid fa-user-shield text-white"></i>
+                                    </div>
+                                    <h4 class="font-bold text-gray-800">管理员信息</h4>
+                                </div>
+                                
+                                <div>
+                                    <label for="addAdminDept" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                        <i class="fa-solid fa-building mr-2 text-red-600"></i>部门/院系
+                                    </label>
+                                    <select id="addAdminDept" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-red-500/30 focus:border-red-500 transition-all">
+                                        <option value="">请选择院系</option>
+                                        <option value="计算机学院">计算机学院</option>
+                                        <option value="软件学院">软件学院</option>
+                                        <option value="信息工程学院">信息工程学院</option>
+                                        <option value="电子工程学院">电子工程学院</option>
+                                        <option value="机械工程学院">机械工程学院</option>
+                                        <option value="材料科学学院">材料科学学院</option>
+                                        <option value="经济管理学院">经济管理学院</option>
+                                        <option value="外国语学院">外国语学院</option>
+                                        <option value="数学与统计学院">数学与统计学院</option>
+                                        <option value="物理学院">物理学院</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="pt-4 flex gap-3">
+                                <button type="submit" class="flex-1 py-3.5 bg-gradient-to-r from-primary to-accent text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all btn-glow flex items-center justify-center">
+                                    <i class="fa-solid fa-user-plus mr-2"></i>确认新增
+                                </button>
+                                <button type="button" onclick="document.getElementById('addUserForm').reset()" class="px-6 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all flex items-center justify-center">
+                                    <i class="fa-solid fa-rotate-left mr-2"></i>重置
+                                </button>
                             </div>
                         </form>
                     `;
-                    // 绑定新增用户表单提交事件
+                    
+                    // 监听用户类型选择变化
+                    document.getElementById('addUserType').addEventListener('change', async function() {
+                        const studentFields = document.getElementById('studentFields');
+                        const counselorFields = document.getElementById('counselorFields');
+                        const teacherFields = document.getElementById('teacherFields');
+                        const adminFields = document.getElementById('adminFields');
+                        
+                        // 隐藏所有额外字段
+                        studentFields.classList.add('hidden');
+                        counselorFields.classList.add('hidden');
+                        teacherFields.classList.add('hidden');
+                        adminFields.classList.add('hidden');
+                        
+                        // 根据选择显示对应字段
+                        if (this.value === 'student') {
+                            studentFields.classList.remove('hidden');
+                        } else if (this.value === 'counselor') {
+                            counselorFields.classList.remove('hidden');
+                        } else if (this.value === 'teacher') {
+                            teacherFields.classList.remove('hidden');
+                        } else if (this.value === 'admin') {
+                            adminFields.classList.remove('hidden');
+                        }
+                    });
+                    
+                    // 提交表单绑定新增用户表单提交事件
                     document.getElementById('addUserForm').addEventListener('submit', async function(e) {
                         e.preventDefault();
                         const userType = document.getElementById('addUserType').value;
@@ -436,71 +1481,565 @@
                             'admin': 4
                         };
                         
+                        // 准备提交数据
+                        const userData = {
+                            account,
+                            user_name: name,
+                            password,
+                            role_type: roleMap[userType]
+                        };
+                        
+                        // 如果是学生，添加额外属性
+                        if (userType === 'student') {
+                            const dept = document.getElementById('addDept').value.trim();
+                            const grade = document.getElementById('addGrade').value.trim();
+                            const major = document.getElementById('addMajor').value.trim();
+                            const classNum = document.getElementById('addClassNum').value.trim();
+                            const contact = document.getElementById('addContact').value.trim();
+                            
+                            if (dept) userData.dept = dept;
+                            if (grade) userData.grade = grade;
+                            if (major) userData.major = major;
+                            if (classNum) userData.class_num = classNum;
+                            if (contact) userData.contact = contact;
+                        }
+                        // 如果是辅导员，添加额外属性
+                        else if (userType === 'counselor') {
+                            const dept = document.getElementById('addCounselorDept').value.trim();
+                            const responsibleGrade = document.getElementById('addCounselorGrade').value.trim();
+                            const responsibleMajor = document.getElementById('addCounselorMajor').value.trim();
+                            const contact = document.getElementById('addCounselorContact').value.trim();
+                            
+                            if (dept) userData.dept = dept;
+                            if (responsibleGrade) userData.responsible_grade = responsibleGrade;
+                            if (responsibleMajor) userData.responsible_major = responsibleMajor;
+                            if (contact) userData.contact = contact;
+                        }
+                        // 如果是教师，添加额外属性
+                        else if (userType === 'teacher') {
+                            const dept = document.getElementById('addTeacherDept').value.trim();
+                            const contact = document.getElementById('addTeacherContact').value.trim();
+                            
+                            if (dept) userData.dept = dept;
+                            if (contact) userData.contact = contact;
+                        }
+                        // 如果是管理员，添加额外属性
+                        else if (userType === 'admin') {
+                            const dept = document.getElementById('addAdminDept').value.trim();
+                            
+                            if (dept) userData.dept = dept;
+                        }
+                        
                         try {
                             const response = await fetch('/api/admin/users', {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json'
                                 },
-                                body: JSON.stringify({
-                                    account,
-                                    user_name: name,
-                                    password,
-                                    role_type: roleMap[userType]
-                                })
+                                body: JSON.stringify(userData)
                             });
                             
                             const result = await response.json();
                             const messageEl = modalBody.querySelector('.message');
-                            
+                            messageEl.classList.remove('hidden');
+                            // 显示消息
                             if (result.success) {
                                 messageEl.textContent = result.message;
                                 messageEl.className = 'message message-success';
-                                // 清空表单
+                                // 清空表单并隐藏学生字段
                                 this.reset();
+                                document.getElementById('studentFields').classList.add('hidden');
                             } else {
                                 messageEl.textContent = result.message;
                                 messageEl.className = 'message message-error';
                             }
                         } catch (error) {
                             console.error('新增用户失败:', error);
-                            modalBody.querySelector('.message').textContent = '网络错误，请重试';
-                            modalBody.querySelector('.message').className = 'message message-error';
+                            const messageEl = modalBody.querySelector('.message');
+                            messageEl.classList.remove('hidden');
+                            messageEl.textContent = '网络错误，请重试';
+                            messageEl.className = 'message message-error';
                         }
                     });
                     break;
                 case 'update-user':
                     modalTitle.textContent = '修改用户信息';
+                    modalSubtitle.textContent = '编辑现有用户的资料信息';
+                    modalIcon.className = 'fa-solid fa-user-pen text-white text-xl';
                     modalBody.innerHTML = `
-                        <div class="message"></div>
-                        <form id="updateUserForm">
-                            <div class="form-group">
-                                <label for="updateAccount">账号</label>
-                                <input type="text" id="updateAccount" class="form-control" placeholder="请输入要修改的账号" required>
+                        <div id="formMessage" class="hidden mb-4 p-4 rounded-xl"></div>
+                        <form id="updateUserForm" class="space-y-5">
+                            <div class="bg-gradient-to-r from-cyan/5 to-primary/5 rounded-2xl p-6 border-2 border-dashed border-cyan-200">
+                                <div class="flex items-center mb-3">
+                                    <i class="fa-solid fa-magnifying-glass text-cyan-600 text-xl mr-3"></i>
+                                    <h4 class="font-bold text-gray-800">查找用户</h4>
+                                </div>
+                                <div class="flex gap-3">
+                                    <div class="relative flex-1">
+                                        <input type="text" id="updateAccount" class="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500 transition-all font-medium" placeholder="请输入账号" required>
+                                        <i class="fa-solid fa-hashtag absolute left-4 top-3.5 text-gray-400"></i>
+                                    </div>
+                                    <button type="button" id="searchUserBtn" class="px-6 py-3 bg-gradient-to-r from-cyan-500 to-primary text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center">
+                                        <i class="fa-solid fa-search mr-2"></i>查询
+                                    </button>
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label for="updateUserType">新用户类型（可选）</label>
-                                <select id="updateUserType" class="form-control">
+                            
+                            <!-- 用户信息显示区域 -->
+                            <div id="userInfoDisplay" class="hidden bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border-2 border-blue-200 cursor-pointer hover:shadow-lg hover:scale-[1.02] transition-all duration-300 group">
+                                <div class="flex items-start">
+                                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mr-4 flex-shrink-0 group-hover:scale-110 transition-transform">
+                                        <i id="userRoleIcon" class="fa-solid fa-user text-white text-2xl"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <h4 class="font-bold text-gray-800 mb-3 flex items-center justify-between">
+                                            <div class="flex items-center">
+                                                <span>当前用户信息</span>
+                                                <span id="userRoleBadge" class="ml-3 px-3 py-1 text-xs rounded-full"></span>
+                                            </div>
+                                            <span class="text-cyan-600 text-sm font-normal flex items-center group-hover:text-cyan-700">
+                                                <i class="fa-solid fa-hand-pointer mr-1"></i>点击编辑
+                                            </span>
+                                        </h4>
+                                        <div class="grid grid-cols-2 gap-3 text-sm">
+                                            <div class="flex items-center">
+                                                <span class="text-gray-600 font-medium w-20">账号：</span>
+                                                <span id="displayAccount" class="font-semibold text-gray-800"></span>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <span class="text-gray-600 font-medium w-20">姓名：</span>
+                                                <span id="displayName" class="font-semibold text-gray-800"></span>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <span class="text-gray-600 font-medium w-20">角色：</span>
+                                                <span id="displayRole" class="font-semibold text-gray-800"></span>
+                                            </div>
+                                            <div id="displayDeptContainer" class="hidden flex items-center">
+                                                <span class="text-gray-600 font-medium w-20">部门：</span>
+                                                <span id="displayDept" class="font-semibold text-gray-800"></span>
+                                            </div>
+                                            <div id="displayGradeContainer" class="hidden flex items-center">
+                                                <span class="text-gray-600 font-medium w-20">年级：</span>
+                                                <span id="displayGrade" class="font-semibold text-gray-800"></span>
+                                            </div>
+                                            <div id="displayMajorContainer" class="hidden flex items-center">
+                                                <span class="text-gray-600 font-medium w-20">专业：</span>
+                                                <span id="displayMajor" class="font-semibold text-gray-800"></span>
+                                            </div>
+                                            <div id="displayContactContainer" class="hidden flex items-center">
+                                                <span class="text-gray-600 font-medium w-20">联系方式：</span>
+                                                <span id="displayContact" class="font-semibold text-gray-800"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-amber-50/50 rounded-2xl p-5 border border-amber-200">
+                                <div class="flex items-start">
+                                    <i class="fa-solid fa-circle-info text-amber-600 text-lg mr-3 mt-0.5"></i>
+                                    <div>
+                                        <p class="font-semibold text-amber-800 mb-1">修改说明</p>
+                                        <p class="text-sm text-amber-700">以下字段为可选项，留空表示不修改该项</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="relative">
+                                <label for="updateUserType" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                    <i class="fa-solid fa-user-tag mr-2 text-cyan-600"></i>新用户类型
+                                    <span class="ml-2 text-xs text-gray-400">(可选)</span>
+                                </label>
+                                <select id="updateUserType" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500 transition-all text-gray-700">
                                     <option value="">不修改</option>
-                                    <option value="student">学生</option>
-                                    <option value="teacher">教师</option>
-                                    <option value="counselor">辅导员</option>
-                                    <option value="admin">管理员</option>
+                                    <option value="student">👨‍🎓 学生</option>
+                                    <option value="teacher">👨‍🏫 教师</option>
+                                    <option value="counselor">👔 辅导员</option>
+                                    <option value="admin">🛡️ 管理员</option>
                                 </select>
                             </div>
-                            <div class="form-group">
-                                <label for="updateName">新姓名（可选）</label>
-                                <input type="text" id="updateName" class="form-control" placeholder="请输入新姓名">
+                            
+                            <div class="relative">
+                                <label for="updateName" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                    <i class="fa-solid fa-signature mr-2 text-cyan-600"></i>新姓名
+                                    <span class="ml-2 text-xs text-gray-400">(可选)</span>
+                                </label>
+                                <input type="text" id="updateName" class="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500 transition-all" placeholder="请输入新姓名">
+                                <i class="fa-solid fa-user absolute left-4 top-[42px] text-gray-400"></i>
                             </div>
-                            <div class="form-group">
-                                <label for="updatePassword">新密码（可选）</label>
-                                <input type="password" id="updatePassword" class="form-control" placeholder="请输入新密码">
+                            
+                            <div class="relative">
+                                <label for="updatePassword" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                    <i class="fa-solid fa-key mr-2 text-cyan-600"></i>新密码
+                                    <span class="ml-2 text-xs text-gray-400">(可选)</span>
+                                </label>
+                                <input type="password" id="updatePassword" class="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500 transition-all" placeholder="请输入新密码">
+                                <i class="fa-solid fa-lock absolute left-4 top-[42px] text-gray-400"></i>
                             </div>
-                            <div class="btn-group">
-                                <button type="submit" class="btn btn-primary">确认修改</button>
+                            
+                            <!-- 学生额外属性 -->
+                            <div id="updateStudentFields" class="hidden bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border-2 border-blue-200 space-y-4">
+                                <div class="flex items-center mb-3">
+                                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mr-3">
+                                        <i class="fa-solid fa-graduation-cap text-white"></i>
+                                    </div>
+                                    <h4 class="font-bold text-gray-800">学生信息</h4>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                        <i class="fa-solid fa-building mr-2 text-blue-600"></i>部门/院系
+                                    </label>
+                                    <select id="updateStudentDept" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all">
+                                        <option value="">请选择院系</option>
+                                        <option value="计算机学院">计算机学院</option>
+                                        <option value="软件学院">软件学院</option>
+                                        <option value="信息工程学院">信息工程学院</option>
+                                        <option value="电子工程学院">电子工程学院</option>
+                                        <option value="机械工程学院">机械工程学院</option>
+                                        <option value="材料科学学院">材料科学学院</option>
+                                        <option value="经济管理学院">经济管理学院</option>
+                                        <option value="外国语学院">外国语学院</option>
+                                        <option value="数学与统计学院">数学与统计学院</option>
+                                        <option value="物理学院">物理学院</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                        <i class="fa-solid fa-calendar mr-2 text-blue-600"></i>年级
+                                    </label>
+                                    <select id="updateStudentGrade" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all">
+                                        <option value="">请选择年级</option>
+                                        <option value="2021">2021级</option>
+                                        <option value="2022">2022级</option>
+                                        <option value="2023">2023级</option>
+                                        <option value="2024">2024级</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                        <i class="fa-solid fa-book mr-2 text-blue-600"></i>专业
+                                    </label>
+                                    <select id="updateStudentMajor" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all">
+                                        <option value="">请选择专业</option>
+                                        <option value="计算机科学与技术">计算机科学与技术</option>
+                                        <option value="软件工程">软件工程</option>
+                                        <option value="网络工程">网络工程</option>
+                                        <option value="信息安全">信息安全</option>
+                                        <option value="数据科学与大数据技术">数据科学与大数据技术</option>
+                                        <option value="人工智能">人工智能</option>
+                                        <option value="物联网工程">物联网工程</option>
+                                        <option value="电子信息工程">电子信息工程</option>
+                                        <option value="通信工程">通信工程</option>
+                                        <option value="自动化">自动化</option>
+                                    </select>
+                                </div>
+                                <div class="relative">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                        <i class="fa-solid fa-users mr-2 text-blue-600"></i>班级
+                                    </label>
+                                    <input type="text" id="updateStudentClass" class="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all" placeholder="例如：1">
+                                    <i class="fa-solid fa-users absolute left-4 top-[42px] text-gray-400"></i>
+                                </div>
+                                <div class="relative">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                        <i class="fa-solid fa-phone mr-2 text-blue-600"></i>联系方式
+                                    </label>
+                                    <input type="text" id="updateStudentContact" class="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all" placeholder="例如：13800138000">
+                                    <i class="fa-solid fa-phone absolute left-4 top-[42px] text-gray-400"></i>
+                                </div>
+                            </div>
+                            
+                            <!-- 辅导员额外属性 -->
+                            <div id="updateCounselorFields" class="hidden bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 border-2 border-purple-200 space-y-4">
+                                <div class="flex items-center mb-3">
+                                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center mr-3">
+                                        <i class="fa-solid fa-user-tie text-white"></i>
+                                    </div>
+                                    <h4 class="font-bold text-gray-800">辅导员信息</h4>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                        <i class="fa-solid fa-building mr-2 text-purple-600"></i>负责院系
+                                    </label>
+                                    <select id="updateCounselorDept" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition-all">
+                                        <option value="">请选择院系</option>
+                                        <option value="计算机学院">计算机学院</option>
+                                        <option value="软件学院">软件学院</option>
+                                        <option value="信息工程学院">信息工程学院</option>
+                                        <option value="电子工程学院">电子工程学院</option>
+                                        <option value="机械工程学院">机械工程学院</option>
+                                        <option value="材料科学学院">材料科学学院</option>
+                                        <option value="经济管理学院">经济管理学院</option>
+                                        <option value="外国语学院">外国语学院</option>
+                                        <option value="数学与统计学院">数学与统计学院</option>
+                                        <option value="物理学院">物理学院</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                        <i class="fa-solid fa-calendar mr-2 text-purple-600"></i>负责年级
+                                    </label>
+                                    <select id="updateCounselorGrade" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition-all">
+                                        <option value="">请选择年级</option>
+                                        <option value="2021">2021级</option>
+                                        <option value="2022">2022级</option>
+                                        <option value="2023">2023级</option>
+                                        <option value="2024">2024级</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                        <i class="fa-solid fa-book mr-2 text-purple-600"></i>负责专业
+                                    </label>
+                                    <select id="updateCounselorMajor" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition-all">
+                                        <option value="">请选择专业</option>
+                                        <option value="计算机科学与技术">计算机科学与技术</option>
+                                        <option value="软件工程">软件工程</option>
+                                        <option value="网络工程">网络工程</option>
+                                        <option value="信息安全">信息安全</option>
+                                        <option value="数据科学与大数据技术">数据科学与大数据技术</option>
+                                        <option value="人工智能">人工智能</option>
+                                        <option value="物联网工程">物联网工程</option>
+                                        <option value="电子信息工程">电子信息工程</option>
+                                        <option value="通信工程">通信工程</option>
+                                        <option value="自动化">自动化</option>
+                                    </select>
+                                </div>
+                                <div class="relative">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                        <i class="fa-solid fa-phone mr-2 text-purple-600"></i>联系方式
+                                    </label>
+                                    <input type="text" id="updateCounselorContact" class="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition-all" placeholder="例如：13800138000">
+                                    <i class="fa-solid fa-phone absolute left-4 top-[42px] text-gray-400"></i>
+                                </div>
+                            </div>
+                            
+                            <!-- 教师额外属性 -->
+                            <div id="updateTeacherFields" class="hidden bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-6 border-2 border-amber-200 space-y-4">
+                                <div class="flex items-center mb-3">
+                                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center mr-3">
+                                        <i class="fa-solid fa-chalkboard-user text-white"></i>
+                                    </div>
+                                    <h4 class="font-bold text-gray-800">教师信息</h4>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                        <i class="fa-solid fa-building mr-2 text-amber-600"></i>部门/院系
+                                    </label>
+                                    <select id="updateTeacherDept" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition-all">
+                                        <option value="">请选择院系</option>
+                                        <option value="计算机学院">计算机学院</option>
+                                        <option value="软件学院">软件学院</option>
+                                        <option value="信息工程学院">信息工程学院</option>
+                                        <option value="电子工程学院">电子工程学院</option>
+                                        <option value="机械工程学院">机械工程学院</option>
+                                        <option value="材料科学学院">材料科学学院</option>
+                                        <option value="经济管理学院">经济管理学院</option>
+                                        <option value="外国语学院">外国语学院</option>
+                                        <option value="数学与统计学院">数学与统计学院</option>
+                                        <option value="物理学院">物理学院</option>
+                                    </select>
+                                </div>
+                                <div class="relative">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                        <i class="fa-solid fa-phone mr-2 text-amber-600"></i>联系方式
+                                    </label>
+                                    <input type="text" id="updateTeacherContact" class="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition-all" placeholder="例如：13800138000">
+                                    <i class="fa-solid fa-phone absolute left-4 top-[42px] text-gray-400"></i>
+                                </div>
+                            </div>
+                            
+                            <!-- 管理员额外属性 -->
+                            <div id="updateAdminFields" class="hidden bg-gradient-to-r from-red-50 to-rose-50 rounded-2xl p-6 border-2 border-red-200 space-y-4">
+                                <div class="flex items-center mb-3">
+                                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center mr-3">
+                                        <i class="fa-solid fa-user-shield text-white"></i>
+                                    </div>
+                                    <h4 class="font-bold text-gray-800">管理员信息</h4>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                        <i class="fa-solid fa-building mr-2 text-red-600"></i>部门/院系
+                                    </label>
+                                    <select id="updateAdminDept" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-white focus:ring-2 focus:ring-red-500/30 focus:border-red-500 transition-all">
+                                        <option value="">请选择院系</option>
+                                        <option value="计算机学院">计算机学院</option>
+                                        <option value="软件学院">软件学院</option>
+                                        <option value="信息工程学院">信息工程学院</option>
+                                        <option value="电子工程学院">电子工程学院</option>
+                                        <option value="机械工程学院">机械工程学院</option>
+                                        <option value="材料科学学院">材料科学学院</option>
+                                        <option value="经济管理学院">经济管理学院</option>
+                                        <option value="外国语学院">外国语学院</option>
+                                        <option value="数学与统计学院">数学与统计学院</option>
+                                        <option value="物理学院">物理学院</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="pt-4 flex gap-3">
+                                <button type="submit" class="flex-1 py-3.5 bg-gradient-to-r from-cyan-500 to-primary text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all btn-glow flex items-center justify-center">
+                                    <i class="fa-solid fa-pen-to-square mr-2"></i>确认修改
+                                </button>
+                                <button type="button" onclick="document.getElementById('updateUserForm').reset()" class="px-6 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all flex items-center justify-center">
+                                    <i class="fa-solid fa-rotate-left mr-2"></i>重置
+                                </button>
                             </div>
                         </form>
                     `;
+                    
+                    // 查询用户信息功能
+                    document.getElementById('searchUserBtn').addEventListener('click', async function() {
+                        const account = document.getElementById('updateAccount').value.trim();
+                        if (!account) {
+                            const messageEl = document.getElementById('formMessage');
+                            messageEl.textContent = '请输入账号';
+                            messageEl.className = 'mb-4 p-4 rounded-xl bg-red-50 text-red-600';
+                            messageEl.classList.remove('hidden');
+                            return;
+                        }
+                        
+                        try {
+                            const response = await fetch('/api/admin/users');
+                            const result = await response.json();
+                            
+                            if (result.success) {
+                                const user = result.data.find(u => u.user_account === account);
+                                
+                                if (user) {
+                                    // 角色名称映射
+                                    const roleNames = {1: '学生', 2: '辅导员', 3: '教师', 4: '管理员'};
+                                    const roleIcons = {1: 'fa-graduation-cap', 2: 'fa-user-tie', 3: 'fa-chalkboard-user', 4: 'fa-user-shield'};
+                                    const roleColors = {1: 'from-blue-500 to-indigo-600', 2: 'from-purple-500 to-pink-600', 3: 'from-amber-500 to-orange-600', 4: 'from-red-500 to-rose-600'};
+                                    const roleBadgeColors = {1: 'bg-blue-100 text-blue-700', 2: 'bg-purple-100 text-purple-700', 3: 'bg-amber-100 text-amber-700', 4: 'bg-red-100 text-red-700'};
+                                    
+                                    // 显示用户信息
+                                    const userInfoDisplay = document.getElementById('userInfoDisplay');
+                                    userInfoDisplay.classList.remove('hidden');
+                                    document.getElementById('displayAccount').textContent = user.user_account;
+                                    document.getElementById('displayName').textContent = user.user_name;
+                                    document.getElementById('displayRole').textContent = roleNames[user.role_type];
+                                    
+                                    // 添加点击事件，自动填充表单
+                                    userInfoDisplay.onclick = function() {
+                                        // 管理员用户不可编辑
+                                        if (user.role_type === 4) {
+                                            const messageEl = document.getElementById('formMessage');
+                                            messageEl.innerHTML = '<i class="fa-solid fa-shield-halved mr-2"></i><strong>系统保护</strong>：管理员用户信息受保护，不允许编辑';
+                                            messageEl.className = 'mb-4 p-4 rounded-xl bg-red-50 text-red-700 border-2 border-red-300 font-semibold animate-pulse';
+                                            messageEl.classList.remove('hidden');
+                                            
+                                            // 5秒后自动隐藏提示
+                                            setTimeout(() => {
+                                                messageEl.classList.add('hidden');
+                                            }, 5000);
+                                            return;
+                                        }
+                                        
+                                        // 自动填充姓名到编辑表单
+                                        document.getElementById('updateName').value = user.user_name;
+                                        
+                                        // 隐藏所有类型的额外字段
+                                        document.getElementById('updateStudentFields').classList.add('hidden');
+                                        document.getElementById('updateCounselorFields').classList.add('hidden');
+                                        document.getElementById('updateTeacherFields').classList.add('hidden');
+                                        document.getElementById('updateAdminFields').classList.add('hidden');
+                                        
+                                        // 根据用户类型显示并填充对应的编辑字段
+                                        if (user.role_type === 1) {
+                                            // 学生
+                                            const studentFields = document.getElementById('updateStudentFields');
+                                            studentFields.classList.remove('hidden');
+                                            if (user.dept) document.getElementById('updateStudentDept').value = user.dept;
+                                            if (user.grade) document.getElementById('updateStudentGrade').value = user.grade;
+                                            if (user.major) document.getElementById('updateStudentMajor').value = user.major;
+                                            if (user.class_num) document.getElementById('updateStudentClass').value = user.class_num;
+                                            if (user.contact) document.getElementById('updateStudentContact').value = user.contact;
+                                        } else if (user.role_type === 2) {
+                                            // 辅导员
+                                            const counselorFields = document.getElementById('updateCounselorFields');
+                                            counselorFields.classList.remove('hidden');
+                                            if (user.dept) document.getElementById('updateCounselorDept').value = user.dept;
+                                            if (user.grade) document.getElementById('updateCounselorGrade').value = user.grade;
+                                            if (user.major) document.getElementById('updateCounselorMajor').value = user.major;
+                                            if (user.contact) document.getElementById('updateCounselorContact').value = user.contact;
+                                        } else if (user.role_type === 3) {
+                                            // 教师
+                                            const teacherFields = document.getElementById('updateTeacherFields');
+                                            teacherFields.classList.remove('hidden');
+                                            if (user.dept) document.getElementById('updateTeacherDept').value = user.dept;
+                                            if (user.contact) document.getElementById('updateTeacherContact').value = user.contact;
+                                        }
+                                        
+                                        // 滚动到编辑区域
+                                        document.getElementById('updateName').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                        
+                                        // 显示成功提示
+                                        const messageEl = document.getElementById('formMessage');
+                                        messageEl.textContent = '✅ 已自动填充用户信息，可以编辑后提交';
+                                        messageEl.className = 'mb-4 p-4 rounded-xl bg-green-50 text-green-700 border border-green-200';
+                                        messageEl.classList.remove('hidden');
+                                        
+                                        // 3秒后自动隐藏提示
+                                        setTimeout(() => {
+                                            messageEl.classList.add('hidden');
+                                        }, 3000);
+                                    };
+                                    
+                                    // 设置角色图标和颜色
+                                    const iconEl = document.getElementById('userRoleIcon');
+                                    iconEl.className = `fa-solid ${roleIcons[user.role_type]} text-white text-2xl`;
+                                    iconEl.parentElement.className = `w-14 h-14 rounded-xl bg-gradient-to-br ${roleColors[user.role_type]} flex items-center justify-center mr-4 flex-shrink-0`;
+                                    
+                                    const badgeEl = document.getElementById('userRoleBadge');
+                                    badgeEl.textContent = roleNames[user.role_type];
+                                    badgeEl.className = `ml-3 px-3 py-1 text-xs rounded-full font-semibold ${roleBadgeColors[user.role_type]}`;
+                                    
+                                    // 根据角色显示不同信息
+                                    document.getElementById('displayDeptContainer').classList.add('hidden');
+                                    document.getElementById('displayGradeContainer').classList.add('hidden');
+                                    document.getElementById('displayMajorContainer').classList.add('hidden');
+                                    document.getElementById('displayContactContainer').classList.add('hidden');
+                                    
+                                    if (user.dept) {
+                                        document.getElementById('displayDeptContainer').classList.remove('hidden');
+                                        document.getElementById('displayDept').textContent = user.dept;
+                                    }
+                                    if (user.grade) {
+                                        document.getElementById('displayGradeContainer').classList.remove('hidden');
+                                        document.getElementById('displayGrade').textContent = user.grade;
+                                    }
+                                    if (user.major) {
+                                        document.getElementById('displayMajorContainer').classList.remove('hidden');
+                                        document.getElementById('displayMajor').textContent = user.major;
+                                    }
+                                    if (user.contact) {
+                                        document.getElementById('displayContactContainer').classList.remove('hidden');
+                                        document.getElementById('displayContact').textContent = user.contact;
+                                    }
+                                    
+                                    // 清除错误提示
+                                    const formMessage = document.getElementById('formMessage');
+                                    if (formMessage.className.includes('red')) {
+                                        formMessage.classList.add('hidden');
+                                    }
+                                } else {
+                                    document.getElementById('userInfoDisplay').classList.add('hidden');
+                                    const messageEl = document.getElementById('formMessage');
+                                    messageEl.textContent = '未找到该账号对应的用户';
+                                    messageEl.className = 'mb-4 p-4 rounded-xl bg-red-50 text-red-600';
+                                    messageEl.classList.remove('hidden');
+                                }
+                            }
+                        } catch (error) {
+                            console.error('查询用户信息失败:', error);
+                            const messageEl = document.getElementById('formMessage');
+                            messageEl.textContent = '网络错误，请重试';
+                            messageEl.className = 'mb-4 p-4 rounded-xl bg-red-50 text-red-600';
+                            messageEl.classList.remove('hidden');
+                        }
+                    });
+                    
                     // 绑定修改用户表单提交事件
                     document.getElementById('updateUserForm').addEventListener('submit', async function(e) {
                         e.preventDefault();
@@ -517,57 +2056,311 @@
                             'admin': 4
                         };
                         
+                        // 准备提交数据
+                        const updateData = {};
+                        if (newName) updateData.new_name = newName;
+                        if (newPassword) updateData.new_password = newPassword;
+                        if (userType) updateData.new_role = roleMap[userType];
+                        
+                        // 收集额外字段数据（根据当前显示的字段区域）
+                        const studentFields = document.getElementById('updateStudentFields');
+                        const counselorFields = document.getElementById('updateCounselorFields');
+                        const teacherFields = document.getElementById('updateTeacherFields');
+                        const adminFields = document.getElementById('updateAdminFields');
+                        
+                        if (!studentFields.classList.contains('hidden')) {
+                            // 学生额外字段
+                            const dept = document.getElementById('updateStudentDept').value;
+                            const grade = document.getElementById('updateStudentGrade').value;
+                            const major = document.getElementById('updateStudentMajor').value;
+                            const classNum = document.getElementById('updateStudentClass').value;
+                            const contact = document.getElementById('updateStudentContact').value;
+                            
+                            if (dept) updateData.new_dept = dept;
+                            if (grade) updateData.new_grade = grade;
+                            if (major) updateData.new_major = major;
+                            if (classNum) updateData.new_class_num = classNum;
+                            if (contact) updateData.new_contact = contact;
+                        } else if (!counselorFields.classList.contains('hidden')) {
+                            // 辅导员额外字段
+                            const dept = document.getElementById('updateCounselorDept').value;
+                            const grade = document.getElementById('updateCounselorGrade').value;
+                            const major = document.getElementById('updateCounselorMajor').value;
+                            const contact = document.getElementById('updateCounselorContact').value;
+                            
+                            if (dept) updateData.new_dept = dept;
+                            if (grade) updateData.new_responsible_grade = grade;
+                            if (major) updateData.new_responsible_major = major;
+                            if (contact) updateData.new_contact = contact;
+                        } else if (!teacherFields.classList.contains('hidden')) {
+                            // 教师额外字段
+                            const dept = document.getElementById('updateTeacherDept').value;
+                            const contact = document.getElementById('updateTeacherContact').value;
+                            
+                            if (dept) updateData.new_dept = dept;
+                            if (contact) updateData.new_contact = contact;
+                        } else if (!adminFields.classList.contains('hidden')) {
+                            // 管理员额外字段
+                            const dept = document.getElementById('updateAdminDept').value;
+                            
+                            if (dept) updateData.new_dept = dept;
+                        }
+                        
                         try {
                             const response = await fetch(`/api/admin/users/${account}`, {
                                 method: 'PUT',
                                 headers: {
                                     'Content-Type': 'application/json'
                                 },
-                                body: JSON.stringify({
-                                    new_name: newName || undefined,
-                                    new_password: newPassword || undefined,
-                                    new_role: userType ? roleMap[userType] : undefined
-                                })
+                                body: JSON.stringify(updateData)
                             });
                             
                             const result = await response.json();
-                            const messageEl = modalBody.querySelector('.message');
+                            const messageEl = document.getElementById('formMessage');
                             
                             if (result.success) {
-                                messageEl.textContent = result.message;
-                                messageEl.className = 'message message-success';
+                                messageEl.textContent = '✅ ' + result.message;
+                                messageEl.className = 'mb-4 p-4 rounded-xl bg-green-50 text-green-700 border border-green-200';
+                                messageEl.classList.remove('hidden');
                             } else {
-                                messageEl.textContent = result.message;
-                                messageEl.className = 'message message-error';
+                                messageEl.textContent = '❌ ' + result.message;
+                                messageEl.className = 'mb-4 p-4 rounded-xl bg-red-50 text-red-600 border border-red-200';
+                                messageEl.classList.remove('hidden');
                             }
                         } catch (error) {
                             console.error('修改用户失败:', error);
-                            modalBody.querySelector('.message').textContent = '网络错误，请重试';
-                            modalBody.querySelector('.message').className = 'message message-error';
+                            const messageEl = document.getElementById('formMessage');
+                            messageEl.textContent = '❌ 网络错误，请重试';
+                            messageEl.className = 'mb-4 p-4 rounded-xl bg-red-50 text-red-600 border border-red-200';
+                            messageEl.classList.remove('hidden');
                         }
                     });
                     break;
                 case 'delete-user':
                     modalTitle.textContent = '删除用户';
+                    modalSubtitle.textContent = '永久移除用户账户（不可恢复）';
+                    modalIcon.className = 'fa-solid fa-user-xmark text-white text-xl';
                     modalBody.innerHTML = `
-                        <div class="message"></div>
-                        <form id="deleteUserForm">
-                            <div class="form-group">
-                                <label for="deleteAccount">账号</label>
-                                <input type="text" id="deleteAccount" class="form-control" placeholder="请输入要删除的账号" required>
+                        <div id="formMessage" class="hidden mb-4 p-4 rounded-xl"></div>
+                        
+                        <!-- 警告提示 -->
+                        <div class="bg-gradient-to-r from-red-50 to-rose-50 rounded-2xl p-6 border-2 border-red-200 mb-6">
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <div class="w-12 h-12 rounded-xl bg-red-500 flex items-center justify-center animate-pulse">
+                                        <i class="fa-solid fa-triangle-exclamation text-white text-xl"></i>
+                                    </div>
+                                </div>
+                                <div class="ml-4 flex-1">
+                                    <h4 class="text-lg font-bold text-red-800 mb-2 flex items-center">
+                                        <i class="fa-solid fa-skull-crossbones mr-2"></i>危险操作警告
+                                    </h4>
+                                    <ul class="space-y-1.5 text-sm text-red-700">
+                                        <li class="flex items-start">
+                                            <i class="fa-solid fa-circle-xmark mr-2 mt-0.5 text-red-500"></i>
+                                            <span>删除操作<strong>不可恢复</strong>，用户数据将永久丢失</span>
+                                        </li>
+                                        <li class="flex items-start">
+                                            <i class="fa-solid fa-circle-xmark mr-2 mt-0.5 text-red-500"></i>
+                                            <span>请确认账号信息无误后再执行删除</span>
+                                        </li>
+                                        <li class="flex items-start">
+                                            <i class="fa-solid fa-circle-xmark mr-2 mt-0.5 text-red-500"></i>
+                                            <span>建议先备份重要数据</span>
+                                        </li>
+                                    </ul>
+                                </div>
                             </div>
-                            <p class="text-danger">警告：删除操作不可恢复，请谨慎操作！</p>
-                            <div class="btn-group">
-                                <button type="submit" class="btn btn-danger">确认删除</button>
+                        </div>
+                        
+                        <form id="deleteUserForm" class="space-y-5">
+                            <div class="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-6 border-2 border-dashed border-gray-300">
+                                <div class="flex items-center mb-3">
+                                    <i class="fa-solid fa-magnifying-glass text-gray-600 text-xl mr-3"></i>
+                                    <h4 class="font-bold text-gray-800">输入要删除的账号</h4>
+                                </div>
+                                <div class="relative">
+                                    <input type="text" id="deleteAccount" class="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-300 bg-white focus:ring-2 focus:ring-red-500/30 focus:border-red-500 transition-all font-medium" placeholder="请输入要删除的账号" required>
+                                    <i class="fa-solid fa-hashtag absolute left-4 top-3.5 text-gray-400"></i>
+                                </div>
+                            </div>
+                            
+                            <!-- 用户信息显示区域 -->
+                            <div id="deleteUserInfo" class="hidden bg-blue-50 rounded-2xl p-5 border-2 border-blue-200">
+                                <div class="flex items-start">
+                                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mr-4">
+                                        <i class="fa-solid fa-user text-white text-xl"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <h4 class="font-bold text-gray-800 mb-3">用户信息</h4>
+                                        <div class="space-y-2 text-sm">
+                                            <div class="flex items-center">
+                                                <span class="text-gray-600 w-20">账号：</span>
+                                                <span class="font-semibold text-gray-800" id="deleteUserAccount">-</span>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <span class="text-gray-600 w-20">姓名：</span>
+                                                <span class="font-semibold text-gray-800" id="deleteUserName">-</span>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <span class="text-gray-600 w-20">角色：</span>
+                                                <span class="font-semibold text-gray-800" id="deleteUserRole">-</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-amber-50 rounded-xl p-4 border border-amber-200">
+                                <div class="flex items-center text-amber-800">
+                                    <i class="fa-solid fa-lightbulb mr-2 text-amber-600"></i>
+                                    <span class="text-sm font-medium">提示：删除前系统会再次要求您确认</span>
+                                </div>
+                            </div>
+                            
+                            <div class="pt-4 flex gap-3">
+                                <button type="submit" class="flex-1 py-3.5 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all btn-glow flex items-center justify-center group">
+                                    <i class="fa-solid fa-trash-can mr-2 group-hover:animate-bounce"></i>确认删除
+                                </button>
+                                <button type="button" onclick="document.getElementById('actionModal').classList.add('hidden')" class="px-6 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all flex items-center justify-center">
+                                    <i class="fa-solid fa-xmark mr-2"></i>取消
+                                </button>
                             </div>
                         </form>
                     `;
+                    
+                    // 监听账号输入，实时查询用户信息
+                    const deleteAccountInput = document.getElementById('deleteAccount');
+                    const deleteUserInfo = document.getElementById('deleteUserInfo');
+                    let searchTimeout;
+                    let currentDeleteUserRole = null; // 保存当前要删除的用户角色
+                    
+                    deleteAccountInput.addEventListener('input', function() {
+                        const account = this.value.trim();
+                        
+                        // 清除之前的定时器
+                        clearTimeout(searchTimeout);
+                        
+                        if (!account) {
+                            deleteUserInfo.classList.add('hidden');
+                            currentDeleteUserRole = null;
+                            return;
+                        }
+                        
+                        // 设置延迟查询，避免频繁请求
+                        searchTimeout = setTimeout(async () => {
+                            try {
+                                const response = await fetch('/api/admin/users');
+                                const result = await response.json();
+                                
+                                if (result.success) {
+                                    const user = result.data.find(u => u.user_account === account);
+                                    
+                                    if (user) {
+                                        // 角色名称映射
+                                        const roleNames = {1: '学生', 2: '辅导员', 3: '教师', 4: '管理员'};
+                                        
+                                        // 保存用户角色类型
+                                        currentDeleteUserRole = user.role_type;
+                                        
+                                        document.getElementById('deleteUserAccount').textContent = user.user_account;
+                                        document.getElementById('deleteUserName').textContent = user.user_name;
+                                        document.getElementById('deleteUserRole').textContent = roleNames[user.role_type];
+                                        
+                                        // 如果是管理员，显示保护提示
+                                        if (user.role_type === 4) {
+                                            deleteUserInfo.className = 'bg-red-50 rounded-2xl p-5 border-2 border-red-300';
+                                            deleteUserInfo.innerHTML = `
+                                                <div class="flex items-start">
+                                                    <div class="w-12 h-12 rounded-xl bg-red-500 flex items-center justify-center mr-4 animate-pulse">
+                                                        <i class="fa-solid fa-shield-halved text-white text-xl"></i>
+                                                    </div>
+                                                    <div class="flex-1">
+                                                        <h4 class="font-bold text-red-800 mb-3 text-lg">🛡️ 系统保护用户</h4>
+                                                        <div class="space-y-2 text-sm">
+                                                            <div class="flex items-center">
+                                                                <span class="text-red-700 font-medium w-20">账号：</span>
+                                                                <span class="font-bold text-red-900">${user.user_account}</span>
+                                                            </div>
+                                                            <div class="flex items-center">
+                                                                <span class="text-red-700 font-medium w-20">姓名：</span>
+                                                                <span class="font-bold text-red-900">${user.user_name}</span>
+                                                            </div>
+                                                            <div class="flex items-center">
+                                                                <span class="text-red-700 font-medium w-20">角色：</span>
+                                                                <span class="font-bold text-red-900">${roleNames[user.role_type]}</span>
+                                                            </div>
+                                                            <div class="mt-3 p-3 bg-red-100 rounded-lg border border-red-400">
+                                                                <p class="text-red-800 font-semibold text-center">
+                                                                    <i class="fa-solid fa-ban mr-2"></i>该用户为管理员，受系统保护，不允许删除
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            `;
+                                        } else {
+                                            deleteUserInfo.className = 'bg-blue-50 rounded-2xl p-5 border-2 border-blue-200';
+                                            deleteUserInfo.innerHTML = `
+                                                <div class="flex items-start">
+                                                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mr-4">
+                                                        <i class="fa-solid fa-user text-white text-xl"></i>
+                                                    </div>
+                                                    <div class="flex-1">
+                                                        <h4 class="font-bold text-gray-800 mb-3">用户信息</h4>
+                                                        <div class="space-y-2 text-sm">
+                                                            <div class="flex items-center">
+                                                                <span class="text-gray-600 w-20">账号：</span>
+                                                                <span class="font-semibold text-gray-800">${user.user_account}</span>
+                                                            </div>
+                                                            <div class="flex items-center">
+                                                                <span class="text-gray-600 w-20">姓名：</span>
+                                                                <span class="font-semibold text-gray-800">${user.user_name}</span>
+                                                            </div>
+                                                            <div class="flex items-center">
+                                                                <span class="text-gray-600 w-20">角色：</span>
+                                                                <span class="font-semibold text-gray-800">${roleNames[user.role_type]}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            `;
+                                        }
+                                        
+                                        deleteUserInfo.classList.remove('hidden');
+                                    } else {
+                                        deleteUserInfo.classList.add('hidden');
+                                        currentDeleteUserRole = null;
+                                    }
+                                }
+                            } catch (error) {
+                                console.error('查询用户信息失败:', error);
+                                deleteUserInfo.classList.add('hidden');
+                                currentDeleteUserRole = null;
+                            }
+                        }, 500); // 500ms延迟
+                    });
+                    
                     // 绑定删除用户表单提交事件
                     document.getElementById('deleteUserForm').addEventListener('submit', async function(e) {
                         e.preventDefault();
                         const account = document.getElementById('deleteAccount').value;
                         
-                        if (!confirm(`确定要删除账号为 ${account} 的用户吗？`)) {
+                        // 检查是否为管理员用户
+                        if (currentDeleteUserRole === 4) {
+                            const messageEl = document.getElementById('formMessage');
+                            messageEl.innerHTML = '<i class="fa-solid fa-shield-halved mr-2"></i><strong>🛡️ 系统保护</strong>：管理员用户受系统保护，不允许删除操作！';
+                            messageEl.className = 'mb-4 p-4 rounded-xl bg-red-50 text-red-700 border-2 border-red-300 font-semibold animate-pulse';
+                            messageEl.classList.remove('hidden');
+                            
+                            // 5秒后自动隐藏提示
+                            setTimeout(() => {
+                                messageEl.classList.add('hidden');
+                            }, 5000);
+                            return;
+                        }
+                        
+                        if (!confirm(`⚠️ 确定要删除账号为 ${account} 的用户吗？\n\n此操作不可恢复，请谨慎操作！`)) {
                             return;
                         }
                         
@@ -577,21 +2370,27 @@
                             });
                             
                             const result = await response.json();
-                            const messageEl = modalBody.querySelector('.message');
+                            const messageEl = document.getElementById('formMessage');
                             
                             if (result.success) {
-                                messageEl.textContent = result.message;
-                                messageEl.className = 'message message-success';
-                                // 清空表单
+                                messageEl.innerHTML = '<i class="fa-solid fa-circle-check mr-2"></i>' + result.message;
+                                messageEl.className = 'mb-4 p-4 rounded-xl bg-green-50 text-green-700 border border-green-200 font-semibold';
+                                messageEl.classList.remove('hidden');
+                                // 清空表单并隐藏用户信息
                                 this.reset();
+                                document.getElementById('deleteUserInfo').classList.add('hidden');
+                                currentDeleteUserRole = null;
                             } else {
-                                messageEl.textContent = result.message;
-                                messageEl.className = 'message message-error';
+                                messageEl.innerHTML = '<i class="fa-solid fa-circle-xmark mr-2"></i>' + result.message;
+                                messageEl.className = 'mb-4 p-4 rounded-xl bg-red-50 text-red-700 border border-red-200 font-semibold';
+                                messageEl.classList.remove('hidden');
                             }
                         } catch (error) {
                             console.error('删除用户失败:', error);
-                            modalBody.querySelector('.message').textContent = '网络错误，请重试';
-                            modalBody.querySelector('.message').className = 'message message-error';
+                            const messageEl = document.getElementById('formMessage');
+                            messageEl.innerHTML = '<i class="fa-solid fa-circle-xmark mr-2"></i>网络错误，请重试';
+                            messageEl.className = 'mb-4 p-4 rounded-xl bg-red-50 text-red-700 border border-red-200 font-semibold';
+                            messageEl.classList.remove('hidden');
                         }
                     });
                     break;
@@ -601,17 +2400,34 @@
             }
             
             // 显示模态框
-            modal.style.display = 'flex';
+            modal.classList.remove('hidden');
         }
         
         // 加载用户数据
         async function loadUserData(modalBody, userType) {
             try {
+                // 显示加载状态
+                modalBody.innerHTML = `
+                    <div class="text-center py-12">
+                        <div class="inline-block p-4 rounded-2xl bg-primary/5 mb-4">
+                            <i class="fa-solid fa-spinner fa-spin text-3xl text-primary"></i>
+                        </div>
+                        <p class="text-lg font-medium text-gray-600">正在加载数据...</p>
+                    </div>
+                `;
+                
                 const response = await fetch('/api/admin/users');
                 const result = await response.json();
                 
                 if (!result.success) {
-                    modalBody.innerHTML = `<p class="message message-error">${result.message}</p>`;
+                    modalBody.innerHTML = `
+                        <div class="text-center py-12">
+                            <div class="inline-block p-4 rounded-2xl bg-red-50 mb-4">
+                                <i class="fa-solid fa-circle-exclamation text-3xl text-red-500"></i>
+                            </div>
+                            <p class="text-lg font-medium text-red-600">${result.message}</p>
+                        </div>
+                    `;
                     return;
                 }
                 
@@ -631,50 +2447,229 @@
                     4: '管理员'
                 };
                 
+                // 角色图标映射
+                const roleIconMap = {
+                    1: 'fa-user-graduate',
+                    2: 'fa-user-tie',
+                    3: 'fa-chalkboard-user',
+                    4: 'fa-user-shield'
+                };
+                
+                // 角色颜色映射
+                const roleColorMap = {
+                    1: 'blue',
+                    2: 'purple',
+                    3: 'amber',
+                    4: 'red'
+                };
+                
                 // 筛选指定类型的用户
                 const filteredUsers = result.data.filter(user => 
                     roleTypeMap[user.role_type] === userType
                 );
                 
                 if (filteredUsers.length === 0) {
-                    modalBody.innerHTML = '<p>暂无该类型用户数据</p>';
+                    modalBody.innerHTML = `
+                        <div class="text-center py-16">
+                            <div class="inline-block p-6 rounded-3xl bg-gray-50 mb-6">
+                                <i class="fa-solid fa-inbox text-6xl text-gray-300"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-600 mb-2">暂无数据</h3>
+                            <p class="text-gray-400">当前没有${roleNameMap[Object.keys(roleTypeMap).find(key => roleTypeMap[key] === userType)]}用户</p>
+                        </div>
+                    `;
                     return;
                 }
                 
-                // 生成表格
+                // 生成美化的表格
                 let tableHtml = `
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>账号</th>
-                                <th>姓名</th>
-                                <th>角色</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                    <div class="mb-4 flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center">
+                                <i class="fa-solid fa-database text-primary"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">共找到</p>
+                                <p class="text-lg font-bold text-gray-800">${filteredUsers.length} 条记录</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-hidden rounded-2xl border border-gray-200 shadow-sm">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="bg-gradient-to-r from-primary/10 to-accent/10">
+                                    <th class="px-6 py-4 text-left text-sm font-bold text-gray-700">
+                                        <div class="flex items-center">
+                                            <i class="fa-solid fa-hashtag mr-2 text-primary"></i>账号
+                                        </div>
+                                    </th>
+                                    <th class="px-6 py-4 text-left text-sm font-bold text-gray-700">
+                                        <div class="flex items-center">
+                                            <i class="fa-solid fa-user mr-2 text-primary"></i>姓名
+                                        </div>
+                                    </th>`;
+                
+                // 根据用户类型添加不同的列
+                if (userType === 'student') {
+                    tableHtml += `
+                                    <th class="px-4 py-4 text-left text-sm font-bold text-gray-700">
+                                        <div class="flex items-center">
+                                            <i class="fa-solid fa-id-card mr-2 text-primary"></i>学号
+                                        </div>
+                                    </th>
+                                    <th class="px-4 py-4 text-left text-sm font-bold text-gray-700">
+                                        <div class="flex items-center">
+                                            <i class="fa-solid fa-building mr-2 text-primary"></i>部门
+                                        </div>
+                                    </th>
+                                    <th class="px-4 py-4 text-left text-sm font-bold text-gray-700">
+                                        <div class="flex items-center">
+                                            <i class="fa-solid fa-calendar mr-2 text-primary"></i>年级
+                                        </div>
+                                    </th>
+                                    <th class="px-4 py-4 text-left text-sm font-bold text-gray-700">
+                                        <div class="flex items-center">
+                                            <i class="fa-solid fa-graduation-cap mr-2 text-primary"></i>专业
+                                        </div>
+                                    </th>
+                                    <th class="px-4 py-4 text-left text-sm font-bold text-gray-700">
+                                        <div class="flex items-center">
+                                            <i class="fa-solid fa-users mr-2 text-primary"></i>班级
+                                        </div>
+                                    </th>
+                                    <th class="px-4 py-4 text-left text-sm font-bold text-gray-700">
+                                        <div class="flex items-center">
+                                            <i class="fa-solid fa-phone mr-2 text-primary"></i>联系方式
+                                        </div>
+                                    </th>`;
+                } else {
+                    tableHtml += `
+                                    <th class="px-6 py-4 text-left text-sm font-bold text-gray-700">
+                                        <div class="flex items-center">
+                                            <i class="fa-solid fa-user-tag mr-2 text-primary"></i>角色
+                                        </div>
+                                    </th>`;
+                }
+                
+                tableHtml += `
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-100">
                 `;
                 
-                filteredUsers.forEach(user => {
+                filteredUsers.forEach((user, index) => {
+                    const color = roleColorMap[user.role_type];
+                    const icon = roleIconMap[user.role_type];
                     tableHtml += `
-                        <tr>
-                            <td>${user.user_account}</td>
-                            <td>${user.user_name}</td>
-                            <td>${roleNameMap[user.role_type]}</td>
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-6 py-4">
+                                <div class="flex items-center">
+                                    <div class="w-10 h-10 rounded-lg bg-${color}-100 flex items-center justify-center mr-3">
+                                        <span class="text-${color}-600 font-bold text-sm">${index + 1}</span>
+                                    </div>
+                                    <span class="font-mono text-sm font-semibold text-gray-700">${user.user_account}</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="flex items-center">
+                                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center mr-3">
+                                        <span class="text-white font-bold text-xs">${user.user_name.charAt(0)}</span>
+                                    </div>
+                                    <span class="font-medium text-gray-800">${user.user_name}</span>
+                                </div>
+                            </td>`;
+                    
+                    if (userType === 'student') {
+                        tableHtml += `
+                            <td class="px-4 py-4">
+                                <span class="text-sm text-gray-700">${user.user_account}</span>
+                            </td>
+                            <td class="px-4 py-4">
+                                <span class="text-sm text-gray-700">${user.dept || '-'}</span>
+                            </td>
+                            <td class="px-4 py-4">
+                                <span class="text-sm text-gray-700">${user.grade || '-'}</span>
+                            </td>
+                            <td class="px-4 py-4">
+                                <span class="text-sm text-gray-700">${user.major || '-'}</span>
+                            </td>
+                            <td class="px-4 py-4">
+                                <span class="text-sm text-gray-700">${user.class_num || '-'}</span>
+                            </td>
+                            <td class="px-4 py-4">
+                                <span class="text-sm text-gray-700">${user.contact || '-'}</span>
+                            </td>`;
+                    } else {
+                        tableHtml += `
+                            <td class="px-6 py-4">
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-${color}-100 text-${color}-700">
+                                    <i class="fa-solid ${icon} mr-1.5"></i>
+                                    ${roleNameMap[user.role_type]}
+                                </span>
+                            </td>`;
+                    }
+                    
+                    tableHtml += `
                         </tr>
                     `;
                 });
                 
                 tableHtml += `
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
                 `;
                 
                 modalBody.innerHTML = tableHtml;
                 
             } catch (error) {
                 console.error('加载用户数据失败:', error);
-                modalBody.innerHTML = '<p class="message message-error">加载数据失败，请重试</p>';
+                modalBody.innerHTML = `
+                    <div class="text-center py-12">
+                        <div class="inline-block p-4 rounded-2xl bg-red-50 mb-4">
+                            <i class="fa-solid fa-triangle-exclamation text-3xl text-red-500"></i>
+                        </div>
+                        <p class="text-lg font-medium text-red-600">加载数据失败</p>
+                        <p class="text-sm text-gray-500 mt-2">${error.message}</p>
+                    </div>
+                `;
             }
+        }
+        
+        // 头像上传处理函数
+        function handleAvatarChange(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            // 验证文件类型
+            if (!file.type.startsWith('image/')) {
+                showToast('请选择图片文件！', 'error');
+                return;
+            }
+            
+            // 验证文件大小（最大2MB）
+            if (file.size > 2 * 1024 * 1024) {
+                showToast('图片大小不能超过2MB！', 'error');
+                return;
+            }
+            
+            // 读取文件并预览
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const avatarPreview = document.getElementById('avatarPreview');
+                const avatarText = document.getElementById('avatarText');
+                
+                // 显示图片预览
+                avatarPreview.src = e.target.result;
+                avatarPreview.classList.remove('hidden');
+                avatarText.classList.add('hidden');
+                
+                // 显示成功提示
+                showToast('头像已更新！', 'success');
+            };
+            
+            reader.readAsDataURL(file);
         }
     </script>
 </body>

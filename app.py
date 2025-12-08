@@ -1,5 +1,6 @@
 import os
 import io
+import re
 import uuid
 import base64
 from datetime import datetime
@@ -8,13 +9,13 @@ from functools import wraps
 import pymysql
 from collections import Counter
 from db_config import get_db_config  # 确保存在数据库配置文件
-from counselor_operation import CounselorOperation
+from terminal.counselor_operation import CounselorOperation
 
 # 初始化Flask应用
 app = Flask(__name__)
 app.secret_key = 'your_secure_secret_key_123456'  # 生产环境需更换为随机安全密钥
-app.config['UPLOAD_FOLDER'] = 'qianzi'  # 签字图片保存目录
-app.config['DEBUG'] = True  # 启用调试模式
+app.config['UPLOAD_FOLDER'] = 'data/signatures'  # 签字图片保存目录
+app.config['DEBUG'] = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'  # 根据环境变量设置调试模式
 
 # 确保签字文件夹存在
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -264,7 +265,7 @@ def counselor_profile():
         except Exception:
             pass
 
-    image_folder = os.path.join(app.root_path, 'head_image')
+    image_folder = os.path.join(app.root_path, 'data', 'avatars')
     avatars = []
     try:
         for name in os.listdir(image_folder):
@@ -477,6 +478,7 @@ def user_preview():
     
     target = role_map[account_len]
     
+    conn = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -572,6 +574,32 @@ def get_chat_contacts():
     except Exception as e:
         print(f"获取联系人列表失败: {e}")
         return jsonify({"success": False, "message": "获取联系人列表失败"})
+
+@app.route('/api/chat/unread_count', methods=['GET'])
+@login_required(role='辅导员')
+def get_chat_unread_count():
+    """获取辅导员未读消息总数"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        counselor_id = session['user_info']['user_account']
+        
+        # 统计所有学生发给辅导员的未读消息
+        cursor.execute("""
+            SELECT COUNT(*) as unread_count 
+            FROM chat_messages 
+            WHERE receiver_id = %s AND sender_role = '学生' AND is_read = 0
+        """, (counselor_id,))
+        
+        result = cursor.fetchone()
+        conn.close()
+        
+        return jsonify({"success": True, "data": result['unread_count'] if result else 0})
+        
+    except Exception as e:
+        print(f"获取未读消息数失败: {e}")
+        return jsonify({"success": False, "message": "获取未读消息数失败"})
 
 @app.route('/api/chat/messages', methods=['GET'])
 @login_required(role='辅导员')
@@ -695,7 +723,7 @@ def save_signature():
         file_name = f"{counselor_id}_{leave_id}.png"
         
         # 保存到qianzi文件夹
-        signature_folder = os.path.join(app.root_path, 'qianzi')
+        signature_folder = os.path.join(app.root_path, 'data', 'signatures')
         if not os.path.exists(signature_folder):
             os.makedirs(signature_folder)
         
@@ -711,7 +739,7 @@ def save_signature():
     except Exception as e:
         return jsonify({"success": False, "message": str(e)})
 
-# 管理员专用接口示例
+# 管理员专用接口 - 获取所有用户
 @app.route('/api/admin/users', methods=['GET'])
 @login_required(role='管理员')
 def get_all_users():
@@ -720,24 +748,13 @@ def get_all_users():
         conn = get_db_connection()
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         cursor.execute("""
-            SELECT admin_id as user_account, admin_name as user_name, 4 as role_type,
-                   dept, NULL as dept_id, NULL as grade, NULL as major, NULL as major_code, 
-                   NULL as class_num, NULL as contact, NULL as avatar
-            FROM admin_info
+            SELECT 4 as role_type, admin_id as user_account, admin_name as user_name, NULL as dept, NULL as grade, NULL as major, NULL as class_num, NULL as contact FROM admin_info
             UNION ALL
-            SELECT counselor_id as user_account, counselor_name as user_name, 2 as role_type,
-                   dept, NULL as dept_id, responsible_grade as grade, responsible_major as major, NULL as major_code,
-                   NULL as class_num, contact, avatar
-            FROM counselor_info
+            SELECT 2 as role_type, counselor_id as user_account, counselor_name as user_name, dept, NULL as grade, NULL as major, NULL as class_num, contact FROM counselor_info
             UNION ALL
-            SELECT teacher_id as user_account, teacher_name as user_name, 3 as role_type,
-                   dept, NULL as dept_id, NULL as grade, NULL as major, NULL as major_code,
-                   NULL as class_num, contact, avatar
-            FROM teacher_info
+            SELECT 3 as role_type, teacher_id as user_account, teacher_name as user_name, dept, NULL as grade, NULL as major, NULL as class_num, contact FROM teacher_info
             UNION ALL
-            SELECT student_id as user_account, student_name as user_name, 1 as role_type,
-                   dept, dept_id, grade, major, major_code, class_num, contact, avatar
-            FROM student_info
+            SELECT 1 as role_type, student_id as user_account, student_name as user_name, dept, grade, major, class_num, contact FROM student_info
         """)
         users = cursor.fetchall()
         conn.close()
@@ -768,27 +785,18 @@ def add_user():
             if len(account) != 12:
                 return jsonify({"success": False, "message": "学生账号必须是12位"})
             
-            # 获取学生额外信息
-            dept = data.get('dept', 'SC')  # 默认SC
+            dept = data.get('dept', 'SC')
             grade = data.get('grade', '2024级')
             major = data.get('major', '计算机科学与技术')
             class_num = data.get('class_num', '01')
             contact = data.get('contact', '')
             
-            # 生成专业代码（根据专业名称映射）
             major_code_map = {
-                '计算机科学与技术': '01',
-                '软件工程': '02',
-                '网络工程': '03',
-                '信息安全': '04',
-                '数据科学与大数据技术': '05',
-                '人工智能': '06',
-                '物联网工程': '07',
-                '电子信息工程': '08',
-                '通信工程': '09',
-                '自动化': '10'
+                '计算机科学与技术': '01', '软件工程': '02', '网络工程': '03',
+                '信息安全': '04', '数据科学与大数据技术': '05', '人工智能': '06',
+                '物联网工程': '07', '电子信息工程': '08', '通信工程': '09', '自动化': '10'
             }
-            major_code = major_code_map.get(major, '01')  # 默认01
+            major_code = major_code_map.get(major, '01')
             
             cursor.execute("""
                 INSERT INTO student_info (student_id, student_name, password, dept, dept_id, grade, major, major_code, class_num, contact)
@@ -798,7 +806,6 @@ def add_user():
             if len(account) != 8:
                 return jsonify({"success": False, "message": "辅导员账号必须是8位"})
             
-            # 获取辅导员额外信息
             dept = data.get('dept', '')
             responsible_grade = data.get('responsible_grade', '')
             responsible_major = data.get('responsible_major', '')
@@ -812,7 +819,6 @@ def add_user():
             if len(account) != 9:
                 return jsonify({"success": False, "message": "教师账号必须是9位"})
             
-            # 获取教师额外信息
             dept = data.get('dept', '')
             contact = data.get('contact', '')
             
@@ -824,7 +830,6 @@ def add_user():
             if len(account) != 4:
                 return jsonify({"success": False, "message": "管理员账号必须是4位"})
             
-            # 获取管理员额外信息
             dept = data.get('dept', '')
             
             cursor.execute("""
@@ -837,49 +842,21 @@ def add_user():
         conn.commit()
         conn.close()
         
-        # 记录操作日志
         role_map = {1: 'student', 2: 'counselor', 3: 'teacher', 4: 'admin'}
         role_name_map = {1: '学生', 2: '辅导员', 3: '教师', 4: '管理员'}
         details = f"新增{role_name_map.get(role_type, '用户')}：{user_name}"
-        
-        print(f"[DEBUG] 准备记录日志 - 账号:{account}, 姓名:{user_name}, 角色:{role_map.get(role_type)}")
-        log_admin_operation(
-            operation_type='ADD',
-            target_account=account,
-            target_name=user_name,
-            target_role=role_map.get(role_type, 'unknown'),
-            details=details,
-            status='SUCCESS'
-        )
-        print(f"[DEBUG] 日志记录完成")
+        log_admin_operation(operation_type='ADD', target_account=account, target_name=user_name,
+                           target_role=role_map.get(role_type, 'unknown'), details=details, status='SUCCESS')
         
         return jsonify({"success": True, "message": "用户添加成功"})
         
     except pymysql.IntegrityError:
-        # 记录失败日志
         role_map = {1: 'student', 2: 'counselor', 3: 'teacher', 4: 'admin'}
-        log_admin_operation(
-            operation_type='ADD',
-            target_account=account,
-            target_name=user_name,
-            target_role=role_map.get(role_type, 'unknown'),
-            details=f"尝试新增用户：{user_name}",
-            status='FAILED',
-            error_msg='该账号已存在'
-        )
+        log_admin_operation(operation_type='ADD', target_account=account, target_name=user_name,
+                           target_role=role_map.get(role_type, 'unknown'), details=f"尝试新增用户：{user_name}",
+                           status='FAILED', error_msg='该账号已存在')
         return jsonify({"success": False, "message": "该账号已存在"})
     except Exception as e:
-        # 记录失败日志
-        role_map = {1: 'student', 2: 'counselor', 3: 'teacher', 4: 'admin'}
-        log_admin_operation(
-            operation_type='ADD',
-            target_account=account if 'account' in locals() else 'unknown',
-            target_name=user_name if 'user_name' in locals() else 'unknown',
-            target_role=role_map.get(role_type, 'unknown') if 'role_type' in locals() else 'unknown',
-            details=f"尝试新增用户失败",
-            status='FAILED',
-            error_msg=str(e)
-        )
         return jsonify({"success": False, "message": f"添加失败：{str(e)}"})
 
 # 管理员专用接口 - 修改用户
@@ -888,7 +865,6 @@ def add_user():
 def update_user(account):
     """修改用户信息（仅管理员）"""
     try:
-        # 检查是否为管理员账户（4位账号）
         if len(account) == 4:
             return jsonify({"success": False, "message": "🛡️ 系统保护：管理员账户不可编辑！"})
         
@@ -908,7 +884,6 @@ def update_user(account):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # 首先确定用户在哪个表中
         tables = [
             ('student_info', 'student_id', 'student_name', 1),
             ('counselor_info', 'counselor_id', 'counselor_name', 2),
@@ -925,18 +900,13 @@ def update_user(account):
                 user_found = True
                 current_role = role
                 
-                # 如果需要修改角色且角色不同，需要先删除再插入
                 if new_role and new_role != current_role:
-                    # 获取当前用户信息
                     cursor.execute(f"SELECT {name_col}, password FROM {table} WHERE {id_col} = %s", (account,))
                     user_info = cursor.fetchone()
                     old_name = user_info[0]
                     old_password = user_info[1]
-                    
-                    # 删除旧记录
                     cursor.execute(f"DELETE FROM {table} WHERE {id_col} = %s", (account,))
                     
-                    # 插入到新表
                     new_table_info = tables[new_role - 1]
                     new_table = new_table_info[0]
                     new_id_col = new_table_info[1]
@@ -950,7 +920,6 @@ def update_user(account):
                         VALUES (%s, %s, %s)
                     """, (account, final_name, final_password))
                 else:
-                    # 只修改名称、密码和/或联系方式
                     updates = []
                     params = []
                     
@@ -960,11 +929,10 @@ def update_user(account):
                     if new_password:
                         updates.append("password = %s")
                         params.append(new_password)
-                    if new_contact and table != 'admin_info':  # 管理员表没有contact字段
+                    if new_contact and table != 'admin_info':
                         updates.append("contact = %s")
                         params.append(new_contact)
                     
-                    # 如果是学生表，还可以修改部门、年级、专业、班级
                     if table == 'student_info':
                         if new_dept:
                             updates.append("dept = %s")
@@ -975,33 +943,22 @@ def update_user(account):
                         if new_major:
                             updates.append("major = %s")
                             params.append(new_major)
-                            # 同时更新专业代码
                             major_code_map = {
-                                '计算机科学与技术': '01',
-                                '软件工程': '02',
-                                '网络工程': '03',
-                                '信息安全': '04',
-                                '数据科学与大数据技术': '05',
-                                '人工智能': '06',
-                                '物联网工程': '07',
-                                '电子信息工程': '08',
-                                '通信工程': '09',
-                                '自动化': '10'
+                                '计算机科学与技术': '01', '软件工程': '02', '网络工程': '03',
+                                '信息安全': '04', '数据科学与大数据技术': '05', '人工智能': '06',
+                                '物联网工程': '07', '电子信息工程': '08', '通信工程': '09', '自动化': '10'
                             }
-                            major_code = major_code_map.get(new_major, '01')
                             updates.append("major_code = %s")
-                            params.append(major_code)
+                            params.append(major_code_map.get(new_major, '01'))
                         if new_class_num:
                             updates.append("class_num = %s")
                             params.append(new_class_num)
                     
-                    # 如果是教师表，可以修改部门
                     if table == 'teacher_info':
                         if new_dept:
                             updates.append("dept = %s")
                             params.append(new_dept)
                     
-                    # 如果是辅导员表，可以修改部门、负责年级、负责专业
                     if table == 'counselor_info':
                         if new_dept:
                             updates.append("dept = %s")
@@ -1021,22 +978,13 @@ def update_user(account):
         
         if not user_found:
             conn.close()
-            # 记录失败日志
-            log_admin_operation(
-                operation_type='UPDATE',
-                target_account=account,
-                target_name='unknown',
-                target_role='unknown',
-                details=f"尝试修改用户：{account}",
-                status='FAILED',
-                error_msg='用户不存在'
-            )
+            log_admin_operation(operation_type='UPDATE', target_account=account, target_name='unknown',
+                               target_role='unknown', details=f"尝试修改用户：{account}", status='FAILED', error_msg='用户不存在')
             return jsonify({"success": False, "message": "用户不存在"})
         
         conn.commit()
         conn.close()
         
-        # 记录成功日志
         role_map = {1: 'student', 2: 'counselor', 3: 'teacher', 4: 'admin'}
         role_name_map = {1: '学生', 2: '辅导员', 3: '教师', 4: '管理员'}
         update_details = []
@@ -1050,28 +998,15 @@ def update_user(account):
         if new_role: update_details.append(f"角色变更→{role_name_map.get(new_role, '未知')}")
         
         details = f"修改{role_name_map.get(current_role, '用户')}信息：" + "，".join(update_details)
-        log_admin_operation(
-            operation_type='UPDATE',
-            target_account=account,
-            target_name=new_name if new_name else 'unknown',
-            target_role=role_map.get(current_role, 'unknown'),
-            details=details,
-            status='SUCCESS'
-        )
+        log_admin_operation(operation_type='UPDATE', target_account=account, target_name=new_name if new_name else 'unknown',
+                           target_role=role_map.get(current_role, 'unknown'), details=details, status='SUCCESS')
         
         return jsonify({"success": True, "message": "用户信息修改成功"})
         
     except Exception as e:
-        # 记录失败日志
-        log_admin_operation(
-            operation_type='UPDATE',
-            target_account=account if 'account' in locals() else 'unknown',
-            target_name='unknown',
-            target_role='unknown',
-            details=f"尝试修改用户失败",
-            status='FAILED',
-            error_msg=str(e)
-        )
+        log_admin_operation(operation_type='UPDATE', target_account=account if 'account' in locals() else 'unknown',
+                           target_name='unknown', target_role='unknown', details=f"尝试修改用户失败",
+                           status='FAILED', error_msg=str(e))
         return jsonify({"success": False, "message": f"修改失败：{str(e)}"})
 
 # 管理员专用接口 - 删除用户
@@ -1080,24 +1015,15 @@ def update_user(account):
 def delete_user(account):
     """删除用户（仅管理员）"""
     try:
-        # 检查是否为管理员账户（4位账号）
         if len(account) == 4:
-            # 记录失败日志
-            log_admin_operation(
-                operation_type='DELETE',
-                target_account=account,
-                target_name='unknown',
-                target_role='admin',
-                details=f"尝试删除管理员账户：{account}",
-                status='FAILED',
-                error_msg='管理员账户受系统保护，不可删除'
-            )
+            log_admin_operation(operation_type='DELETE', target_account=account, target_name='unknown',
+                               target_role='admin', details=f"尝试删除管理员账户：{account}",
+                               status='FAILED', error_msg='管理员账户受系统保护，不可删除')
             return jsonify({"success": False, "message": "⚠️ 系统保护：管理员账户不可删除！❌"})
         
         conn = get_db_connection()
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         
-        # 尝试从所有表中删除，先获取用户信息
         tables = [
             ('student_info', 'student_id', 'student_name', 1, 'student'),
             ('counselor_info', 'counselor_id', 'counselor_name', 2, 'counselor'),
@@ -1111,7 +1037,6 @@ def delete_user(account):
         role_name_map = {1: '学生', 2: '辅导员', 3: '教师', 4: '管理员'}
         
         for table, id_col, name_col, role_type, role_str in tables:
-            # 先查询用户信息
             cursor.execute(f"SELECT {name_col} FROM {table} WHERE {id_col} = %s", (account,))
             user_info = cursor.fetchone()
             
@@ -1119,33 +1044,18 @@ def delete_user(account):
                 deleted_user_name = user_info[name_col]
                 deleted_user_role = role_str
                 
-                # 删除用户
                 cursor.execute(f"DELETE FROM {table} WHERE {id_col} = %s", (account,))
                 if cursor.rowcount > 0:
                     deleted = True
-                    # 记录成功日志
-                    log_admin_operation(
-                        operation_type='DELETE',
-                        target_account=account,
-                        target_name=deleted_user_name,
-                        target_role=deleted_user_role,
-                        details=f"删除{role_name_map.get(role_type, '用户')}：{deleted_user_name}（账号：{account}）",
-                        status='SUCCESS'
-                    )
+                    log_admin_operation(operation_type='DELETE', target_account=account, target_name=deleted_user_name,
+                                       target_role=deleted_user_role, details=f"删除{role_name_map.get(role_type, '用户')}：{deleted_user_name}（账号：{account}）",
+                                       status='SUCCESS')
                     break
         
         if not deleted:
             conn.close()
-            # 记录失败日志
-            log_admin_operation(
-                operation_type='DELETE',
-                target_account=account,
-                target_name='unknown',
-                target_role='unknown',
-                details=f"尝试删除用户：{account}",
-                status='FAILED',
-                error_msg='用户不存在'
-            )
+            log_admin_operation(operation_type='DELETE', target_account=account, target_name='unknown',
+                               target_role='unknown', details=f"尝试删除用户：{account}", status='FAILED', error_msg='用户不存在')
             return jsonify({"success": False, "message": "用户不存在"})
         
         conn.commit()
@@ -1153,16 +1063,9 @@ def delete_user(account):
         return jsonify({"success": True, "message": "用户删除成功"})
         
     except Exception as e:
-        # 记录失败日志
-        log_admin_operation(
-            operation_type='DELETE',
-            target_account=account if 'account' in locals() else 'unknown',
-            target_name='unknown',
-            target_role='unknown',
-            details=f"尝试删除用户失败",
-            status='FAILED',
-            error_msg=str(e)
-        )
+        log_admin_operation(operation_type='DELETE', target_account=account if 'account' in locals() else 'unknown',
+                           target_name='unknown', target_role='unknown', details=f"尝试删除用户失败",
+                           status='FAILED', error_msg=str(e))
         return jsonify({"success": False, "message": f"删除失败：{str(e)}"})
 
 # 教师获取请假记录接口
@@ -1657,6 +1560,51 @@ def get_teacher_course_students():
     except Exception as e:
         print(f"获取课程学生数失败: {str(e)}")
         return jsonify({"success": True, "data": {}})
+
+# 获取辅导员待审批数量
+@app.route('/api/counselor/leave_count', methods=['GET'])
+@login_required(role='辅导员')
+def get_counselor_leave_count():
+    """获取辅导员待审批/已批准/已驳回的请假数量"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        responsible_grade = session['user_info'].get('responsible_grade', '')
+        responsible_grade = str(responsible_grade).strip() if responsible_grade else ''
+        
+        sql = """
+            SELECT 
+                SUM(CASE WHEN approval_status = '待审批' THEN 1 ELSE 0 END) as pending,
+                SUM(CASE WHEN approval_status = '已批准' THEN 1 ELSE 0 END) as approved,
+                SUM(CASE WHEN approval_status = '已驳回' THEN 1 ELSE 0 END) as rejected,
+                COUNT(*) as total
+            FROM student_leave
+            WHERE 1=1
+        """
+        
+        params = []
+        if responsible_grade:
+            sql += " AND LEFT(student_id, 4) = %s"
+            params.append(responsible_grade)
+        
+        cursor.execute(sql, params)
+        result = cursor.fetchone()
+        conn.close()
+        
+        return jsonify({
+            "success": True,
+            "data": {
+                "pending": result['pending'] or 0,
+                "approved": result['approved'] or 0,
+                "rejected": result['rejected'] or 0,
+                "total": result['total'] or 0
+            }
+        })
+        
+    except Exception as e:
+        print(f"获取待审批数量失败: {e}")
+        return jsonify({"success": False, "message": "获取数量失败"})
 
 # 辅导员获取请假记录接口
 @app.route('/api/counselor/leave_requests', methods=['GET'])
@@ -2288,7 +2236,7 @@ def get_leave_detail(leave_id):
             leave['course_names'] = ''
         
         # 检查签名文件
-        signature_folder = os.path.join(app.root_path, 'qianzi')
+        signature_folder = os.path.join(app.root_path, 'data', 'signatures')
         student_sign = f"{leave['student_id']}_{leave_id}.png"
         counselor_sign = f"{leave.get('approver_id', '')}_{leave_id}.png" if leave.get('approver_id') else ''
         leave['student_signature'] = f"/qianzi/{student_sign}" if os.path.exists(os.path.join(signature_folder, student_sign)) else None
@@ -2296,7 +2244,7 @@ def get_leave_detail(leave_id):
         
         # 检查佐证文件
         if leave.get('attachment'):
-            attachment_folder = os.path.join(app.root_path, 'zhengming')
+            attachment_folder = os.path.join(app.root_path, 'data', 'certificates')
             if os.path.exists(os.path.join(attachment_folder, leave['attachment'])):
                 leave['attachment_url'] = f"/zhengming/{leave['attachment']}"
             else:
@@ -2511,25 +2459,28 @@ def send_counselor_chat_message():
         print(f"辅导员发送消息失败: {str(e)}")
         return jsonify({"success": False, "message": f"发送失败: {str(e)}"})
 
-# 头像图片访问路由
+# 头像图片访问路由（支持新旧两种URL）
 @app.route('/head_image/<path:filename>')
+@app.route('/data/avatars/<path:filename>')
 def serve_head_image(filename):
     """提供头像图片访问"""
-    image_folder = os.path.join(app.root_path, 'head_image')
+    image_folder = os.path.join(app.root_path, 'data', 'avatars')
     return send_from_directory(image_folder, filename)
 
-# 签名图片访问路由
+# 签名图片访问路由（支持新旧两种URL）
 @app.route('/qianzi/<path:filename>')
+@app.route('/data/signatures/<path:filename>')
 def serve_signature_image(filename):
     """提供签名图片访问"""
-    signature_folder = os.path.join(app.root_path, 'qianzi')
+    signature_folder = os.path.join(app.root_path, 'data', 'signatures')
     return send_from_directory(signature_folder, filename)
 
-# 佐证文件访问路由
+# 佐证文件访问路由（支持新旧两种URL）
 @app.route('/zhengming/<path:filename>')
+@app.route('/data/certificates/<path:filename>')
 def serve_attachment_file(filename):
     """提供佐证文件访问"""
-    attachment_folder = os.path.join(app.root_path, 'zhengming')
+    attachment_folder = os.path.join(app.root_path, 'data', 'certificates')
     return send_from_directory(attachment_folder, filename)
 
 # 上传佐证文件API
@@ -2571,7 +2522,7 @@ def upload_leave_attachment():
             return jsonify({"success": False, "message": "仅支持图片(png/jpg/gif)或PDF文件"})
         
         # 创建存储文件夹
-        attachment_folder = os.path.join(app.root_path, 'zhengming')
+        attachment_folder = os.path.join(app.root_path, 'data', 'certificates')
         if not os.path.exists(attachment_folder):
             os.makedirs(attachment_folder)
         
@@ -2633,7 +2584,7 @@ def save_student_signature():
         image_data = base64.b64decode(signature_data)
         
         # 保存文件
-        signature_folder = os.path.join(app.root_path, 'qianzi')
+        signature_folder = os.path.join(app.root_path, 'data', 'signatures')
         if not os.path.exists(signature_folder):
             os.makedirs(signature_folder)
         
@@ -2693,7 +2644,7 @@ def get_counselor_info():
 @app.route('/api/avatars', methods=['GET'])
 def get_avatars():
     """获取可用头像列表"""
-    image_folder = os.path.join(app.root_path, 'head_image')
+    image_folder = os.path.join(app.root_path, 'data', 'avatars')
     try:
         avatars = [
             name for name in os.listdir(image_folder)
@@ -2739,7 +2690,7 @@ def update_user_avatar():
     if not avatar:
         return jsonify({"success": False, "message": "未选择头像"})
 
-    image_folder = os.path.join(app.root_path, 'head_image')
+    image_folder = os.path.join(app.root_path, 'data', 'avatars')
     try:
         valid_files = [
             name for name in os.listdir(image_folder)
@@ -2825,7 +2776,7 @@ def upload_user_avatar():
     filename = f"avatar_{user_id}.{ext}"
     
     # 保存文件
-    image_folder = os.path.join(app.root_path, 'head_image')
+    image_folder = os.path.join(app.root_path, 'data', 'avatars')
     filepath = os.path.join(image_folder, filename)
     
     try:
@@ -2868,7 +2819,7 @@ def upload_user_avatar():
 @login_required(role='学生')
 def student_profile_page():
     """学生个人信息页面"""
-    image_folder = os.path.join(app.root_path, 'head_image')
+    image_folder = os.path.join(app.root_path, 'data', 'avatars')
     try:
         available_avatars = [
             name for name in os.listdir(image_folder)
@@ -3095,9 +3046,6 @@ def update_counselor_contact():
         update_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         cursor.execute(sql, (new_contact, update_time, counselor_id))
         conn.commit()
-        
-        conn.close()
-        
         return jsonify({"success": True, "message": "联系方式更新成功"})
         
     except Exception as e:
@@ -3197,11 +3145,104 @@ def log_admin_operation(operation_type, target_account=None, target_name=None, t
         traceback.print_exc()
         # 日志记录失败不影响主业务
 
+# ========== AI助手（本地Ollama） ==========
+@app.route('/api/ai/chat', methods=['POST'])
+def ai_chat():
+    """调用本地Ollama模型进行对话"""
+    import requests
+    
+    try:
+        data = request.get_json()
+        user_message = data.get('message', '')
+        
+        if not user_message:
+            return jsonify({"success": False, "message": "消息不能为空"})
+        
+        # 系统提示词
+        system_prompt = """你是"请了吗"请假管理系统的智能助手小龙🐉。
+
+你可以帮助学生解答请假流程、提交申请、解释请假类型、查看记录、生成模板。
+
+重要：直接输出回复内容，不要输出任何思考过程、分析或计划。开头用"你好"或问候语。"""
+
+        # 调用本地Ollama API（在用户消息末尾添加/no_think禁用思考模式）
+        ollama_url = "http://localhost:11434/api/chat"
+        payload = {
+            "model": "qwen3:4b",
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message + " /no_think"}
+            ],
+            "stream": False,
+            "options": {
+                "temperature": 0.7,
+                "num_predict": 500
+            }
+        }
+        
+        response = requests.post(ollama_url, json=payload, timeout=30)
+        
+        if response.status_code == 200:
+            result = response.json()
+            ai_reply = result.get('message', {}).get('content', '抱歉，我暂时无法回答。')
+            
+            # 清理思考标签（qwen3特有）- 只保留最终回复
+            import re as regex
+            
+            # 移除<think>标签内容
+            if '<think>' in ai_reply:
+                ai_reply = regex.sub(r'<think>.*?</think>', '', ai_reply, flags=regex.DOTALL).strip()
+            
+            # 移除未闭合的<think>标签及其后内容（思考未完成时）
+            if '<think>' in ai_reply:
+                ai_reply = regex.sub(r'<think>.*', '', ai_reply, flags=regex.DOTALL).strip()
+            
+            # 移除常见的思考过程开头（没有标签的情况）
+            thinking_patterns = [
+                r'^首先[，,].*?(?=\n\n|你好|我是|请|好的)',
+                r'^用户.*?(?=\n\n|你好|我是|请|好的)',
+                r'^我需要.*?(?=\n\n|你好|我是|请|好的)',
+                r'^作为.*?(?=\n\n|你好|我是|请|好的)',
+                r'^让我.*?(?=\n\n|你好|我是|请|好的)',
+            ]
+            for pattern in thinking_patterns:
+                ai_reply = regex.sub(pattern, '', ai_reply, flags=regex.DOTALL).strip()
+            
+            # 如果回复以思考词开头，尝试找到真正的回复
+            thinking_starts = ('首先', '用户', '我需要', '作为', '让我', '我的角色', 
+                             '请假模板，', '关键点', '这个问题', '好的，', '分析')
+            if ai_reply.startswith(thinking_starts) or '这可能意味着' in ai_reply[:100]:
+                # 查找真正回复的开始
+                match = regex.search(r'(你好[呀！~]?|亲爱的|我是小龙|请参考|以下是|✨|【请)', ai_reply)
+                if match:
+                    ai_reply = ai_reply[match.start():]
+                else:
+                    # 找不到就返回默认回复
+                    ai_reply = '你好！有什么可以帮你的吗？😊'
+            
+            if not ai_reply.strip():
+                ai_reply = '你好！有什么可以帮你的吗？😊'
+            return jsonify({"success": True, "reply": ai_reply})
+        else:
+            return jsonify({"success": False, "message": "AI服务暂时不可用"})
+            
+    except requests.exceptions.ConnectionError:
+        return jsonify({"success": False, "message": "请确保Ollama服务已启动（ollama serve）"})
+    except requests.exceptions.Timeout:
+        return jsonify({"success": False, "message": "AI响应超时，请稍后重试"})
+    except Exception as e:
+        return jsonify({"success": False, "message": f"AI服务错误: {str(e)}"})
+
 # 启动应用
 if __name__ == '__main__':
     try:
-        # 运行应用程序 - 修改为8080端口
-        app.run(host='127.0.0.1', port=8080, debug=True, use_reloader=False)
+        # 获取环境变量配置
+        host = os.environ.get('FLASK_HOST', '127.0.0.1')
+        port = int(os.environ.get('FLASK_PORT', '8080'))
+        debug = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'
+        
+        print(f"启动Flask应用: {host}:{port}, Debug: {debug}")
+        app.run(host=host, port=port, debug=debug, use_reloader=False)
     except Exception as e:
         print(f"应用程序启动失败: {e}")
         import traceback

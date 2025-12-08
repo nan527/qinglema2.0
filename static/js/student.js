@@ -2,7 +2,90 @@
 let allCourses = [];
 let leaveRecords = [];
 let attachmentFile = null;
-let currentLeaveFilter = 'all'; // 当前请假记录筛选状态
+let currentStatusFilter = 'all';
+
+// ========== 筛选功能 ==========
+function filterByStatus(status) {
+  currentStatusFilter = status;
+  // 更新按钮样式
+  document.querySelectorAll('.filter-status-btn').forEach(btn => {
+    btn.classList.remove('bg-white', 'shadow', 'text-primary');
+    btn.classList.add('text-gray-500');
+  });
+  const activeBtn = document.querySelector(`.filter-status-btn[data-status="${status}"]`);
+  if (activeBtn) {
+    activeBtn.classList.add('bg-white', 'shadow', 'text-primary');
+    activeBtn.classList.remove('text-gray-500');
+  }
+  applyFilters();
+}
+
+function applyFilters() {
+  const typeFilter = document.getElementById('filterType')?.value || 'all';
+  const timeFilter = document.getElementById('filterTime')?.value || 'all';
+  
+  let filtered = [...leaveRecords];
+  
+  // 状态筛选
+  if (currentStatusFilter !== 'all') {
+    filtered = filtered.filter(r => r.approval_status === currentStatusFilter);
+  }
+  
+  // 类型筛选
+  if (typeFilter !== 'all') {
+    filtered = filtered.filter(r => (r.sort || '事假') === typeFilter);
+  }
+  
+  // 时间筛选
+  if (timeFilter !== 'all') {
+    const now = new Date();
+    let startDate;
+    if (timeFilter === 'week') {
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    } else if (timeFilter === 'month') {
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    } else if (timeFilter === 'semester') {
+      // 本学期：9月或3月开始
+      const month = now.getMonth();
+      const year = now.getFullYear();
+      startDate = month >= 8 ? new Date(year, 8, 1) : new Date(year, 2, 1);
+    }
+    if (startDate) {
+      filtered = filtered.filter(r => new Date(r.start_time) >= startDate);
+    }
+  }
+  
+  const container = document.getElementById('leaveRecordsContainer');
+  if (filtered.length > 0) {
+    renderRecords(filtered, container);
+  } else {
+    container.innerHTML = '<div class="text-center py-10 text-gray-400"><i class="fa-solid fa-filter-circle-xmark text-3xl mb-2"></i><p>没有符合条件的记录</p></div>';
+    document.getElementById('records-count').textContent = '0';
+  }
+}
+
+function resetFilters() {
+  currentStatusFilter = 'all';
+  document.getElementById('filterType').value = 'all';
+  document.getElementById('filterTime').value = 'all';
+  
+  // 重置状态按钮样式
+  document.querySelectorAll('.filter-status-btn').forEach(btn => {
+    btn.classList.remove('bg-white', 'shadow', 'text-primary');
+    btn.classList.add('text-gray-500');
+  });
+  const allBtn = document.querySelector('.filter-status-btn[data-status="all"]');
+  if (allBtn) {
+    allBtn.classList.add('bg-white', 'shadow', 'text-primary');
+    allBtn.classList.remove('text-gray-500');
+  }
+  
+  // 显示所有记录
+  const container = document.getElementById('leaveRecordsContainer');
+  if (leaveRecords.length > 0) {
+    renderRecords(leaveRecords, container);
+  }
+}
 
 // ========== 佐证文件预览 ==========
 function previewAttachment(input) {
@@ -83,6 +166,9 @@ function switchPage(pageName) {
   else if (pageName === 'chat') loadChatContacts();
   else if (pageName === 'profile') loadProfileInfo();
   else if (pageName === 'notifications') loadNotifications();
+  else if (pageName === 'calendar') renderCalendar();
+  else if (pageName === 'stats') renderCharts();
+  else if (pageName === 'leave') checkDraft();
 }
 
 // ========== Toast 提示 ==========
@@ -246,14 +332,15 @@ async function loadLeaveRecords() {
     const data = await res.json();
     if (data.success && data.data && data.data.length > 0) {
       leaveRecords = data.data;
-      // 应用当前筛选
-      filterLeaveRecords(currentLeaveFilter);
+      // 应用当前筛选条件
+      applyFilters();
       renderRecentLeaves(data.data.slice(0, 3));
       updateStats();
     } else {
       leaveRecords = [];
       container.innerHTML = '<div class="text-center py-10 text-gray-400"><i class="fas fa-inbox"></i> 暂无请假记录</div>';
       document.getElementById('recent-leaves').innerHTML = '<div class="text-center py-6 text-gray-400">暂无记录</div>';
+      document.getElementById('records-count').textContent = '0';
       updateStats();
     }
   } catch (err) {
@@ -356,54 +443,6 @@ function updateStats() {
   
   // 检查请假过多警告
   checkLeaveWarning();
-}
-
-// ========== 筛选请假记录 ==========
-function filterLeaveRecords(status) {
-  currentLeaveFilter = status;
-  const container = document.getElementById('leaveRecordsContainer');
-  
-  // 更新按钮样式
-  document.querySelectorAll('[id^="filter-"]').forEach(btn => {
-    btn.classList.remove('ring-2', 'ring-primary', 'bg-primary', 'text-white');
-    btn.classList.add('hover:bg-gray-200', 'hover:bg-orange-100', 'hover:bg-green-100', 'hover:bg-red-100');
-  });
-  
-  const activeBtn = document.getElementById(`filter-${status === 'all' ? 'all' : status === '待审批' ? 'pending' : status === '已批准' ? 'approved' : 'rejected'}`);
-  if (activeBtn) {
-    activeBtn.classList.add('ring-2', 'ring-primary');
-    if (status === 'all') {
-      activeBtn.classList.remove('bg-gray-100', 'text-gray-600');
-      activeBtn.classList.add('bg-primary', 'text-white');
-    } else if (status === '待审批') {
-      activeBtn.classList.remove('bg-orange-50', 'text-orange-600');
-      activeBtn.classList.add('bg-orange-500', 'text-white');
-    } else if (status === '已批准') {
-      activeBtn.classList.remove('bg-green-50', 'text-green-600');
-      activeBtn.classList.add('bg-green-500', 'text-white');
-    } else if (status === '已驳回') {
-      activeBtn.classList.remove('bg-red-50', 'text-red-600');
-      activeBtn.classList.add('bg-red-500', 'text-white');
-    }
-  }
-  
-  if (!leaveRecords || leaveRecords.length === 0) {
-    container.innerHTML = '<div class="text-center py-10 text-gray-400"><i class="fas fa-inbox"></i> 暂无请假记录</div>';
-    document.getElementById('records-count').textContent = 0;
-    return;
-  }
-
-  let filtered = leaveRecords;
-  if (status !== 'all') {
-    filtered = leaveRecords.filter(r => r.approval_status === status);
-  }
-
-  if (filtered.length === 0) {
-    container.innerHTML = `<div class="text-center py-10 text-gray-400"><i class="fas fa-inbox"></i> 暂无${status === 'all' ? '' : status}记录</div>`;
-    document.getElementById('records-count').textContent = 0;
-  } else {
-    renderRecords(filtered, container);
-  }
 }
 
 // ========== 聊天功能 ==========
@@ -1544,6 +1583,338 @@ function clearNotificationFilters() {
   loadNotifications();
 }
 
+// ========== 请假模板功能 ==========
+const leaveTemplates = {
+  sick: '身体不适，发烧/感冒，需要休息治疗，已前往校医院/医院就诊。',
+  personal: '有重要的个人事务需要处理，无法按时上课，望批准。',
+  family: '家中有急事需要处理，需请假回家一趟，会尽快返校。'
+};
+
+function useTemplate(type) {
+  const reason = leaveTemplates[type];
+  if (reason) {
+    document.getElementById('leaveReason').value = reason;
+    // 自动选择对应的请假类型
+    if (type === 'sick') document.getElementById('leaveType').value = '病假';
+    else document.getElementById('leaveType').value = '事假';
+    showToast('模板已填充');
+  }
+}
+
+function openTemplateModal() {
+  document.getElementById('template-modal').classList.remove('hidden');
+}
+
+function closeTemplateModal() {
+  document.getElementById('template-modal').classList.add('hidden');
+}
+
+function selectTemplate(text) {
+  document.getElementById('leaveReason').value = text;
+  closeTemplateModal();
+  showToast('模板已填充');
+}
+
+// ========== 统计图表功能 ==========
+function renderLeaveTypeChart() {
+  const canvas = document.getElementById('leaveTypeChart');
+  if (!canvas || !leaveRecords.length) return;
+  
+  const ctx = canvas.getContext('2d');
+  const types = {};
+  leaveRecords.forEach(r => {
+    const type = r.sort || '事假';
+    types[type] = (types[type] || 0) + 1;
+  });
+  
+  const colors = {
+    '事假': '#3B82F6', '病假': '#EF4444', '公假': '#10B981',
+    '丧假': '#6B7280', '其他': '#8B5CF6'
+  };
+  
+  const data = Object.entries(types);
+  const total = data.reduce((sum, [, v]) => sum + v, 0);
+  
+  // 绘制饼图
+  ctx.clearRect(0, 0, 200, 200);
+  let startAngle = -Math.PI / 2;
+  const centerX = 100, centerY = 100, radius = 80;
+  
+  if (data.length === 0) {
+    ctx.fillStyle = '#E5E7EB';
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    data.forEach(([type, count]) => {
+      const sliceAngle = (count / total) * Math.PI * 2;
+      ctx.fillStyle = colors[type] || '#9CA3AF';
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle);
+      ctx.closePath();
+      ctx.fill();
+      startAngle += sliceAngle;
+    });
+  }
+  
+  // 中心空白
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, 50, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // 中心文字
+  ctx.fillStyle = '#374151';
+  ctx.font = 'bold 24px Inter';
+  ctx.textAlign = 'center';
+  ctx.fillText(total, centerX, centerY + 5);
+  ctx.font = '12px Inter';
+  ctx.fillStyle = '#9CA3AF';
+  ctx.fillText('总次数', centerX, centerY + 22);
+  
+  // 图例
+  const legend = document.getElementById('chartLegend');
+  if (legend) {
+    legend.innerHTML = data.map(([type, count]) => `
+      <span class="flex items-center text-sm">
+        <span class="w-3 h-3 rounded-full mr-1.5" style="background:${colors[type] || '#9CA3AF'}"></span>
+        ${type}: ${count}
+      </span>
+    `).join('');
+  }
+}
+
+// ========== 请假日历功能 ==========
+let calendarDate = new Date();
+
+function renderCalendar() {
+  const year = calendarDate.getFullYear();
+  const month = calendarDate.getMonth();
+  const monthText = `${year}年${month + 1}月`;
+  
+  // 更新所有月份标签
+  ['calendarMonth', 'homeCalendarMonth'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = monthText;
+  });
+  
+  // 获取本月第一天和最后一天
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startDayOfWeek = firstDay.getDay();
+  const daysInMonth = lastDay.getDate();
+  
+  // 获取本月请假记录
+  const monthLeaves = leaveRecords.filter(r => {
+    const start = new Date(r.start_time);
+    const end = new Date(r.end_time);
+    return (start.getFullYear() === year && start.getMonth() === month) ||
+           (end.getFullYear() === year && end.getMonth() === month);
+  });
+  
+  // 构建日期到状态的映射
+  const dayStatus = {};
+  monthLeaves.forEach(r => {
+    const start = new Date(r.start_time);
+    const end = new Date(r.end_time);
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      if (d.getFullYear() === year && d.getMonth() === month) {
+        const day = d.getDate();
+        if (!dayStatus[day] || r.approval_status === '待审批') {
+          dayStatus[day] = r.approval_status;
+        }
+      }
+    }
+  });
+  
+  let html = '';
+  // 填充空白
+  for (let i = 0; i < startDayOfWeek; i++) {
+    html += '<div class="p-2"></div>';
+  }
+  // 填充日期
+  const today = new Date();
+  for (let day = 1; day <= daysInMonth; day++) {
+    const status = dayStatus[day];
+    const isToday = year === today.getFullYear() && month === today.getMonth() && day === today.getDate();
+    let bgClass = 'bg-gray-50 hover:bg-gray-100';
+    let dotHtml = '';
+    
+    if (status === '待审批') {
+      bgClass = 'bg-orange-100';
+      dotHtml = '<span class="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-orange-400"></span>';
+    } else if (status === '已批准') {
+      bgClass = 'bg-green-100';
+      dotHtml = '<span class="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-green-400"></span>';
+    } else if (status === '已驳回') {
+      bgClass = 'bg-red-100';
+      dotHtml = '<span class="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-red-400"></span>';
+    }
+    
+    const todayClass = isToday ? 'ring-2 ring-primary' : '';
+    
+    html += `<div class="relative p-2 text-center text-sm rounded-lg ${bgClass} ${todayClass} cursor-pointer transition-all" title="${status || ''}">${day}${dotHtml}</div>`;
+  }
+  
+  // 更新所有日历容器
+  ['calendarDays', 'homeCalendarDays'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+  });
+}
+
+// 首页统计
+function renderHomeChart() {
+  const container = document.getElementById('homeStatsContainer');
+  if (!container) return;
+  
+  const total = leaveRecords.length;
+  const pending = leaveRecords.filter(r => r.approval_status === '待审批').length;
+  const approved = leaveRecords.filter(r => r.approval_status === '已批准').length;
+  const rejected = leaveRecords.filter(r => r.approval_status === '已驳回').length;
+  
+  // 请假类型统计
+  const types = {};
+  leaveRecords.forEach(r => {
+    const type = r.sort || '事假';
+    types[type] = (types[type] || 0) + 1;
+  });
+  
+  const typeColors = { '事假': '#8B5CF6', '病假': '#EF4444', '公假': '#10B981', '丧假': '#6B7280', '其他': '#F59E0B' };
+  
+  let html = '';
+  
+  // 审批状态
+  if (total > 0) {
+    html += `
+      <div class="space-y-2">
+        <div class="flex justify-between text-sm"><span class="text-gray-500">待审批</span><span class="font-medium text-orange-500">${pending}次</span></div>
+        <div class="h-2 bg-gray-100 rounded-full overflow-hidden"><div class="h-full bg-gradient-to-r from-orange-400 to-orange-500 rounded-full transition-all" style="width:${total?pending/total*100:0}%"></div></div>
+      </div>
+      <div class="space-y-2">
+        <div class="flex justify-between text-sm"><span class="text-gray-500">已批准</span><span class="font-medium text-green-500">${approved}次</span></div>
+        <div class="h-2 bg-gray-100 rounded-full overflow-hidden"><div class="h-full bg-gradient-to-r from-green-400 to-green-500 rounded-full transition-all" style="width:${total?approved/total*100:0}%"></div></div>
+      </div>
+      <div class="space-y-2">
+        <div class="flex justify-between text-sm"><span class="text-gray-500">已驳回</span><span class="font-medium text-red-500">${rejected}次</span></div>
+        <div class="h-2 bg-gray-100 rounded-full overflow-hidden"><div class="h-full bg-gradient-to-r from-red-400 to-red-500 rounded-full transition-all" style="width:${total?rejected/total*100:0}%"></div></div>
+      </div>
+      <div class="pt-3 mt-3 border-t border-gray-100">
+        <p class="text-xs text-gray-400 mb-2">请假类型</p>
+        <div class="flex flex-wrap gap-2">
+          ${Object.entries(types).map(([type, count]) => `
+            <span class="px-2 py-1 rounded-lg text-xs font-medium text-white" style="background:${typeColors[type] || '#6B7280'}">${type} ${count}</span>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  } else {
+    html = '<div class="text-center py-8 text-gray-400"><i class="fa-solid fa-chart-bar text-3xl mb-2"></i><p class="text-sm">暂无请假记录</p></div>';
+  }
+  
+  container.innerHTML = html;
+}
+
+// 首页成就
+function renderHomeAchievements() {
+  const grid = document.getElementById('homeAchievements');
+  if (!grid) return;
+  
+  const total = leaveRecords.length;
+  const approved = leaveRecords.filter(r => r.approval_status === '已批准').length;
+  const thisMonth = leaveRecords.filter(r => {
+    const d = new Date(r.start_time);
+    const now = new Date();
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).length;
+  
+  const achievements = [
+    { icon: '🎯', name: '全勤之星', unlocked: thisMonth === 0 },
+    { icon: '⭐', name: '优秀学生', unlocked: total <= 2 },
+    { icon: '✅', name: '守时达人', unlocked: approved === total && total > 0 },
+    { icon: '📚', name: '勤奋学习', unlocked: thisMonth <= 1 },
+    { icon: '🏅', name: '出勤模范', unlocked: total <= 3 },
+    { icon: '🌟', name: '学期之星', unlocked: total === 0 },
+  ];
+  
+  grid.innerHTML = achievements.map(a => `
+    <div class="text-center p-3 rounded-xl ${a.unlocked ? 'bg-gradient-to-br from-yellow-50 to-orange-50' : 'bg-gray-50 opacity-50'}">
+      <div class="text-2xl mb-1 ${a.unlocked ? '' : 'grayscale'}">${a.icon}</div>
+      <p class="text-xs font-medium text-gray-600">${a.name}</p>
+    </div>
+  `).join('');
+}
+
+// 初始化首页组件
+function initHomeWidgets() {
+  renderCalendar();
+  renderHomeChart();
+  renderHomeAchievements();
+}
+
+function prevMonth() {
+  calendarDate.setMonth(calendarDate.getMonth() - 1);
+  renderCalendar();
+}
+
+function nextMonth() {
+  calendarDate.setMonth(calendarDate.getMonth() + 1);
+  renderCalendar();
+}
+
+// ========== 审批通知功能 ==========
+let lastCheckedStatus = {};
+
+function checkApprovalStatus() {
+  if (!leaveRecords.length) return;
+  
+  leaveRecords.forEach(record => {
+    const id = record.leave_id;
+    const status = record.approval_status;
+    
+    // 检查状态是否有变化
+    if (lastCheckedStatus[id] && lastCheckedStatus[id] !== status && status !== '待审批') {
+      showApprovalNotification(record);
+    }
+    lastCheckedStatus[id] = status;
+  });
+}
+
+function showApprovalNotification(record) {
+  const notification = document.getElementById('approval-notification');
+  const card = document.getElementById('notification-card');
+  const icon = document.getElementById('notification-icon');
+  const title = document.getElementById('notification-title');
+  const message = document.getElementById('notification-message');
+  const time = document.getElementById('notification-time');
+  
+  const isApproved = record.approval_status === '已批准';
+  
+  card.className = `glass-card rounded-2xl p-5 shadow-2xl max-w-sm border-l-4 ${isApproved ? 'border-green-500' : 'border-red-500'}`;
+  icon.className = `w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${isApproved ? 'bg-green-100' : 'bg-red-100'}`;
+  icon.innerHTML = `<i class="fa-solid ${isApproved ? 'fa-check text-green-500' : 'fa-xmark text-red-500'} text-xl"></i>`;
+  title.textContent = isApproved ? '🎉 请假已批准！' : '😢 请假被驳回';
+  message.textContent = `${record.sort || '事假'} - ${formatCourseInfo(record.course_id)}`;
+  time.textContent = '刚刚';
+  
+  notification.classList.remove('translate-x-full');
+  
+  // 5秒后自动隐藏
+  setTimeout(hideApprovalNotification, 5000);
+}
+
+function hideApprovalNotification() {
+  document.getElementById('approval-notification').classList.add('translate-x-full');
+}
+
+// 初始化时保存当前状态
+function initApprovalCheck() {
+  leaveRecords.forEach(r => {
+    lastCheckedStatus[r.leave_id] = r.approval_status;
+  });
+}
+
 // ========== 初始化 ==========
 document.addEventListener('DOMContentLoaded', async () => {
   await loadCourses();
@@ -1556,5 +1927,536 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadFilterOptions();
   
   // 定期检查新消息
-  setInterval(loadChatMessages, 30000); // 每30秒检查一次
+  setInterval(loadChatMessages, 30000);
+  
+  // 定期检查审批状态变化（每30秒）
+  setInterval(async () => {
+    const oldRecords = [...leaveRecords];
+    await loadLeaveRecords();
+    checkApprovalStatus();
+  }, 30000);
 });
+
+// 在加载记录后渲染图表和日历
+const originalLoadLeaveRecords = loadLeaveRecords;
+loadLeaveRecords = async function() {
+  await originalLoadLeaveRecords.call(this);
+  renderLeaveTypeChart();
+  renderCalendar();
+  updateAchievements();
+  // 首页组件
+  renderHomeChart();
+  renderHomeAchievements();
+  if (Object.keys(lastCheckedStatus).length === 0) {
+    initApprovalCheck();
+  }
+};
+
+// ========== 吉祥物功能 ==========
+const studentMascotMessages = [
+  "有什么需要帮助的吗？",
+  "记得按时提交请假哦~",
+  "祝你学业顺利！✨",
+  "需要请假吗？点我帮你~",
+  "拖动我到你喜欢的位置吧~",
+  "保持全勤可以解锁成就哦！🏆",
+  "草稿已自动保存，放心！"
+];
+let mascotMsgIndex = -1;
+
+function mascotSpeak() {
+  const bubble = document.getElementById('mascotBubble');
+  if (!bubble) return;
+  
+  let newIndex;
+  do {
+    newIndex = Math.floor(Math.random() * studentMascotMessages.length);
+  } while (newIndex === mascotMsgIndex && studentMascotMessages.length > 1);
+  mascotMsgIndex = newIndex;
+  
+  bubble.textContent = studentMascotMessages[newIndex];
+  bubble.style.opacity = '1';
+  bubble.style.transform = 'translateX(0) scale(1)';
+  
+  setTimeout(() => {
+    bubble.style.opacity = '0';
+    bubble.style.transform = 'translateX(10px) scale(0.9)';
+  }, 3000);
+}
+
+// 吉祥物拖拽
+(function initMascot() {
+  setTimeout(() => {
+    const mascot = document.getElementById('mascot');
+    if (!mascot) return;
+    
+    let isDragging = false, dragStarted = false;
+    let startX, startY, initialX, initialY;
+    
+    const savedPos = localStorage.getItem('studentMascotPosition');
+    if (savedPos) {
+      const pos = JSON.parse(savedPos);
+      mascot.style.right = 'auto';
+      mascot.style.bottom = 'auto';
+      mascot.style.left = pos.x + 'px';
+      mascot.style.top = pos.y + 'px';
+    }
+    
+    mascot.addEventListener('mousedown', onStart);
+    mascot.addEventListener('touchstart', onStart, { passive: false });
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('mouseup', onEnd);
+    document.addEventListener('touchend', onEnd);
+    
+    function onStart(e) {
+      isDragging = true;
+      dragStarted = false;
+      const client = e.type === 'mousedown' ? e : e.touches[0];
+      const rect = mascot.getBoundingClientRect();
+      startX = client.clientX;
+      startY = client.clientY;
+      initialX = rect.left;
+      initialY = rect.top;
+      mascot.querySelector('.mascot-img').style.animation = 'none';
+    }
+    
+    function onMove(e) {
+      if (!isDragging) return;
+      e.preventDefault();
+      const client = e.type === 'mousemove' ? e : e.touches[0];
+      const deltaX = client.clientX - startX;
+      const deltaY = client.clientY - startY;
+      if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) dragStarted = true;
+      if (dragStarted) {
+        let newX = Math.max(0, Math.min(initialX + deltaX, window.innerWidth - mascot.offsetWidth));
+        let newY = Math.max(0, Math.min(initialY + deltaY, window.innerHeight - mascot.offsetHeight));
+        mascot.style.right = 'auto';
+        mascot.style.bottom = 'auto';
+        mascot.style.left = newX + 'px';
+        mascot.style.top = newY + 'px';
+      }
+    }
+    
+    function onEnd() {
+      if (!isDragging) return;
+      isDragging = false;
+      mascot.querySelector('.mascot-img').style.animation = 'mascotFloat 4s ease-in-out infinite';
+      if (dragStarted) {
+        const rect = mascot.getBoundingClientRect();
+        localStorage.setItem('studentMascotPosition', JSON.stringify({ x: rect.left, y: rect.top }));
+      }
+    }
+    
+    mascot.addEventListener('click', () => { if (!dragStarted) toggleAiChat(); window.mascotDragStarted = dragStarted; dragStarted = false; });
+    setTimeout(mascotSpeak, 2000);
+  }, 100);
+})();
+
+// ========== 出勤荣誉系统 ==========
+function updateAchievements() {
+  if (!leaveRecords) return;
+  
+  const now = new Date();
+  
+  // 计算连续全勤天数
+  let consecutiveDays = 0;
+  if (leaveRecords.length > 0) {
+    const sortedRecords = [...leaveRecords].sort((a, b) => new Date(b.end_time) - new Date(a.end_time));
+    const lastLeaveEnd = new Date(sortedRecords[0].end_time);
+    consecutiveDays = Math.floor((now - lastLeaveEnd) / (1000 * 60 * 60 * 24));
+  } else {
+    consecutiveDays = 30; // 无请假记录默认全勤
+  }
+  
+  // 本月是否全勤
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthLeaves = leaveRecords.filter(r => new Date(r.start_time) >= monthStart);
+  const isMonthPerfect = monthLeaves.length === 0;
+  
+  // 本学期出勤情况
+  const month = now.getMonth();
+  const year = now.getFullYear();
+  const semesterStart = month >= 8 ? new Date(year, 8, 1) : new Date(year, 2, 1);
+  const semesterLeaves = leaveRecords.filter(r => new Date(r.start_time) >= semesterStart);
+  const isSemesterExcellent = semesterLeaves.length <= 2;
+  
+  // 出勤荣誉条件
+  const achievements = {
+    'week': consecutiveDays >= 7,        // 周全勤：连续7天全勤
+    'month': isMonthPerfect,             // 月全勤：本月全勤
+    'semester': isSemesterExcellent      // 学期之星：本学期出勤优秀
+  };
+  
+  let unlocked = 0;
+  Object.entries(achievements).forEach(([key, isUnlocked]) => {
+    const badge = document.querySelector(`[data-achievement="${key}"]`);
+    if (badge) {
+      if (isUnlocked) {
+        badge.classList.remove('locked');
+        unlocked++;
+      } else {
+        badge.classList.add('locked');
+      }
+    }
+  });
+  
+  const progressEl = document.getElementById('achievement-progress');
+  if (progressEl) {
+    progressEl.textContent = `已获得 ${unlocked}/3`;
+  }
+}
+
+// ========== 草稿保存功能 ==========
+const DRAFT_KEY = 'leaveApplicationDraft';
+
+function saveDraft() {
+  const draft = {
+    startTime: document.getElementById('startTime')?.value || '',
+    endTime: document.getElementById('endTime')?.value || '',
+    leaveType: document.getElementById('leaveType')?.value || '',
+    leaveReason: document.getElementById('leaveReason')?.value || '',
+    savedAt: new Date().toISOString()
+  };
+  
+  if (!draft.leaveReason && !draft.startTime) {
+    showToast('没有需要保存的内容', 'error');
+    return;
+  }
+  
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  showToast('草稿已保存');
+}
+
+function loadDraft() {
+  const draftStr = localStorage.getItem(DRAFT_KEY);
+  if (!draftStr) return;
+  
+  try {
+    const draft = JSON.parse(draftStr);
+    if (draft.startTime) document.getElementById('startTime').value = draft.startTime;
+    if (draft.endTime) document.getElementById('endTime').value = draft.endTime;
+    if (draft.leaveType) document.getElementById('leaveType').value = draft.leaveType;
+    if (draft.leaveReason) document.getElementById('leaveReason').value = draft.leaveReason;
+    
+    document.getElementById('draftNotice').classList.add('hidden');
+    showToast('草稿已恢复');
+  } catch (e) {
+    console.error('加载草稿失败', e);
+  }
+}
+
+function clearDraft() {
+  localStorage.removeItem(DRAFT_KEY);
+  document.getElementById('draftNotice').classList.add('hidden');
+}
+
+function checkDraft() {
+  const draftStr = localStorage.getItem(DRAFT_KEY);
+  if (!draftStr) return;
+  
+  try {
+    const draft = JSON.parse(draftStr);
+    if (draft.leaveReason || draft.startTime) {
+      const notice = document.getElementById('draftNotice');
+      const timeEl = document.getElementById('draftTime');
+      if (notice && timeEl) {
+        const savedDate = new Date(draft.savedAt);
+        timeEl.textContent = `保存于 ${savedDate.toLocaleString('zh-CN')}`;
+        notice.classList.remove('hidden');
+      }
+    }
+  } catch (e) {
+    console.error('检查草稿失败', e);
+  }
+}
+
+// 自动保存草稿（每30秒）
+setInterval(() => {
+  const reason = document.getElementById('leaveReason')?.value;
+  const startTime = document.getElementById('startTime')?.value;
+  if (reason || startTime) {
+    const draft = {
+      startTime: document.getElementById('startTime')?.value || '',
+      endTime: document.getElementById('endTime')?.value || '',
+      leaveType: document.getElementById('leaveType')?.value || '',
+      leaveReason: document.getElementById('leaveReason')?.value || '',
+      savedAt: new Date().toISOString()
+    };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  }
+}, 30000);
+
+// 页面加载时检查草稿
+setTimeout(checkDraft, 500);
+
+// 提交成功后清除草稿
+const originalSubmitLeave = typeof submitLeave === 'function' ? submitLeave : null;
+if (originalSubmitLeave) {
+  submitLeave = async function(e) {
+    const result = await originalSubmitLeave.call(this, e);
+    clearDraft();
+    return result;
+  };
+}
+
+// ========== AI对话功能 ==========
+let aiChatOpen = false;
+
+function toggleAiChat() {
+  const chatBox = document.getElementById('aiChatBox');
+  if (!chatBox) return;
+  
+  aiChatOpen = !aiChatOpen;
+  
+  if (aiChatOpen) {
+    chatBox.classList.remove('hidden');
+    setTimeout(() => {
+      chatBox.classList.remove('scale-95', 'opacity-0');
+      chatBox.classList.add('scale-100', 'opacity-100');
+    }, 10);
+    document.getElementById('aiChatInput')?.focus();
+  } else {
+    chatBox.classList.remove('scale-100', 'opacity-100');
+    chatBox.classList.add('scale-95', 'opacity-0');
+    setTimeout(() => chatBox.classList.add('hidden'), 300);
+  }
+}
+
+function addAiMessage(content, isUser = false) {
+  const container = document.getElementById('aiChatMessages');
+  if (!container) return;
+  
+  const msgDiv = document.createElement('div');
+  msgDiv.className = `flex items-start space-x-2 ${isUser ? 'flex-row-reverse space-x-reverse' : ''}`;
+  
+  if (isUser) {
+    msgDiv.innerHTML = `
+      <div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
+        <i class="fa-solid fa-user text-white text-sm"></i>
+      </div>
+      <div class="bg-primary text-white rounded-2xl rounded-tr-none px-4 py-2 max-w-[80%]">
+        <p class="text-sm">${content}</p>
+      </div>
+    `;
+  } else {
+    msgDiv.innerHTML = `
+      <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+        <i class="fa-solid fa-dragon text-primary text-sm"></i>
+      </div>
+      <div class="bg-gray-100 rounded-2xl rounded-tl-none px-4 py-2 max-w-[85%]">
+        <div class="text-sm text-gray-700 whitespace-pre-wrap break-words">${content}</div>
+      </div>
+    `;
+  }
+  
+  container.appendChild(msgDiv);
+  container.scrollTop = container.scrollHeight;
+}
+
+async function sendAiMessage() {
+  const input = document.getElementById('aiChatInput');
+  const sendBtn = document.getElementById('aiSendBtn');
+  const message = input?.value?.trim();
+  
+  if (!message) return;
+  
+  // 显示用户消息
+  addAiMessage(message, true);
+  input.value = '';
+  
+  // 禁用发送按钮
+  sendBtn.disabled = true;
+  sendBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+  
+  // 显示加载中
+  addAiMessage('<i class="fa-solid fa-ellipsis fa-beat"></i> 思考中...');
+  
+  try {
+    const response = await fetch('/api/ai/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message })
+    });
+    
+    const data = await response.json();
+    
+    // 移除加载消息
+    const container = document.getElementById('aiChatMessages');
+    container.removeChild(container.lastChild);
+    
+    if (data.success) {
+      addAiMessage(data.reply);
+    } else {
+      addAiMessage('😅 ' + (data.message || '抱歉，出了点问题'));
+    }
+  } catch (error) {
+    const container = document.getElementById('aiChatMessages');
+    container.removeChild(container.lastChild);
+    addAiMessage('😅 网络错误，请稍后再试');
+  }
+  
+  // 恢复发送按钮
+  sendBtn.disabled = false;
+  sendBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i>';
+}
+
+// changeMonth函数用于兼容新UI
+function changeMonth(delta) {
+  if (delta < 0) prevMonth();
+  else nextMonth();
+}
+
+// ========== 请假模板功能 ==========
+function openTemplateModal() {
+  document.getElementById('template-modal')?.classList.remove('hidden');
+}
+
+function closeTemplateModal() {
+  document.getElementById('template-modal')?.classList.add('hidden');
+}
+
+function selectTemplate(text) {
+  const textarea = document.getElementById('leaveReason');
+  if (textarea) textarea.value = text;
+  closeTemplateModal();
+  showToast('模板已填充', 'success');
+}
+
+// ========== 草稿保存功能 ==========
+function saveDraft() {
+  const draft = {
+    startTime: document.getElementById('startTime')?.value,
+    endTime: document.getElementById('endTime')?.value,
+    leaveType: document.getElementById('leaveType')?.value,
+    leaveReason: document.getElementById('leaveReason')?.value,
+    savedAt: new Date().toISOString()
+  };
+  localStorage.setItem('leaveDraft', JSON.stringify(draft));
+  showToast('草稿已保存', 'success');
+  document.getElementById('loadDraftBtn')?.classList.remove('hidden');
+}
+
+function loadDraft() {
+  const draft = JSON.parse(localStorage.getItem('leaveDraft') || '{}');
+  if (!draft.leaveReason) {
+    showToast('没有找到草稿', 'warning');
+    return;
+  }
+  if (draft.startTime) document.getElementById('startTime').value = draft.startTime;
+  if (draft.endTime) document.getElementById('endTime').value = draft.endTime;
+  if (draft.leaveType) document.getElementById('leaveType').value = draft.leaveType;
+  if (draft.leaveReason) document.getElementById('leaveReason').value = draft.leaveReason;
+  showToast('草稿已恢复', 'success');
+}
+
+function checkDraft() {
+  const draft = localStorage.getItem('leaveDraft');
+  if (draft) document.getElementById('loadDraftBtn')?.classList.remove('hidden');
+}
+
+// ========== 统计图表功能 ==========
+let leaveTypeChart = null;
+let monthlyChart = null;
+
+function renderCharts() {
+  renderPieChart();
+  renderBarChart();
+  renderAchievements();
+}
+
+function renderPieChart() {
+  const ctx = document.getElementById('leaveTypeChart')?.getContext('2d');
+  if (!ctx) return;
+  
+  const types = {};
+  leaveRecords.forEach(r => {
+    const type = r.sort || '事假';
+    types[type] = (types[type] || 0) + 1;
+  });
+  
+  const labels = Object.keys(types);
+  const data = Object.values(types);
+  const colors = ['#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'];
+  
+  if (leaveTypeChart) leaveTypeChart.destroy();
+  leaveTypeChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: colors.slice(0, labels.length), borderWidth: 0 }] },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+  });
+  
+  // 图例
+  const legend = document.getElementById('chart-legend');
+  if (legend) {
+    legend.innerHTML = labels.map((l, i) => `
+      <div class="flex items-center space-x-2">
+        <div class="w-3 h-3 rounded" style="background:${colors[i]}"></div>
+        <span class="text-sm text-gray-600">${l}: ${data[i]}次</span>
+      </div>
+    `).join('');
+  }
+}
+
+function renderBarChart() {
+  const ctx = document.getElementById('monthlyChart')?.getContext('2d');
+  if (!ctx) return;
+  
+  const months = {};
+  const now = new Date();
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getMonth() + 1}月`;
+    months[key] = 0;
+  }
+  
+  leaveRecords.forEach(r => {
+    const d = new Date(r.start_time);
+    const key = `${d.getMonth() + 1}月`;
+    if (months.hasOwnProperty(key)) months[key]++;
+  });
+  
+  if (monthlyChart) monthlyChart.destroy();
+  monthlyChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: Object.keys(months),
+      datasets: [{ label: '请假次数', data: Object.values(months), backgroundColor: '#10B981', borderRadius: 8 }]
+    },
+    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+  });
+}
+
+// ========== 成就系统 ==========
+function renderAchievements() {
+  const grid = document.getElementById('achievements-grid');
+  if (!grid) return;
+  
+  const total = leaveRecords.length;
+  const approved = leaveRecords.filter(r => r.approval_status === '已批准').length;
+  const thisMonth = leaveRecords.filter(r => {
+    const d = new Date(r.start_time);
+    const now = new Date();
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).length;
+  
+  const achievements = [
+    { icon: '🎯', name: '全勤之星', desc: '本月无请假', unlocked: thisMonth === 0 },
+    { icon: '⭐', name: '优秀学生', desc: '累计请假≤2次', unlocked: total <= 2 },
+    { icon: '✅', name: '守时达人', desc: '请假全部通过', unlocked: approved === total && total > 0 },
+    { icon: '📚', name: '勤奋学习', desc: '本月请假≤1次', unlocked: thisMonth <= 1 },
+    { icon: '🏅', name: '出勤模范', desc: '累计请假≤3次', unlocked: total <= 3 },
+    { icon: '🌟', name: '学期之星', desc: '从未请假', unlocked: total === 0 },
+  ];
+  
+  grid.innerHTML = achievements.map(a => `
+    <div class="text-center p-4 rounded-xl ${a.unlocked ? 'bg-gradient-to-br from-yellow-50 to-orange-50' : 'bg-gray-100 opacity-50'}">
+      <div class="text-4xl mb-2 ${a.unlocked ? '' : 'grayscale'}">${a.icon}</div>
+      <p class="font-bold text-gray-800 text-sm">${a.name}</p>
+      <p class="text-xs text-gray-500 mt-1">${a.desc}</p>
+      ${a.unlocked ? '<span class="inline-block mt-2 px-2 py-0.5 bg-green-100 text-green-600 text-xs rounded-full">已解锁</span>' : '<span class="inline-block mt-2 px-2 py-0.5 bg-gray-200 text-gray-500 text-xs rounded-full">未解锁</span>'}
+    </div>
+  `).join('');
+}
+
+

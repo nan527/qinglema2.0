@@ -62,9 +62,58 @@
     .badge-rejected { background: linear-gradient(135deg, #FEE2E2, #FECACA); color: #991B1B; }
     .chat-bubble.sent { background: linear-gradient(135deg, #10B981, #34D399); }
     .chat-bubble.received { background: #F3F4F6; }
+    
+    /* 吉祥物动画 */
+    @keyframes mascotFloat { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-12px) rotate(2deg); } }
+    .mascot-container { position: fixed; bottom: 20px; right: 20px; z-index: 100; cursor: pointer; transition: all 0.3s ease; }
+    .mascot-container:hover { transform: scale(1.1); }
+    .mascot-container:hover .mascot-bubble { opacity: 1; transform: translateX(0) scale(1); }
+    .mascot-img { width: 90px; height: auto; animation: mascotFloat 4s ease-in-out infinite; filter: drop-shadow(0 10px 20px rgba(16, 185, 129, 0.3)); transition: filter 0.3s ease; }
+    .mascot-container:hover .mascot-img { filter: drop-shadow(0 15px 30px rgba(16, 185, 129, 0.5)); }
+    .mascot-bubble { position: absolute; bottom: 80%; right: 60%; background: white; padding: 8px 14px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); font-size: 13px; color: #10B981; font-weight: 500; white-space: nowrap; opacity: 0; transform: translateX(10px) scale(0.9); transition: all 0.3s ease; }
+    .mascot-bubble::after { content: ''; position: absolute; bottom: -6px; right: 20px; width: 12px; height: 12px; background: white; transform: rotate(45deg); box-shadow: 3px 3px 5px rgba(0,0,0,0.05); }
+    @media (max-width: 640px) { .mascot-container { bottom: 10px; right: 10px; } .mascot-img { width: 60px; } .mascot-bubble { font-size: 11px; padding: 6px 10px; } }
   </style>
 </head>
 <body class="font-sans mesh-gradient min-h-screen text-gray-700">
+  <!-- 吉祥物（可拖动） -->
+  <div class="mascot-container" id="mascot">
+    <div class="mascot-bubble" id="mascotBubble">点我问问题~</div>
+    <img src="/static/images/mascot.png" alt="请假小助手" class="mascot-img" draggable="false">
+  </div>
+
+  <!-- AI对话框 -->
+  <div id="aiChatBox" class="fixed bottom-28 right-6 w-80 glass-card rounded-2xl shadow-2xl z-50 hidden transform transition-all duration-300 scale-95 opacity-0" onclick="event.stopPropagation()">
+    <div class="bg-gradient-to-r from-primary to-accent text-white px-4 py-3 rounded-t-2xl flex items-center justify-between">
+      <div class="flex items-center">
+        <i class="fa-solid fa-robot mr-2"></i>
+        <span class="font-medium">小龙助手</span>
+        <span class="ml-2 text-xs bg-white/20 px-2 py-0.5 rounded-full">AI</span>
+      </div>
+      <button onclick="event.stopPropagation(); toggleAiChat()" class="w-7 h-7 rounded-lg hover:bg-white/20 flex items-center justify-center transition-all">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div id="aiChatMessages" class="h-96 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+      <div class="flex items-start space-x-2">
+        <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <i class="fa-solid fa-dragon text-primary text-sm"></i>
+        </div>
+        <div class="bg-gray-100 rounded-2xl rounded-tl-none px-4 py-2 max-w-[80%]">
+          <p class="text-sm text-gray-700">你好！我是小龙，有什么关于请假的问题可以问我哦~</p>
+        </div>
+      </div>
+    </div>
+    <div class="p-3 border-t border-gray-100" onclick="event.stopPropagation()">
+      <div class="flex items-center space-x-2">
+        <input type="text" id="aiChatInput" placeholder="输入问题..." class="flex-1 px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all text-sm" onkeypress="if(event.key==='Enter'){event.stopPropagation();sendAiMessage()}" onclick="event.stopPropagation()">
+        <button onclick="event.stopPropagation(); sendAiMessage()" id="aiSendBtn" class="w-10 h-10 rounded-xl bg-primary text-white hover:bg-primary-dark transition-all flex items-center justify-center">
+          <i class="fa-solid fa-paper-plane"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- 顶部导航 -->
   <header class="glass-nav sticky top-0 z-50 border-b border-white/50 shadow-lg shadow-primary/5">
     <div class="container mx-auto px-6 py-3">
@@ -85,23 +134,20 @@
         
         <!-- 导航菜单 - 居中 -->
         <nav class="hidden md:flex items-center bg-white/50 rounded-2xl p-1.5 shadow-inner mx-auto">
-          <button onclick="switchPage('home')" class="nav-item px-5 py-2.5 rounded-xl text-primary bg-white shadow-md text-sm font-medium flex items-center space-x-2" data-page="home">
+          <button onclick="switchPage('home')" class="nav-item px-4 py-2.5 rounded-xl text-primary bg-white shadow-md text-sm font-medium flex items-center space-x-2" data-page="home">
             <i class="fa-solid fa-home"></i><span>首页</span>
           </button>
-          <button onclick="switchPage('leave')" class="nav-item px-5 py-2.5 rounded-xl text-gray-600 hover:text-primary hover:bg-white hover:shadow-md transition-all duration-300 text-sm font-medium flex items-center space-x-2" data-page="leave">
+          <button onclick="switchPage('leave')" class="nav-item px-4 py-2.5 rounded-xl text-gray-600 hover:text-primary hover:bg-white hover:shadow-md transition-all duration-300 text-sm font-medium flex items-center space-x-2" data-page="leave">
             <i class="fa-solid fa-file-signature"></i><span>请假申请</span>
           </button>
-          <button onclick="switchPage('records')" class="nav-item px-5 py-2.5 rounded-xl text-gray-600 hover:text-primary hover:bg-white hover:shadow-md transition-all duration-300 text-sm font-medium flex items-center space-x-2" data-page="records">
+          <button onclick="switchPage('records')" class="nav-item px-4 py-2.5 rounded-xl text-gray-600 hover:text-primary hover:bg-white hover:shadow-md transition-all duration-300 text-sm font-medium flex items-center space-x-2" data-page="records">
             <i class="fa-solid fa-clock-rotate-left"></i><span>请假记录</span>
           </button>
-          <button onclick="switchPage('notifications')" class="nav-item px-5 py-2.5 rounded-xl text-gray-600 hover:text-primary hover:bg-white hover:shadow-md transition-all duration-300 text-sm font-medium flex items-center space-x-2" data-page="notifications">
-            <i class="fa-solid fa-bell"></i><span>课程通知</span>
+          <button onclick="switchPage('chat')" class="nav-item px-4 py-2.5 rounded-xl text-gray-600 hover:text-primary hover:bg-white hover:shadow-md transition-all duration-300 text-sm font-medium flex items-center space-x-2" data-page="chat">
+            <i class="fa-solid fa-comments"></i><span>消息</span>
           </button>
-          <button onclick="switchPage('chat')" class="nav-item px-5 py-2.5 rounded-xl text-gray-600 hover:text-primary hover:bg-white hover:shadow-md transition-all duration-300 text-sm font-medium flex items-center space-x-2" data-page="chat">
-            <i class="fa-solid fa-comments"></i><span>联系辅导员</span>
-          </button>
-          <button onclick="switchPage('profile')" class="nav-item px-5 py-2.5 rounded-xl text-gray-600 hover:text-primary hover:bg-white hover:shadow-md transition-all duration-300 text-sm font-medium flex items-center space-x-2" data-page="profile">
-            <i class="fa-solid fa-user-gear"></i><span>个人中心</span>
+          <button onclick="switchPage('profile')" class="nav-item px-4 py-2.5 rounded-xl text-gray-600 hover:text-primary hover:bg-white hover:shadow-md transition-all duration-300 text-sm font-medium flex items-center space-x-2" data-page="profile">
+            <i class="fa-solid fa-user-gear"></i><span>我的</span>
           </button>
         </nav>
         
@@ -203,6 +249,60 @@
           <div class="text-center py-8 text-gray-400"><i class="fa-solid fa-spinner fa-spin"></i> 加载中...</div>
         </div>
       </div>
+
+      <!-- 首页日历和统计 -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        <!-- 请假日历 -->
+        <div class="glass-card rounded-2xl p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-gray-800 flex items-center">
+              <i class="fa-solid fa-calendar-days text-primary mr-2"></i>请假日历
+            </h3>
+            <div class="flex items-center space-x-2">
+              <button onclick="prevMonth()" class="w-8 h-8 rounded-lg bg-gray-100 hover:bg-primary hover:text-white transition-all flex items-center justify-center">
+                <i class="fa-solid fa-chevron-left text-sm"></i>
+              </button>
+              <span id="homeCalendarMonth" class="text-sm font-medium text-gray-600 min-w-[80px] text-center"></span>
+              <button onclick="nextMonth()" class="w-8 h-8 rounded-lg bg-gray-100 hover:bg-primary hover:text-white transition-all flex items-center justify-center">
+                <i class="fa-solid fa-chevron-right text-sm"></i>
+              </button>
+            </div>
+          </div>
+          <div class="grid grid-cols-7 gap-1 mb-2 text-xs">
+            <div class="text-center text-red-400 py-1">日</div>
+            <div class="text-center text-gray-400 py-1">一</div>
+            <div class="text-center text-gray-400 py-1">二</div>
+            <div class="text-center text-gray-400 py-1">三</div>
+            <div class="text-center text-gray-400 py-1">四</div>
+            <div class="text-center text-gray-400 py-1">五</div>
+            <div class="text-center text-blue-400 py-1">六</div>
+          </div>
+          <div id="homeCalendarDays" class="grid grid-cols-7 gap-1"></div>
+          <div class="flex items-center justify-center space-x-4 mt-4 pt-3 border-t border-gray-100 text-xs">
+            <div class="flex items-center space-x-1"><div class="w-2 h-2 rounded-full bg-orange-400"></div><span class="text-gray-400">待审批</span></div>
+            <div class="flex items-center space-x-1"><div class="w-2 h-2 rounded-full bg-green-400"></div><span class="text-gray-400">已批准</span></div>
+            <div class="flex items-center space-x-1"><div class="w-2 h-2 rounded-full bg-red-400"></div><span class="text-gray-400">已驳回</span></div>
+          </div>
+        </div>
+
+        <!-- 请假统计 -->
+        <div class="glass-card rounded-2xl p-6">
+          <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+            <i class="fa-solid fa-chart-bar text-primary mr-2"></i>请假统计
+          </h3>
+          <div id="homeStatsContainer" class="space-y-4">
+            <!-- 由JS动态生成 -->
+          </div>
+        </div>
+      </div>
+
+      <!-- 成就徽章 -->
+      <div class="glass-card rounded-2xl p-6 mt-6">
+        <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+          <i class="fa-solid fa-trophy text-yellow-500 mr-2"></i>我的成就
+        </h3>
+        <div id="homeAchievements" class="grid grid-cols-3 md:grid-cols-6 gap-3"></div>
+      </div>
     </div>
 
     <!-- 请假申请页面 -->
@@ -256,7 +356,20 @@
           </div>
           
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2"><i class="fa-solid fa-pen text-primary mr-2"></i>请假事由</label>
+            <div class="flex items-center justify-between mb-2">
+              <label class="block text-sm font-medium text-gray-700"><i class="fa-solid fa-pen text-primary mr-2"></i>请假事由</label>
+              <div class="flex space-x-2">
+                <button type="button" onclick="openTemplateModal()" class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all text-xs font-medium">
+                  <i class="fa-solid fa-file-lines mr-1"></i>选择模板
+                </button>
+                <button type="button" onclick="saveDraft()" class="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all text-xs font-medium">
+                  <i class="fa-solid fa-floppy-disk mr-1"></i>保存草稿
+                </button>
+                <button type="button" onclick="loadDraft()" id="loadDraftBtn" class="px-3 py-1.5 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all text-xs font-medium hidden">
+                  <i class="fa-solid fa-rotate-left mr-1"></i>恢复草稿
+                </button>
+              </div>
+            </div>
             <textarea id="leaveReason" rows="4" required placeholder="请详细描述您的请假原因..." class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all resize-none"></textarea>
           </div>
           
@@ -483,6 +596,82 @@
       </div>
     </div>
 
+    <!-- 请假日历页面 -->
+    <div id="page-calendar" class="page-content">
+      <div class="mb-6 animate-in">
+        <div class="flex items-center space-x-3 mb-2">
+          <div class="w-1.5 h-8 bg-gradient-to-b from-primary to-accent rounded-full"></div>
+          <h2 class="text-3xl font-bold bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 bg-clip-text text-transparent">📅 请假日历</h2>
+        </div>
+        <p class="text-gray-500 ml-5">日历视图查看您的请假记录</p>
+      </div>
+      <div class="glass-card rounded-2xl p-6">
+        <div class="flex items-center justify-between mb-6">
+          <button onclick="prevMonth()" class="w-10 h-10 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all flex items-center justify-center">
+            <i class="fa-solid fa-chevron-left"></i>
+          </button>
+          <h3 id="calendarMonth" class="text-xl font-bold text-gray-800"></h3>
+          <button onclick="nextMonth()" class="w-10 h-10 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all flex items-center justify-center">
+            <i class="fa-solid fa-chevron-right"></i>
+          </button>
+        </div>
+        <div class="grid grid-cols-7 gap-2 mb-2">
+          <div class="text-center text-sm font-medium text-red-400 py-2">日</div>
+          <div class="text-center text-sm font-medium text-gray-500 py-2">一</div>
+          <div class="text-center text-sm font-medium text-gray-500 py-2">二</div>
+          <div class="text-center text-sm font-medium text-gray-500 py-2">三</div>
+          <div class="text-center text-sm font-medium text-gray-500 py-2">四</div>
+          <div class="text-center text-sm font-medium text-gray-500 py-2">五</div>
+          <div class="text-center text-sm font-medium text-blue-400 py-2">六</div>
+        </div>
+        <div id="calendarDays" class="grid grid-cols-7 gap-2"></div>
+        <div class="flex items-center justify-center space-x-6 mt-6 pt-4 border-t border-gray-100">
+          <div class="flex items-center space-x-2"><div class="w-4 h-4 rounded bg-orange-400"></div><span class="text-sm text-gray-500">待审批</span></div>
+          <div class="flex items-center space-x-2"><div class="w-4 h-4 rounded bg-green-400"></div><span class="text-sm text-gray-500">已批准</span></div>
+          <div class="flex items-center space-x-2"><div class="w-4 h-4 rounded bg-red-400"></div><span class="text-sm text-gray-500">已驳回</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 统计分析页面 -->
+    <div id="page-stats" class="page-content">
+      <div class="mb-6 animate-in">
+        <div class="flex items-center space-x-3 mb-2">
+          <div class="w-1.5 h-8 bg-gradient-to-b from-primary to-accent rounded-full"></div>
+          <h2 class="text-3xl font-bold bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 bg-clip-text text-transparent">📊 统计与成就</h2>
+        </div>
+        <p class="text-gray-500 ml-5">查看请假数据分析和成就徽章</p>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- 请假类型分布 -->
+        <div class="glass-card rounded-2xl p-6">
+          <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+            <i class="fa-solid fa-chart-pie text-primary mr-2"></i>请假类型分布
+          </h3>
+          <div class="flex items-center justify-center">
+            <canvas id="leaveTypeChart" width="280" height="280"></canvas>
+          </div>
+          <div id="chart-legend" class="flex flex-wrap justify-center gap-4 mt-4"></div>
+        </div>
+        <!-- 月度请假趋势 -->
+        <div class="glass-card rounded-2xl p-6">
+          <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+            <i class="fa-solid fa-chart-line text-primary mr-2"></i>月度请假趋势
+          </h3>
+          <canvas id="monthlyChart" width="400" height="280"></canvas>
+        </div>
+        <!-- 成就系统 -->
+        <div class="glass-card rounded-2xl p-6 lg:col-span-2">
+          <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+            <i class="fa-solid fa-trophy text-yellow-500 mr-2"></i>成就徽章
+          </h3>
+          <div id="achievements-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            <!-- 成就徽章由JS动态生成 -->
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 个人中心页面 -->
     <div id="page-profile" class="page-content">
       <div class="mb-10 animate-in">
@@ -633,6 +822,66 @@
     </div>
   </div>
 
+  <!-- 请假模板模态框 -->
+  <div id="template-modal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeTemplateModal()"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg glass-card rounded-3xl p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="text-xl font-bold text-gray-800"><i class="fa-solid fa-file-lines text-primary mr-2"></i>请假模板</h3>
+        <button onclick="closeTemplateModal()" class="w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-all">
+          <i class="fa-solid fa-xmark text-gray-500"></i>
+        </button>
+      </div>
+      <div class="space-y-3 max-h-80 overflow-y-auto custom-scrollbar">
+        <div onclick="selectTemplate('身体不适，发烧/感冒，需要休息治疗，已前往校医院/医院就诊。')" class="p-4 rounded-xl bg-red-50 hover:bg-red-100 cursor-pointer transition-all border-2 border-transparent hover:border-red-200">
+          <div class="flex items-center mb-2"><span class="text-lg mr-2">🤒</span><span class="font-medium text-gray-800">感冒发烧</span></div>
+          <p class="text-sm text-gray-500">身体不适，发烧/感冒，需要休息治疗...</p>
+        </div>
+        <div onclick="selectTemplate('身体不适，肠胃不舒服，需要休息调养，无法正常上课。')" class="p-4 rounded-xl bg-orange-50 hover:bg-orange-100 cursor-pointer transition-all border-2 border-transparent hover:border-orange-200">
+          <div class="flex items-center mb-2"><span class="text-lg mr-2">🤢</span><span class="font-medium text-gray-800">肠胃不适</span></div>
+          <p class="text-sm text-gray-500">身体不适，肠胃不舒服，需要休息调养...</p>
+        </div>
+        <div onclick="selectTemplate('家中有急事需要处理，需请假回家一趟，会尽快返校。')" class="p-4 rounded-xl bg-purple-50 hover:bg-purple-100 cursor-pointer transition-all border-2 border-transparent hover:border-purple-200">
+          <div class="flex items-center mb-2"><span class="text-lg mr-2">👨‍👩‍👧</span><span class="font-medium text-gray-800">家中急事</span></div>
+          <p class="text-sm text-gray-500">家中有急事需要处理，需请假回家...</p>
+        </div>
+        <div onclick="selectTemplate('需要前往医院进行复诊/检查，已提前预约，请假半天。')" class="p-4 rounded-xl bg-blue-50 hover:bg-blue-100 cursor-pointer transition-all border-2 border-transparent hover:border-blue-200">
+          <div class="flex items-center mb-2"><span class="text-lg mr-2">🏥</span><span class="font-medium text-gray-800">医院复诊</span></div>
+          <p class="text-sm text-gray-500">需要前往医院进行复诊/检查...</p>
+        </div>
+        <div onclick="selectTemplate('参加学校/学院组织的活动/比赛，需要请假准备/参与。')" class="p-4 rounded-xl bg-green-50 hover:bg-green-100 cursor-pointer transition-all border-2 border-transparent hover:border-green-200">
+          <div class="flex items-center mb-2"><span class="text-lg mr-2">🏆</span><span class="font-medium text-gray-800">活动比赛</span></div>
+          <p class="text-sm text-gray-500">参加学校/学院组织的活动/比赛...</p>
+        </div>
+        <div onclick="selectTemplate('有重要的个人事务需要处理，无法按时上课，望批准。')" class="p-4 rounded-xl bg-gray-50 hover:bg-gray-100 cursor-pointer transition-all border-2 border-transparent hover:border-gray-200">
+          <div class="flex items-center mb-2"><span class="text-lg mr-2">📋</span><span class="font-medium text-gray-800">个人事务</span></div>
+          <p class="text-sm text-gray-500">有重要的个人事务需要处理...</p>
+        </div>
+      </div>
+      <div class="mt-4 pt-4 border-t border-gray-200">
+        <p class="text-xs text-gray-400 text-center">点击模板即可自动填充到请假事由</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 审批通知弹窗 -->
+  <div id="approval-notification" class="fixed top-24 right-6 z-50 transform translate-x-full transition-transform duration-500">
+    <div class="glass-card rounded-2xl p-5 shadow-2xl max-w-sm border-l-4" id="notification-card">
+      <div class="flex items-start space-x-4">
+        <div id="notification-icon" class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"></div>
+        <div class="flex-1 min-w-0">
+          <p id="notification-title" class="font-bold text-gray-800 mb-1"></p>
+          <p id="notification-message" class="text-sm text-gray-500 truncate"></p>
+          <p id="notification-time" class="text-xs text-gray-400 mt-2"></p>
+        </div>
+        <button onclick="hideApprovalNotification()" class="text-gray-400 hover:text-gray-600 transition-colors">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="/static/js/student.js"></script>
 </body>
 </html>

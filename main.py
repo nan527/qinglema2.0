@@ -1,14 +1,14 @@
 # 学生信息管理系统主入口（整合所有角色）
 from login import login
 # 导入各个角色的操作类
-from admin_operation import AdminOperation
-from student_operation import StudentOperation
-from counselor_operation import CounselorOperation
+from terminal.admin_operation import AdminOperation
+from terminal.student_operation import StudentOperation
+from terminal.counselor_operation import CounselorOperation
 
 # 尝试导入老师操作类，如果失败则设置为None
 TeacherOperation = None
 try:
-    from teacher_operation import TeacherOperation
+    from terminal.teacher_operation import TeacherOperation
 except ImportError:
     pass
 

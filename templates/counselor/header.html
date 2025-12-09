@@ -149,25 +149,124 @@
       -webkit-text-fill-color: transparent;
       background-clip: text;
     }
+    
+    /* 吉祥物动画 */
+    @keyframes mascotFloat { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-12px) rotate(2deg); } }
+    .mascot-container { position: fixed; bottom: 20px; right: 20px; z-index: 100; cursor: pointer; transition: all 0.3s ease; }
+    .mascot-container:hover { transform: scale(1.1); }
+    .mascot-container:hover .mascot-bubble { opacity: 1; transform: translateX(0) scale(1); }
+    .mascot-img { width: 90px; height: auto; animation: mascotFloat 4s ease-in-out infinite; filter: drop-shadow(0 10px 20px rgba(14, 165, 233, 0.3)); transition: filter 0.3s ease; }
+    .mascot-container:hover .mascot-img { filter: drop-shadow(0 15px 30px rgba(14, 165, 233, 0.5)); }
+    .mascot-bubble { position: absolute; bottom: 80%; right: 60%; background: white; padding: 8px 14px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); font-size: 13px; color: #0EA5E9; font-weight: 500; white-space: nowrap; opacity: 0; transform: translateX(10px) scale(0.9); transition: all 0.3s ease; }
+    .mascot-bubble::after { content: ''; position: absolute; bottom: -6px; right: 20px; width: 12px; height: 12px; background: white; transform: rotate(45deg); box-shadow: 3px 3px 5px rgba(0,0,0,0.05); }
+    @media (max-width: 640px) { .mascot-container { bottom: 10px; right: 10px; } .mascot-img { width: 60px; } .mascot-bubble { font-size: 11px; padding: 6px 10px; } }
   </style>
 </head>
 
 <body class="font-sans mesh-gradient min-h-screen text-gray-700">
+  <!-- AI助手吉祥物 -->
+  <div class="mascot-container" id="mascot" onclick="toggleAiChat()">
+    <div class="mascot-bubble" id="mascotBubble">有问题问我~</div>
+    <img src="/static/images/mascot.png" alt="小龙助手" class="mascot-img" draggable="false">
+  </div>
+
+  <!-- AI对话框 -->
+  <div id="aiChatBox" class="fixed bottom-28 right-6 w-80 glass-card rounded-2xl shadow-2xl z-50 hidden transform transition-all duration-300 scale-95 opacity-0" onclick="event.stopPropagation()">
+    <div class="bg-gradient-to-r from-primary to-accent text-white px-4 py-3 rounded-t-2xl flex items-center justify-between">
+      <div class="flex items-center">
+        <i class="fa-solid fa-robot mr-2"></i>
+        <span class="font-medium">小龙助手</span>
+        <span class="ml-2 text-xs bg-white/20 px-2 py-0.5 rounded-full">AI</span>
+      </div>
+      <button onclick="event.stopPropagation(); toggleAiChat()" class="w-7 h-7 rounded-lg hover:bg-white/20 flex items-center justify-center transition-all">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div id="aiChatMessages" class="h-80 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+      <div class="flex items-start space-x-2">
+        <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <i class="fa-solid fa-dragon text-primary text-sm"></i>
+        </div>
+        <div class="bg-gray-100 rounded-2xl rounded-tl-none px-4 py-2 max-w-[80%]">
+          <p class="text-sm text-gray-700">你好老师！我是小龙，有什么可以帮您的吗？</p>
+        </div>
+      </div>
+    </div>
+    <div class="p-3 border-t border-gray-100" onclick="event.stopPropagation()">
+      <div class="flex items-center space-x-2">
+        <input type="text" id="aiChatInput" placeholder="输入问题..." class="flex-1 px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all text-sm" onkeypress="if(event.key==='Enter'){event.stopPropagation();sendAiMessage()}" onclick="event.stopPropagation()">
+        <button onclick="event.stopPropagation(); sendAiMessage()" id="aiSendBtn" class="w-10 h-10 rounded-xl bg-primary text-white hover:bg-primary-dark transition-all flex items-center justify-center">
+          <i class="fa-solid fa-paper-plane"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ========== AI助手功能 ==========
+    let aiChatOpen = false;
+    function toggleAiChat() {
+      const chatBox = document.getElementById('aiChatBox');
+      if (!chatBox) return;
+      aiChatOpen = !aiChatOpen;
+      if (aiChatOpen) {
+        chatBox.classList.remove('hidden');
+        setTimeout(() => { chatBox.classList.remove('scale-95', 'opacity-0'); chatBox.classList.add('scale-100', 'opacity-100'); }, 10);
+        document.getElementById('aiChatInput')?.focus();
+      } else {
+        chatBox.classList.remove('scale-100', 'opacity-100'); chatBox.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => chatBox.classList.add('hidden'), 300);
+      }
+    }
+    function addAiMessage(content, isUser = false) {
+      const container = document.getElementById('aiChatMessages');
+      if (!container) return;
+      const msgDiv = document.createElement('div');
+      msgDiv.className = `flex items-start space-x-2 ${isUser ? 'flex-row-reverse space-x-reverse' : ''}`;
+      msgDiv.innerHTML = isUser ? `
+        <div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-user text-white text-sm"></i></div>
+        <div class="bg-primary text-white rounded-2xl rounded-tr-none px-4 py-2 max-w-[80%]"><p class="text-sm">${content}</p></div>` : `
+        <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-dragon text-primary text-sm"></i></div>
+        <div class="bg-gray-100 rounded-2xl rounded-tl-none px-4 py-2 max-w-[80%]"><p class="text-sm text-gray-700">${content}</p></div>`;
+      container.appendChild(msgDiv);
+      container.scrollTop = container.scrollHeight;
+    }
+    async function sendAiMessage() {
+      const input = document.getElementById('aiChatInput');
+      const sendBtn = document.getElementById('aiSendBtn');
+      const message = input?.value?.trim();
+      if (!message) return;
+      addAiMessage(message, true);
+      input.value = '';
+      sendBtn.disabled = true;
+      sendBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+      addAiMessage('<i class="fa-solid fa-ellipsis fa-beat"></i> 思考中...');
+      try {
+        const response = await fetch('/api/ai/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message }) });
+        const data = await response.json();
+        const container = document.getElementById('aiChatMessages');
+        container.removeChild(container.lastChild);
+        addAiMessage(data.success ? data.reply : '😅 ' + (data.message || '抱歉，出了点问题'));
+      } catch (error) {
+        const container = document.getElementById('aiChatMessages');
+        container.removeChild(container.lastChild);
+        addAiMessage('😅 网络错误，请稍后再试');
+      }
+      sendBtn.disabled = false;
+      sendBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i>';
+    }
+  </script>
+
   <!-- 顶部导航 -->
   <header class="glass-nav sticky top-0 z-50 border-b border-white/50 shadow-lg shadow-primary/5">
     <div class="container mx-auto px-6 py-3">
       <div class="flex justify-between items-center">
         <!-- Logo区域 -->
-        <div class="flex items-center space-x-4">
-          <div class="relative group">
-            <div class="absolute -inset-1 bg-gradient-to-r from-primary via-accent to-primary-light rounded-2xl blur opacity-40 group-hover:opacity-70 transition duration-500"></div>
-            <div class="relative w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-xl">
-              <i class="fa-solid fa-user-tie text-white text-xl"></i>
-            </div>
-          </div>
+        <div class="flex items-center space-x-3">
+          <img src="/static/images/logo.png" alt="请了吗" class="w-11 h-11 object-contain">
           <div>
-            <h1 class="text-xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">辅导员工作平台</h1>
-            <p class="text-xs text-gray-400 font-medium tracking-wide">STUDENT AFFAIRS</p>
+            <h1 class="text-xl font-bold bg-gradient-to-r from-purple-600 to-purple-400 bg-clip-text text-transparent">请了吗</h1>
+            <p class="text-xs text-gray-400 font-medium tracking-wide">辅导员工作台</p>
           </div>
         </div>
         

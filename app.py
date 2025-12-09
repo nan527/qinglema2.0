@@ -109,31 +109,31 @@ def login_page():
 @login_required(role='管理员')
 def admin_page():
     """管理员页面"""
-    return render_template('admin.html', user_info=session['user_info'])
+    return render_template('admin/index.html', user_info=session['user_info'])
 
 @app.route('/admin/students')
 @login_required(role='管理员')
 def student_list_page():
     """学生信息列表页面（仅管理员可访问）"""
-    return render_template('student_list.html', user_info=session['user_info'])
+    return render_template('student/list.html', user_info=session['user_info'])
 
 @app.route('/admin/teachers')
 @login_required(role='管理员')
 def teacher_list_page():
     """教师信息列表页面（仅管理员可访问）"""
-    return render_template('teacher_list.html', user_info=session['user_info'])
+    return render_template('teacher/list.html', user_info=session['user_info'])
 
 @app.route('/admin/counselors')
 @login_required(role='管理员')
 def counselor_list_page():
     """辅导员信息列表页面（仅管理员可访问）"""
-    return render_template('counselor_list.html', user_info=session['user_info'])
+    return render_template('counselor/list.html', user_info=session['user_info'])
 
 @app.route('/admin/admins')
 @login_required(role='管理员')
 def admin_list_page():
     """管理员信息列表页面（仅管理员可访问）"""
-    return render_template('admin_list.html', user_info=session['user_info'])
+    return render_template('admin/list.html', user_info=session['user_info'])
 
 @app.route('/student')
 @login_required(role='学生')
@@ -145,7 +145,7 @@ def student_page():
 @login_required(role='讲师')
 def teacher_page():
     """讲师页面"""
-    return render_template('teacher.html', user_info=session['user_info'])
+    return render_template('teacher/index.html', user_info=session['user_info'])
 
 @app.route('/counselor')
 @login_required(role='辅导员')

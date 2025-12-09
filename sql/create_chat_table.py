@@ -1,4 +1,7 @@
 import pymysql
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from db_config import get_db_config
 
 try:

@@ -1,0 +1,39 @@
+# 请了吗 - Git忽略配置
+
+# Python缓存
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 虚拟环境
+venv/
+env/
+.env
+
+# IDE配置
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 日志文件
+*.log
+logs/
+
+# 数据库配置（包含密码）
+db_config.py
+
+# 用户上传的头像（可选）
+# data/avatars/
+
+# 域名服务（大文件）
+# domain/cloudflared.exe
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 临时文件
+*.tmp
+*.temp

@@ -72,31 +72,42 @@
 qinglema2.0/
 ├── app.py                 # Flask主应用入口
 ├── db_config.py           # 数据库配置
-├── server.py              # 服务器启动脚本
+├── server.py              # 域名服务启动脚本
+├── requirements.txt       # pip依赖配置
+├── environment.yaml       # conda环境配置
+│
 ├── templates/             # 页面模板
 │   ├── login.html         # 登录页面
 │   ├── student/           # 学生端页面
-│   │   ├── index.html     # 学生主页
-│   │   ├── profile.html   # 个人信息
-│   │   └── list.html      # 学生列表
 │   ├── teacher/           # 教师端页面
-│   │   ├── index.html     # 教师主页
-│   │   └── list.html      # 教师列表
 │   ├── counselor/         # 辅导员端页面
-│   │   ├── header.html    # 公共头部
-│   │   └── ...            # 其他页面
 │   └── admin/             # 管理员端页面
-│       ├── index.html     # 管理员主页
-│       └── list.html      # 管理员列表
+│
 ├── static/                # 静态资源
-│   ├── images/            # 图片资源
-│   │   ├── logo.png       # 系统Logo
-│   │   └── mascot.png     # AI助手吉祥物
+│   ├── images/            # 图片(logo、吉祥物)
 │   ├── js/                # JavaScript文件
 │   └── webfonts/          # 字体文件
+│
+├── terminal/              # 命令行版本
+│   ├── main.py            # 终端入口
+│   ├── login.py           # 登录模块
+│   ├── student_operation.py
+│   ├── teacher_operation.py
+│   ├── counselor_operation.py
+│   └── admin_operation.py
+│
+├── sql/                   # 数据库脚本
+│   ├── create_chat_table.py
+│   └── create_admin_logs.sql
+│
+├── domain/                # 域名服务配置
+│   └── cloudflared.exe    # Cloudflare Tunnel
+│
 ├── data/                  # 数据目录
 │   └── avatars/           # 用户头像存储
-└── README.md              # 项目说明文档
+│
+└── docs/                  # 项目文档
+    └── 工作记录功能说明.md
 ```
 
 ---

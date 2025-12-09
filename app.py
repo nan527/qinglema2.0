@@ -1559,9 +1559,10 @@ def update_teacher_contact():
         return jsonify({"success": False, "message": str(e)})
 
 # 教师上传头像
-@app.route('/api/teacher/upload_avatar', methods=['POST'])
-@login_required(role='讲师')
-def upload_teacher_avatar():
+# [已废弃] 教师头像上传已迁移到统一接口 /api/user/avatar/upload
+# @app.route('/api/teacher/upload_avatar', methods=['POST'])
+# @login_required(role='讲师')
+def _deprecated_upload_teacher_avatar():
     """上传教师头像"""
     try:
         if 'avatar' not in request.files:

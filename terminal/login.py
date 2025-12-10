@@ -21,14 +21,14 @@ def login():
             4: {
                 "table": "admin_info",
                 "account_field": "admin_id",
-                "pwd_field": "password",
+                "pwd_field": "admin_password",
                 "name_field": "admin_name",
                 "role_name": "管理员"
             },
             8: {
                 "table": "counselor_info",
                 "account_field": "counselor_id",
-                "pwd_field": "password",
+                "pwd_field": "counselor_password",
                 "name_field": "counselor_name",
                 "role_name": "辅导员",
                 "extra_field": "responsible_grade"  # 辅导员特有字段
@@ -36,14 +36,14 @@ def login():
             9: {
                 "table": "teacher_info",
                 "account_field": "teacher_id",
-                "pwd_field": "password",
+                "pwd_field": "teacher_password",
                 "name_field": "teacher_name",
                 "role_name": "讲师"
             },
             12: {
                 "table": "student_info",
                 "account_field": "student_id",
-                "pwd_field": "password",
+                "pwd_field": "student_password",
                 "name_field": "student_name",
                 "role_name": "学生"
             }

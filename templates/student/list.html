@@ -267,8 +267,8 @@
     </main>
 
     <!-- 编辑用户模态框 -->
-    <div id="editModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl w-full max-w-md shadow-2xl animate-in">
+    <div id="editModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-3xl w-full max-w-md shadow-2xl animate-in my-4 max-h-[90vh] flex flex-col">
             <div class="bg-gradient-to-r from-primary to-accent p-6 rounded-t-3xl">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-3">
@@ -286,7 +286,7 @@
                 </div>
             </div>
             
-            <form id="editForm" class="p-6 space-y-4">
+            <form id="editForm" class="p-6 space-y-4 overflow-y-auto flex-1">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         <i class="fa-solid fa-id-card mr-2 text-primary"></i>学号
@@ -390,6 +390,16 @@
                            class="w-full px-4 py-2 rounded-xl border-2 border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all">
                 </div>
                 
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fa-solid fa-book-open mr-2 text-primary"></i>选修课程
+                    </label>
+                    <div id="courseCheckboxes" class="max-h-32 overflow-y-auto border-2 border-gray-200 rounded-xl p-3 space-y-2">
+                        <p class="text-gray-400 text-sm">加载课程列表中...</p>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">可多选，勾选学生需要选修的课程</p>
+                </div>
+                
                 <div id="editMessage" class="hidden p-3 rounded-xl text-sm"></div>
                 
                 <div class="flex gap-3 pt-4">
@@ -411,6 +421,7 @@
         let filteredStudents = []; // 存储筛选后的学生数据
         let currentPage = 1; // 当前页码
         const itemsPerPage = 15; // 每页显示数量
+        let allCourses = []; // 存储所有课程数据
 
         // Toast提示函数
         function showToast(message, type = 'success') {
@@ -420,6 +431,51 @@
             toast.style.opacity = '1';
             toast.style.pointerEvents = 'auto';
             setTimeout(() => { toast.style.opacity = '0'; toast.style.pointerEvents = 'none'; }, 3000);
+        }
+
+        // 加载所有课程
+        async function loadAllCourses() {
+            try {
+                const response = await fetch('/api/admin/courses');
+                const result = await response.json();
+                if (result.success) {
+                    allCourses = result.data;
+                    renderCourseCheckboxes();
+                }
+            } catch (error) {
+                console.error('加载课程列表失败:', error);
+            }
+        }
+
+        // 渲染课程复选框
+        function renderCourseCheckboxes(selectedCourseIds = []) {
+            const container = document.getElementById('courseCheckboxes');
+            if (allCourses.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-sm">暂无课程数据</p>';
+                return;
+            }
+            container.innerHTML = allCourses.map(course => `
+                <label class="flex items-center space-x-2 cursor-pointer hover:bg-blue-50 p-1 rounded">
+                    <input type="checkbox" name="courses" value="${course.course_id}" 
+                           ${selectedCourseIds.includes(course.course_id) ? 'checked' : ''}
+                           class="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary">
+                    <span class="text-sm text-gray-700">${course.course_name} (${course.course_id})</span>
+                </label>
+            `).join('');
+        }
+
+        // 获取学生已选课程
+        async function loadStudentCourses(studentId) {
+            try {
+                const response = await fetch(`/api/admin/student/${studentId}/courses`);
+                const result = await response.json();
+                if (result.success) {
+                    const selectedCourseIds = result.data.map(c => c.course_id);
+                    renderCourseCheckboxes(selectedCourseIds);
+                }
+            } catch (error) {
+                console.error('加载学生选课信息失败:', error);
+            }
         }
 
         // 加载学生数据
@@ -617,7 +673,7 @@
         }
 
         // 打开编辑模态框
-        function openEditModal(account, name, dept, grade, major, classNum, contact) {
+        async function openEditModal(account, name, dept, grade, major, classNum, contact) {
             document.getElementById('editAccount').value = account;
             document.getElementById('editName').value = name;
             document.getElementById('editDept').value = dept || '';
@@ -628,6 +684,9 @@
             document.getElementById('editPassword').value = '';
             document.getElementById('editMessage').classList.add('hidden');
             document.getElementById('editModal').classList.remove('hidden');
+            
+            // 加载学生已选课程
+            await loadStudentCourses(account);
         }
         
         // 关闭编辑模态框
@@ -650,6 +709,10 @@
             const newPassword = document.getElementById('editPassword').value.trim();
             const messageEl = document.getElementById('editMessage');
             
+            // 获取选中的课程
+            const selectedCourses = Array.from(document.querySelectorAll('input[name="courses"]:checked'))
+                .map(cb => cb.value);
+            
             if (!newName) {
                 messageEl.textContent = '姓名不能为空';
                 messageEl.className = 'p-3 rounded-xl text-sm bg-red-50 text-red-600';
@@ -658,6 +721,7 @@
             }
             
             try {
+                // 更新用户基本信息
                 const response = await fetch(`/api/admin/users/${account}`, {
                     method: 'PUT',
                     headers: {
@@ -677,7 +741,25 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    showToast('用户信息修改成功', 'success');
+                    // 更新学生选课信息
+                    const courseResponse = await fetch(`/api/admin/student/${account}/courses`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            course_ids: selectedCourses
+                        })
+                    });
+                    
+                    const courseResult = await courseResponse.json();
+                    
+                    if (courseResult.success) {
+                        showToast('用户信息及选课修改成功', 'success');
+                    } else {
+                        showToast('用户信息已保存，但选课更新失败：' + courseResult.message, 'error');
+                    }
+                    
                     closeEditModal();
                     // 重新加载数据
                     await loadStudents();
@@ -729,6 +811,9 @@
                 
                 // 显示用户名
                 document.getElementById('userName').textContent = result.user_info.user_name;
+                
+                // 加载所有课程列表
+                loadAllCourses();
                 
                 // 加载学生数据
                 loadStudents();

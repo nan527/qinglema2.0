@@ -59,21 +59,21 @@ def sync_user_avatar():
     user_account = session['user_info'].get('user_account')
     
     table_map = {
-        "管理员": ("admin_info", "admin_id"),
-        "辅导员": ("counselor_info", "counselor_id"),
-        "讲师": ("teacher_info", "teacher_id"),
-        "学生": ("student_info", "student_id")
+        "管理员": ("admin_info", "admin_id", "admin_avatar"),
+        "辅导员": ("counselor_info", "counselor_id", "counselor_avatar"),
+        "讲师": ("teacher_info", "teacher_id", "teacher_avatar"),
+        "学生": ("student_info", "student_id", "student_avatar")
     }
     
     if role not in table_map:
         return
     
-    table_name, id_field = table_map[role]
+    table_name, id_field, avatar_field = table_map[role]
     
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute(f"SELECT avatar FROM {table_name} WHERE {id_field} = %s", (user_account,))
+        cursor.execute(f"SELECT {avatar_field} FROM {table_name} WHERE {id_field} = %s", (user_account,))
         row = cursor.fetchone()
         if row and row[0]:
             session['user_info']['avatar'] = row[0]
@@ -233,8 +233,8 @@ def counselor_profile():
         conn = get_db_connection()
         cursor = conn.cursor()
         sql = """
-            SELECT counselor_id, counselor_name, dept,
-                   responsible_grade, responsible_major, contact, avatar
+            SELECT counselor_id, counselor_name, counselor_dept,
+                   responsible_grade, responsible_major, counselor_contact, counselor_avatar
             FROM counselor_info
             WHERE counselor_id = %s
         """
@@ -245,10 +245,10 @@ def counselor_profile():
             counselor = {
                 "counselor_id": row[0],
                 "counselor_name": row[1],
-                "dept": row[2],
+                "counselor_dept": row[2],
                 "responsible_grade": row[3],
                 "responsible_major": row[4],
-                "contact": row[5],
+                "counselor_contact": row[5],
             }
             db_avatar = row[6]  # 从数据库读取头像
     except pymysql.MySQLError as e:
@@ -321,14 +321,14 @@ def login():
         4: {
             "table": "admin_info",
             "account_field": "admin_id",
-            "pwd_field": "password",
+            "pwd_field": "admin_password",
             "name_field": "admin_name",
             "role_name": "管理员"
         },
         8: {
             "table": "counselor_info",
             "account_field": "counselor_id",
-            "pwd_field": "password",
+            "pwd_field": "counselor_password",
             "name_field": "counselor_name",
             "role_name": "辅导员",
             "extra_field": "responsible_grade"
@@ -336,14 +336,14 @@ def login():
         9: {
             "table": "teacher_info",
             "account_field": "teacher_id",
-            "pwd_field": "password",
+            "pwd_field": "teacher_password",
             "name_field": "teacher_name",
             "role_name": "讲师"
         },
         12: {
             "table": "student_info",
             "account_field": "student_id",
-            "pwd_field": "password",
+            "pwd_field": "student_password",
             "name_field": "student_name",
             "role_name": "学生"
         }
@@ -366,7 +366,25 @@ def login():
         # 构建查询SQL（所有角色都查询 avatar 字段）
         if target["role_name"] == "辅导员":
             sql = f"""
-                SELECT {target['account_field']}, {target['pwd_field']}, {target['name_field']}, {target['extra_field']}, avatar
+                SELECT {target['account_field']}, {target['pwd_field']}, {target['name_field']}, {target['extra_field']}, counselor_avatar
+                FROM {target['table']}
+                WHERE {target['account_field']} = %s
+            """
+        elif target["role_name"] == "学生":
+            sql = f"""
+                SELECT {target['account_field']}, {target['pwd_field']}, {target['name_field']}, student_avatar
+                FROM {target['table']}
+                WHERE {target['account_field']} = %s
+            """
+        elif target["role_name"] == "讲师":
+            sql = f"""
+                SELECT {target['account_field']}, {target['pwd_field']}, {target['name_field']}, teacher_avatar
+                FROM {target['table']}
+                WHERE {target['account_field']} = %s
+            """
+        elif target["role_name"] == "管理员":
+            sql = f"""
+                SELECT {target['account_field']}, {target['pwd_field']}, {target['name_field']}, admin_avatar
                 FROM {target['table']}
                 WHERE {target['account_field']} = %s
             """
@@ -422,17 +440,27 @@ def login():
 
 @app.route('/api/check_login', methods=['GET'])
 def check_login():
-    """检查登录状态接口"""
+    """检查用户登录状态"""
     if 'user_info' in session:
         return jsonify({
             "logged_in": True,
             "user_info": session['user_info']
         })
-    return jsonify({"logged_in": False})
+    else:
+        return jsonify({
+            "logged_in": False,
+            "user_info": None
+        })
+
+@app.route('/api/logout', methods=['POST'])
+def logout():
+    """用户退出登录"""
+    session.clear()
+    return jsonify({"status": "success", "message": "已退出登录"})
 
 @app.route('/api/user_preview', methods=['POST'])
 def user_preview():
-    """获取用户预览信息（用于登录界面显示）"""
+    """根据账号获取用户预览信息（登录页面使用）"""
     data = request.json
     account = data.get('account', '').strip()
     
@@ -440,97 +468,44 @@ def user_preview():
         return jsonify({"success": False, "message": "账号不能为空"})
     
     account_len = len(account)
-    
-    # 角色映射表
     role_map = {
-        4: {
-            "table": "admin_info",
-            "account_field": "admin_id",
-            "name_field": "admin_name",
-            "role_name": "管理员",
-            "dept_field": "'系统管理部'"
-        },
-        8: {
-            "table": "counselor_info",
-            "account_field": "counselor_id",
-            "name_field": "counselor_name",
-            "role_name": "辅导员",
-            "dept_field": "dept"
-        },
-        9: {
-            "table": "teacher_info",
-            "account_field": "teacher_id",
-            "name_field": "teacher_name",
-            "role_name": "讲师",
-            "dept_field": "dept"
-        },
-        12: {
-            "table": "student_info",
-            "account_field": "student_id",
-            "name_field": "student_name",
-            "role_name": "学生",
-            "dept_field": "major"
-        }
+        4: ("admin_info", "admin_id", "admin_name", "admin_dept", "admin_avatar", "管理员"),
+        8: ("counselor_info", "counselor_id", "counselor_name", "counselor_dept", "counselor_avatar", "辅导员"),
+        9: ("teacher_info", "teacher_id", "teacher_name", "teacher_dept", "teacher_avatar", "讲师"),
+        12: ("student_info", "student_id", "student_name", "dept_name", "student_avatar", "学生")
     }
     
     if account_len not in role_map:
         return jsonify({"success": False, "message": "账号长度不符合规则"})
     
-    target = role_map[account_len]
+    table, id_col, name_col, dept_col, avatar_col, role_name = role_map[account_len]
     
-    conn = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        # 构建查询SQL
-        sql = f"""
-            SELECT {target['account_field']} as id, {target['name_field']} as name, 
-                   {target['dept_field']} as dept, avatar
-            FROM {target['table']}
-            WHERE {target['account_field']} = %s
-        """
-        
-        cursor.execute(sql, (account,))
+        cursor.execute(f"SELECT {name_col}, {dept_col}, {avatar_col} FROM {table} WHERE {id_col} = %s", (account,))
         user = cursor.fetchone()
+        cursor.close()
+        conn.close()
         
         if user:
-            avatar_url = None
-            if user[3]:  # avatar字段
-                # 检查头像文件位置
-                avatar_file = user[3]
-                if avatar_file.startswith('teacher_'):
-                    avatar_url = f"/static/avatars/{avatar_file}"
-                else:
-                    avatar_url = f"/head_image/{avatar_file}"
-            
+            avatar_path = f"/data/avatars/{user[2]}" if user[2] else None
             return jsonify({
                 "success": True,
                 "data": {
-                    "id": user[0],
-                    "name": user[1],
-                    "dept": user[2] or "未知部门",
-                    "role": target["role_name"],
-                    "avatar": avatar_url
+                    "id": account,
+                    "name": user[0],
+                    "dept": user[1] or "",
+                    "avatar": avatar_path,
+                    "role": role_name
                 }
             })
         else:
             return jsonify({"success": False, "message": "用户不存在"})
-            
     except Exception as e:
-        print(f"用户预览查询失败: {e}")
+        print(f"获取用户预览失败: {e}")
         return jsonify({"success": False, "message": "查询失败"})
-    finally:
-        if conn:
-            conn.close()
 
-@app.route('/api/logout', methods=['POST'])
-def logout():
-    """退出登录接口"""
-    session.pop('user_info', None)
-    return jsonify({"status": "success", "message": "已成功登出"})
-
-# 消息相关API
 @app.route('/api/chat/contacts', methods=['GET'])
 @login_required(role='辅导员')
 def get_chat_contacts():
@@ -552,7 +527,7 @@ def get_chat_contacts():
         
         # 获取该年级的学生列表
         sql = """
-            SELECT student_id, student_name, avatar
+            SELECT student_id, student_name, student_avatar as avatar
             FROM student_info 
             WHERE LEFT(student_id, 4) = %s
             ORDER BY student_id
@@ -568,7 +543,7 @@ def get_chat_contacts():
                 "id": student['student_id'],
                 "name": student['student_name'],
                 "avatar": student['avatar'] or 'boy.png',
-                "unread": 0,  # 暂时设为0，后续可以添加未读消息统计
+                "unread": 0,
                 "last_message": "点击开始聊天",
                 "last_time": ""
             })
@@ -579,32 +554,6 @@ def get_chat_contacts():
     except Exception as e:
         print(f"获取联系人列表失败: {e}")
         return jsonify({"success": False, "message": "获取联系人列表失败"})
-
-@app.route('/api/chat/unread_count', methods=['GET'])
-@login_required(role='辅导员')
-def get_chat_unread_count():
-    """获取辅导员未读消息总数"""
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(pymysql.cursors.DictCursor)
-        
-        counselor_id = session['user_info']['user_account']
-        
-        # 统计所有学生发给辅导员的未读消息
-        cursor.execute("""
-            SELECT COUNT(*) as unread_count 
-            FROM chat_messages 
-            WHERE receiver_id = %s AND sender_role = '学生' AND is_read = 0
-        """, (counselor_id,))
-        
-        result = cursor.fetchone()
-        conn.close()
-        
-        return jsonify({"success": True, "data": result['unread_count'] if result else 0})
-        
-    except Exception as e:
-        print(f"获取未读消息数失败: {e}")
-        return jsonify({"success": False, "message": "获取未读消息数失败"})
 
 @app.route('/api/chat/messages', methods=['GET'])
 @login_required(role='辅导员')
@@ -621,13 +570,13 @@ def get_chat_messages():
         counselor_id = session['user_info']['user_account']
         
         # 获取辅导员和学生头像
-        cursor.execute("SELECT avatar FROM counselor_info WHERE counselor_id = %s", (counselor_id,))
+        cursor.execute("SELECT counselor_avatar FROM counselor_info WHERE counselor_id = %s", (counselor_id,))
         counselor_avatar_row = cursor.fetchone()
-        counselor_avatar = counselor_avatar_row['avatar'] if counselor_avatar_row and counselor_avatar_row['avatar'] else 'boy.png'
+        counselor_avatar = counselor_avatar_row['counselor_avatar'] if counselor_avatar_row and counselor_avatar_row['counselor_avatar'] else 'boy.png'
         
-        cursor.execute("SELECT avatar FROM student_info WHERE student_id = %s", (contact_id,))
+        cursor.execute("SELECT student_avatar FROM student_info WHERE student_id = %s", (contact_id,))
         student_avatar_row = cursor.fetchone()
-        student_avatar = student_avatar_row['avatar'] if student_avatar_row and student_avatar_row['avatar'] else 'boy.png'
+        student_avatar = student_avatar_row['student_avatar'] if student_avatar_row and student_avatar_row.get('student_avatar') else 'boy.png'
         
         # 获取聊天记录
         cursor.execute("""
@@ -654,122 +603,69 @@ def get_chat_messages():
             WHERE sender_id = %s AND receiver_id = %s AND is_read = 0
         """, (contact_id, counselor_id))
         conn.commit()
-        
-        conn.close()
-        
         return jsonify({"success": True, "data": messages})
         
     except Exception as e:
         print(f"获取消息失败: {e}")
         return jsonify({"success": False, "message": "获取消息失败"})
 
-@app.route('/api/chat/send', methods=['POST'])
-@login_required(role='辅导员')
-def send_chat_message():
-    """辅导员发送消息给学生"""
-    try:
-        data = request.json
-        content = data.get('content', '').strip()
-        receiver_id = data.get('receiver_id', '').strip()
-        
-        if not content:
-            return jsonify({"success": False, "message": "消息内容不能为空"})
-        if not receiver_id:
-            return jsonify({"success": False, "message": "缺少接收者ID"})
-        
-        conn = get_db_connection()
-        cursor = conn.cursor(pymysql.cursors.DictCursor)
-        
-        counselor_id = session['user_info']['user_account']
-        
-        # 获取辅导员和学生姓名
-        cursor.execute("SELECT counselor_name FROM counselor_info WHERE counselor_id = %s", (counselor_id,))
-        counselor_row = cursor.fetchone()
-        counselor_name = counselor_row['counselor_name'] if counselor_row else '辅导员'
-        
-        cursor.execute("SELECT student_name FROM student_info WHERE student_id = %s", (receiver_id,))
-        student_row = cursor.fetchone()
-        student_name = student_row['student_name'] if student_row else '学生'
-        
-        # 插入消息记录
-        cursor.execute("""
-            INSERT INTO chat_messages (sender_id, sender_name, sender_role, receiver_id, receiver_name, receiver_role, content, create_time)
-            VALUES (%s, %s, '辅导员', %s, %s, '学生', %s, NOW())
-        """, (counselor_id, counselor_name, receiver_id, student_name, content))
-        
-        conn.commit()
-        conn.close()
-        
-        return jsonify({"success": True, "message": "发送成功"})
-        
-    except Exception as e:
-        print(f"发送消息失败: {e}")
-        return jsonify({"success": False, "message": f"发送失败: {str(e)}"})
-
-@app.route('/api/save_signature', methods=['POST'])
-@login_required(role='辅导员')
-def save_signature():
-    """保存辅导员签字图片接口，命名规则：counselor_id_leave_id.png"""
-    try:
-        data = request.json
-        image_data = data.get('imageData', '').replace('data:image/png;base64,', '')
-        leave_id = data.get('leave_id', '')
-        
-        if not image_data:
-            return jsonify({"success": False, "message": "未获取到签字数据"})
-        
-        if not leave_id:
-            return jsonify({"success": False, "message": "缺少假条ID"})
-        
-        # 获取辅导员ID
-        counselor_id = session['user_info']['user_account']
-        
-        # 使用新命名规则：counselor_id_leave_id.png
-        file_name = f"{counselor_id}_{leave_id}.png"
-        
-        # 保存到qianzi文件夹
-        signature_folder = os.path.join(app.root_path, 'data', 'signatures')
-        if not os.path.exists(signature_folder):
-            os.makedirs(signature_folder)
-        
-        file_path = os.path.join(signature_folder, file_name)
-        with open(file_path, 'wb') as f:
-            f.write(base64.b64decode(image_data))
-        
-        return jsonify({
-            "success": True,
-            "message": "签字保存成功",
-            "imagePath": file_name
-        })
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)})
-
-# 管理员专用接口 - 获取所有用户
 @app.route('/api/admin/users', methods=['GET'])
 @login_required(role='管理员')
 def get_all_users():
-    """获取所有用户（仅管理员）"""
+    """获取所有用户列表（仅管理员）"""
     try:
         conn = get_db_connection()
         cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        users = []
+        
+        # 获取学生
         cursor.execute("""
-            SELECT 4 as role_type, admin_id as user_account, admin_name as user_name, NULL as dept, NULL as grade, NULL as major, NULL as class_num, NULL as contact FROM admin_info
-            UNION ALL
-            SELECT 2 as role_type, counselor_id as user_account, counselor_name as user_name, dept, NULL as grade, NULL as major, NULL as class_num, contact FROM counselor_info
-            UNION ALL
-            SELECT 3 as role_type, teacher_id as user_account, teacher_name as user_name, dept, NULL as grade, NULL as major, NULL as class_num, contact FROM teacher_info
-            UNION ALL
-            SELECT 1 as role_type, student_id as user_account, student_name as user_name, dept, grade, major, class_num, contact FROM student_info
+            SELECT student_id as user_account, student_name as user_name, student_password as password,
+                   1 as role_type, '学生' as role_name, dept_name as dept, student_grade as grade,
+                   major, class_num, student_contact as contact
+            FROM student_info
         """)
-        users = cursor.fetchall()
+        students = cursor.fetchall()
+        users.extend(students)
+        
+        # 获取辅导员
+        cursor.execute("""
+            SELECT counselor_id as user_account, counselor_name as user_name, counselor_password as password,
+                   2 as role_type, '辅导员' as role_name, counselor_dept as dept,
+                   responsible_grade, responsible_major, counselor_contact as contact
+            FROM counselor_info
+        """)
+        counselors = cursor.fetchall()
+        users.extend(counselors)
+        
+        # 获取教师
+        cursor.execute("""
+            SELECT teacher_id as user_account, teacher_name as user_name, teacher_password as password,
+                   3 as role_type, '讲师' as role_name, teacher_dept as dept, teacher_contact as contact
+            FROM teacher_info
+        """)
+        teachers = cursor.fetchall()
+        users.extend(teachers)
+        
+        # 获取管理员
+        cursor.execute("""
+            SELECT admin_id as user_account, admin_name as user_name, admin_password as password,
+                   4 as role_type, '管理员' as role_name, admin_dept as dept
+            FROM admin_info
+        """)
+        admins = cursor.fetchall()
+        users.extend(admins)
+        
         conn.close()
+        
         return jsonify({"success": True, "data": users})
-    except pymysql.MySQLError as e:
-        return jsonify({"success": False, "message": f"查询失败：{str(e)}"})
+        
+    except Exception as e:
+        print(f"获取用户列表失败: {e}")
+        return jsonify({"success": False, "message": f"获取用户列表失败: {str(e)}"})
 
-# 管理员专用接口 - 新增用户
 @app.route('/api/admin/users', methods=['POST'])
-@login_required(role='管理员')
 def add_user():
     """新增用户（仅管理员）"""
     try:
@@ -804,7 +700,7 @@ def add_user():
             major_code = major_code_map.get(major, '01')
             
             cursor.execute("""
-                INSERT INTO student_info (student_id, student_name, password, dept, dept_id, grade, major, major_code, class_num, contact)
+                INSERT INTO student_info (student_id, student_name, student_password, dept_name, student_dept_id, student_grade, major, major_code, class_num, student_contact)
                 VALUES (%s, %s, %s, %s, 1, %s, %s, %s, %s, %s)
             """, (account, user_name, password, dept, grade, major, major_code, class_num, contact))
         elif role_type == 2:  # 辅导员
@@ -817,7 +713,7 @@ def add_user():
             contact = data.get('contact', '')
             
             cursor.execute("""
-                INSERT INTO counselor_info (counselor_id, counselor_name, password, dept, responsible_grade, responsible_major, contact)
+                INSERT INTO counselor_info (counselor_id, counselor_name, counselor_password, counselor_dept, responsible_grade, responsible_major, counselor_contact)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
             """, (account, user_name, password, dept, responsible_grade, responsible_major, contact))
         elif role_type == 3:  # 教师
@@ -828,7 +724,7 @@ def add_user():
             contact = data.get('contact', '')
             
             cursor.execute("""
-                INSERT INTO teacher_info (teacher_id, teacher_name, password, dept, contact)
+                INSERT INTO teacher_info (teacher_id, teacher_name, teacher_password, teacher_dept, teacher_contact)
                 VALUES (%s, %s, %s, %s, %s)
             """, (account, user_name, password, dept, contact))
         elif role_type == 4:  # 管理员
@@ -838,7 +734,7 @@ def add_user():
             dept = data.get('dept', '')
             
             cursor.execute("""
-                INSERT INTO admin_info (admin_id, admin_name, password, dept)
+                INSERT INTO admin_info (admin_id, admin_name, admin_password, admin_dept)
                 VALUES (%s, %s, %s, %s)
             """, (account, user_name, password, dept))
         else:
@@ -932,18 +828,27 @@ def update_user(account):
                         updates.append(f"{name_col} = %s")
                         params.append(new_name)
                     if new_password:
-                        updates.append("password = %s")
+                        if table == 'admin_info':
+                            pwd_col = "admin_password"
+                        elif table == 'student_info':
+                            pwd_col = "student_password"
+                        elif table == 'counselor_info':
+                            pwd_col = "counselor_password"
+                        else:
+                            pwd_col = "teacher_password"
+                        updates.append(f"{pwd_col} = %s")
                         params.append(new_password)
                     if new_contact and table != 'admin_info':
-                        updates.append("contact = %s")
+                        contact_col = "student_contact" if table == 'student_info' else ("counselor_contact" if table == 'counselor_info' else "teacher_contact")
+                        updates.append(f"{contact_col} = %s")
                         params.append(new_contact)
                     
                     if table == 'student_info':
                         if new_dept:
-                            updates.append("dept = %s")
+                            updates.append("dept_name = %s")
                             params.append(new_dept)
                         if new_grade:
-                            updates.append("grade = %s")
+                            updates.append("student_grade = %s")
                             params.append(new_grade)
                         if new_major:
                             updates.append("major = %s")
@@ -961,12 +866,12 @@ def update_user(account):
                     
                     if table == 'teacher_info':
                         if new_dept:
-                            updates.append("dept = %s")
+                            updates.append("teacher_dept = %s")
                             params.append(new_dept)
                     
                     if table == 'counselor_info':
                         if new_dept:
-                            updates.append("dept = %s")
+                            updates.append("counselor_dept = %s")
                             params.append(new_dept)
                         if new_grade:
                             updates.append("responsible_grade = %s")
@@ -1073,137 +978,168 @@ def delete_user(account):
                            status='FAILED', error_msg=str(e))
         return jsonify({"success": False, "message": f"删除失败：{str(e)}"})
 
-# 教师获取请假记录接口
-@app.route('/api/teacher/leave_requests', methods=['GET'])
-@login_required(role='讲师')
-def get_teacher_leave_requests():
-    """获取教师相关的请假记录（基于teacher_id字段）"""
+# 管理员专用接口 - 获取所有课程
+@app.route('/api/admin/courses', methods=['GET'])
+@login_required(role='管理员')
+def get_all_courses():
+    """获取所有课程列表（仅管理员）"""
     try:
         conn = get_db_connection()
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         
-        teacher_id = session['user_info']['user_account']
+        cursor.execute("SELECT course_id, course_name FROM course_info ORDER BY course_id")
+        courses = cursor.fetchall()
         
-        # 查询teacher_id为当前教师的请假记录
-        cursor.execute("""
-            SELECT 
-                sl.leave_id,
-                sl.student_id,
-                sl.student_name,
-                sl.dept,
-                sl.course_id,
-                sl.start_time,
-                sl.end_time,
-                sl.leave_reason,
-                sl.approval_status,
-                sl.approver_id,
-                sl.approver_name,
-                sl.approval_time,
-                sl.sort,
-                sl.attachment,
-                sl.times
-            FROM student_leave sl
-            WHERE sl.teacher_id = %s
-            ORDER BY sl.start_time DESC
-        """, (teacher_id,))
-        leave_requests = cursor.fetchall()
         conn.close()
-        
-        return jsonify({"success": True, "data": leave_requests})
+        return jsonify({"success": True, "data": courses})
         
     except Exception as e:
-        print(f"教师获取请假记录失败: {str(e)}")
-        return jsonify({"success": False, "message": f"获取请假记录失败: {str(e)}"})
+        return jsonify({"success": False, "message": f"获取课程列表失败：{str(e)}"})
 
-# 教师发送通知API
-@app.route('/api/teacher/send_notification', methods=['POST'])
-@login_required(role='讲师')
-def teacher_send_notification():
-    """教师发送通知给学生"""
+# 管理员专用接口 - 获取学生选课信息
+@app.route('/api/admin/student/<student_id>/courses', methods=['GET'])
+@login_required(role='管理员')
+def get_student_courses(student_id):
+    """获取学生已选课程列表（仅管理员）"""
     try:
-        data = request.json
-        title = data.get('title', '').strip()
-        content = data.get('content', '').strip()
-        notify_type = data.get('notify_type', '课程通知')
-        priority = data.get('priority', '普通')
-        course_id = data.get('course_id', '')
-        
-        if not title or not content:
-            return jsonify({"success": False, "message": "标题和内容不能为空"})
-        
         conn = get_db_connection()
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         
-        teacher_id = session['user_info']['user_account']
-        teacher_name = session['user_info']['user_name']
-        
-        # 插入通知记录（使用实际存在的字段）
         cursor.execute("""
-            INSERT INTO teacher_notifications (teacher_id, dept, course_id, reason, start_time, end_time, priority)
-            VALUES (%s, %s, %s, %s, NOW(), DATE_ADD(NOW(), INTERVAL 1 DAY), %s)
-        """, (teacher_id, 'CS', course_id, title, priority))
+            SELECT scs.course_id, ci.course_name
+            FROM student_course scs
+            LEFT JOIN course_info ci ON scs.course_id = ci.course_id
+            WHERE scs.student_id = %s
+            ORDER BY scs.course_id
+        """, (student_id,))
+        selected_courses = cursor.fetchall()
+        
+        conn.close()
+        return jsonify({"success": True, "data": selected_courses})
+        
+    except Exception as e:
+        return jsonify({"success": False, "message": f"获取学生选课信息失败：{str(e)}"})
+
+# 管理员专用接口 - 更新学生选课信息
+@app.route('/api/admin/student/<student_id>/courses', methods=['PUT'])
+@login_required(role='管理员')
+def update_student_courses(student_id):
+    """更新学生选课信息（仅管理员）"""
+    try:
+        data = request.json
+        course_ids = data.get('course_ids', [])
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 先删除学生所有现有选课
+        cursor.execute("DELETE FROM student_course WHERE student_id = %s", (student_id,))
+        
+        # 插入新的选课记录
+        if course_ids:
+            for course_id in course_ids:
+                cursor.execute("""
+                    INSERT INTO student_course (student_id, course_id)
+                    VALUES (%s, %s)
+                """, (student_id, course_id))
         
         conn.commit()
         conn.close()
         
-        return jsonify({"success": True, "message": "通知发送成功"})
+        log_admin_operation(
+            operation_type='UPDATE',
+            target_account=student_id,
+            target_name='unknown',
+            target_role='student',
+            details=f"更新学生选课信息，课程数量：{len(course_ids)}",
+            status='SUCCESS'
+        )
+        
+        return jsonify({"success": True, "message": "学生选课信息更新成功"})
         
     except Exception as e:
-        print(f"发送通知失败: {str(e)}")
-        # 如果表不存在，创建表
-        if "doesn't exist" in str(e):
-            try:
-                conn = get_db_connection()
-                cursor = conn.cursor()
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS teacher_notifications (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        teacher_id VARCHAR(50) NOT NULL,
-                        teacher_name VARCHAR(100),
-                        title VARCHAR(200) NOT NULL,
-                        content TEXT NOT NULL,
-                        notify_type VARCHAR(50) DEFAULT '课程通知',
-                        priority VARCHAR(20) DEFAULT '普通',
-                        course_id VARCHAR(50),
-                        create_time DATETIME DEFAULT CURRENT_TIMESTAMP
-                    )
-                """)
-                conn.commit()
-                conn.close()
-                return jsonify({"success": False, "message": "通知表已创建，请重新发送"})
-            except:
-                pass
-        return jsonify({"success": False, "message": f"发送通知失败: {str(e)}"})
+        log_admin_operation(
+            operation_type='UPDATE',
+            target_account=student_id if 'student_id' in locals() else 'unknown',
+            target_name='unknown',
+            details=f"更新学生选课信息失败",
+            status='FAILED',
+            error_msg=str(e)
+        )
+        return jsonify({"success": False, "message": f"更新选课信息失败：{str(e)}"})
 
-# 教师获取已发送的通知
-@app.route('/api/teacher/notifications', methods=['GET'])
-@login_required(role='讲师')
-def get_teacher_notifications():
-    """获取教师已发送的通知列表"""
+# 管理员专用接口 - 获取教师授课信息
+@app.route('/api/admin/teacher/<teacher_id>/courses', methods=['GET'])
+@login_required(role='管理员')
+def get_teacher_courses(teacher_id):
+    """获取教师已授课程列表（仅管理员）"""
     try:
         conn = get_db_connection()
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         
-        teacher_id = session['user_info']['user_account']
-        
         cursor.execute("""
-            SELECT leave_id as id, reason as title, reason as content, '课程通知' as notify_type, priority, course_id,
-                   DATE_FORMAT(start_time, '%%Y-%%m-%%d %%H:%%i') as create_time
-            FROM teacher_notifications
-            WHERE teacher_id = %s
-            ORDER BY start_time DESC
+            SELECT tc.course_id, ci.course_name
+            FROM teacher_course tc
+            LEFT JOIN course_info ci ON tc.course_id = ci.course_id
+            WHERE tc.teacher_id = %s
+            ORDER BY tc.course_id
         """, (teacher_id,))
-        notifications = cursor.fetchall()
-        conn.close()
+        selected_courses = cursor.fetchall()
         
-        return jsonify({"success": True, "data": notifications})
+        conn.close()
+        return jsonify({"success": True, "data": selected_courses})
         
     except Exception as e:
-        print(f"获取通知失败: {str(e)}")
-        # 如果表不存在，返回空数组
-        if "doesn't exist" in str(e):
-            return jsonify({"success": True, "data": []})
-        return jsonify({"success": False, "message": f"获取通知失败: {str(e)}"})
+        return jsonify({"success": False, "message": f"获取教师授课信息失败：{str(e)}"})
+
+# 管理员专用接口 - 更新教师授课信息
+@app.route('/api/admin/teacher/<teacher_id>/courses', methods=['PUT'])
+@login_required(role='管理员')
+def update_teacher_courses(teacher_id):
+    """更新教师授课信息（仅管理员）"""
+    try:
+        data = request.json
+        course_ids = data.get('course_ids', [])
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 先删除教师所有现有授课记录
+        cursor.execute("DELETE FROM teacher_course WHERE teacher_id = %s", (teacher_id,))
+        
+        # 插入新的授课记录
+        if course_ids:
+            for course_id in course_ids:
+                cursor.execute("""
+                    INSERT INTO teacher_course (teacher_id, course_id)
+                    VALUES (%s, %s)
+                """, (teacher_id, course_id))
+        
+        conn.commit()
+        conn.close()
+        
+        log_admin_operation(
+            operation_type='UPDATE',
+            target_account=teacher_id,
+            target_name='unknown',
+            target_role='teacher',
+            details=f"更新教师授课信息，课程数量：{len(course_ids)}",
+            status='SUCCESS'
+        )
+        
+        return jsonify({"success": True, "message": "教师授课信息更新成功"})
+        
+    except Exception as e:
+        log_admin_operation(
+            operation_type='UPDATE',
+            target_account=teacher_id if 'teacher_id' in locals() else 'unknown',
+            target_name='unknown',
+            target_role='teacher',
+            details=f"更新教师授课信息失败",
+            status='FAILED',
+            error_msg=str(e)
+        )
+        return jsonify({"success": False, "message": f"更新授课信息失败：{str(e)}"})
 
 # 教师删除通知API
 @app.route('/api/teacher/delete_notification', methods=['POST'])
@@ -1222,11 +1158,17 @@ def delete_teacher_notification():
         
         teacher_id = session['user_info']['user_account']
         
-        # 只能删除自己的通知
+        # 只能删除自己的通知（优先删除新表，再删旧表）
         cursor.execute("""
-            DELETE FROM teacher_notifications 
-            WHERE leave_id = %s AND teacher_id = %s
+            DELETE FROM teacher_notice 
+            WHERE id = %s AND teacher_id = %s
         """, (notification_id, teacher_id))
+        if cursor.rowcount == 0:
+            # 兼容旧表
+            cursor.execute("""
+                DELETE FROM teacher_notifications 
+                WHERE leave_id = %s AND teacher_id = %s
+            """, (notification_id, teacher_id))
         
         conn.commit()
         conn.close()
@@ -1269,7 +1211,7 @@ def get_student_notifications():
                 ci.course_name,
                 tn.start_time
             FROM teacher_notifications tn
-            JOIN student_course_selection scs ON tn.course_id = scs.course_id
+            JOIN student_course scs ON tn.course_id = scs.course_id
             LEFT JOIN course_info ci ON tn.course_id = ci.course_id
             LEFT JOIN teacher_info ti ON tn.teacher_id = ti.teacher_id
             WHERE scs.student_id = %s
@@ -1319,7 +1261,7 @@ def get_student_filter_options():
         # 获取学生选课的课程列表
         cursor.execute("""
             SELECT DISTINCT ci.course_id, ci.course_name
-            FROM student_course_selection scs
+            FROM student_course scs
             JOIN course_info ci ON scs.course_id = ci.course_id
             WHERE scs.student_id = %s
             ORDER BY ci.course_name
@@ -1329,7 +1271,7 @@ def get_student_filter_options():
         # 获取相关教师列表
         cursor.execute("""
             SELECT DISTINCT ti.teacher_id, ti.teacher_name
-            FROM student_course_selection scs
+            FROM student_course scs
             JOIN teacher_course tc ON scs.course_id = tc.course_id
             JOIN teacher_info ti ON tc.teacher_id = ti.teacher_id
             WHERE scs.student_id = %s
@@ -1364,9 +1306,9 @@ def get_teacher_chat_students():
         
         # 方式1：从teacher_course表获取教师课程，再查选课学生
         cursor.execute("""
-            SELECT DISTINCT si.student_id as id, si.student_name as name, si.avatar
+            SELECT DISTINCT si.student_id as id, si.student_name as name, si.student_avatar as avatar
             FROM teacher_course tc
-            JOIN student_course_selection scs ON tc.course_id = scs.course_id
+            JOIN student_course scs ON tc.course_id = scs.course_id
             JOIN student_info si ON scs.student_id = si.student_id
             WHERE tc.teacher_id = %s
             ORDER BY si.student_id
@@ -1376,11 +1318,11 @@ def get_teacher_chat_students():
         if not students:
             # 方式2：从请假记录中获取该教师的课程，再查所有选课学生
             cursor.execute("""
-                SELECT DISTINCT si.student_id as id, si.student_name as name, si.avatar
+                SELECT DISTINCT si.student_id as id, si.student_name as name, si.student_avatar as avatar
                 FROM student_leave sl
-                JOIN student_course_selection scs ON sl.course_id = scs.course_id
+                JOIN student_course scs ON sl.leave_course_id = scs.course_id
                 JOIN student_info si ON scs.student_id = si.student_id
-                WHERE sl.teacher_id = %s
+                WHERE FIND_IN_SET(%s, sl.leave_teacher_id) > 0
                 ORDER BY si.student_id
             """, (teacher_id,))
             students = cursor.fetchall()
@@ -1388,11 +1330,11 @@ def get_teacher_chat_students():
         if not students:
             # 方式3：仅从请假记录获取（最终兜底）
             cursor.execute("""
-                SELECT DISTINCT sl.student_id as id, sl.student_name as name, si.avatar
+                SELECT DISTINCT sl.leave_student_id as id, sl.leave_student_name as name, si.student_avatar as avatar
                 FROM student_leave sl
-                LEFT JOIN student_info si ON sl.student_id = si.student_id
-                WHERE sl.teacher_id = %s
-                ORDER BY sl.student_id
+                LEFT JOIN student_info si ON sl.leave_student_id = si.student_id
+                WHERE FIND_IN_SET(%s, sl.leave_teacher_id) > 0
+                ORDER BY sl.leave_student_id
             """, (teacher_id,))
             students = cursor.fetchall()
         
@@ -1456,8 +1398,8 @@ def teacher_send_chat_message():
         
         # 获取学生姓名
         cursor.execute("SELECT student_name FROM student_info WHERE student_id = %s", (student_id,))
-        student = cursor.fetchone()
-        student_name = student['student_name'] if student else '学生'
+        student_row = cursor.fetchone()
+        student_name = student_row['student_name'] if student_row else '学生'
         
         cursor.execute("""
             INSERT INTO chat_messages (sender_id, sender_name, sender_role, receiver_id, receiver_name, receiver_role, content, create_time)
@@ -1486,7 +1428,7 @@ def get_teacher_profile():
         
         # 获取教师基本信息
         cursor.execute("""
-            SELECT teacher_id, teacher_name, dept, contact, avatar
+            SELECT teacher_id, teacher_name, teacher_dept, teacher_contact, teacher_avatar
             FROM teacher_info
             WHERE teacher_id = %s
         """, (teacher_id,))
@@ -1519,10 +1461,10 @@ def get_teacher_profile():
             return jsonify({
                 "success": True,
                 "data": {
-                    "dept": teacher.get('dept', ''),
-                    "contact": teacher.get('contact', ''),
+                    "dept": teacher.get('teacher_dept', ''),
+                    "contact": teacher.get('teacher_contact', ''),
                     "courses": courses or '',
-                    "avatar": teacher.get('avatar', '')
+                    "avatar": teacher.get('teacher_avatar', '')
                 }
             })
         return jsonify({"success": True, "data": {}})
@@ -1546,7 +1488,7 @@ def update_teacher_contact():
         teacher_id = session['user_info']['user_account']
         
         cursor.execute("""
-            UPDATE teacher_info SET contact = %s WHERE teacher_id = %s
+            UPDATE teacher_info SET teacher_contact = %s WHERE teacher_id = %s
         """, (contact, teacher_id))
         
         conn.commit()
@@ -1595,7 +1537,7 @@ def _deprecated_upload_teacher_avatar():
         # 更新数据库
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("UPDATE teacher_info SET avatar = %s WHERE teacher_id = %s", (filename, teacher_id))
+        cursor.execute("UPDATE teacher_info SET teacher_avatar = %s WHERE teacher_id = %s", (filename, teacher_id))
         conn.commit()
         conn.close()
         
@@ -1620,7 +1562,7 @@ def get_teacher_course_students():
         cursor.execute("""
             SELECT tc.course_id, COUNT(DISTINCT scs.student_id) as student_count
             FROM teacher_course tc
-            LEFT JOIN student_course_selection scs ON tc.course_id = scs.course_id
+            LEFT JOIN student_course scs ON tc.course_id = scs.course_id
             WHERE tc.teacher_id = %s
             GROUP BY tc.course_id
         """, (teacher_id,))
@@ -1661,7 +1603,7 @@ def get_counselor_leave_count():
         
         params = []
         if responsible_grade:
-            sql += " AND LEFT(student_id, 4) = %s"
+            sql += " AND LEFT(leave_student_id, 4) = %s"
             params.append(responsible_grade)
         
         cursor.execute(sql, params)
@@ -1700,20 +1642,23 @@ def get_counselor_leave_requests():
         sql = """
             SELECT 
                 sl.leave_id,
-                sl.student_id,
+                sl.leave_student_id as student_id,
                 si.student_name,
-                sl.course_id,
-                sl.start_time,
-                sl.end_time,
+                sl.leave_course_id as course_id,
+                sl.leave_start_time as start_time,
+                sl.leave_end_time as end_time,
                 sl.leave_reason,
                 sl.approval_status,
                 sl.sort,
                 sl.attachment,
-                si.times
+                si.times,
+                sl.approver_id,
+                sl.approver_name,
+                sl.approval_time
             FROM 
                 student_leave sl
             LEFT JOIN 
-                student_info si ON sl.student_id = si.student_id
+                student_info si ON sl.leave_student_id = si.student_id
             WHERE 
                 1=1
         """
@@ -1724,11 +1669,11 @@ def get_counselor_leave_requests():
             # 清理responsible_grade，去除空白字符
             responsible_grade = str(responsible_grade).strip()
             if responsible_grade:
-                sql += " AND LEFT(sl.student_id, 4) = %s"
+                sql += " AND LEFT(sl.leave_student_id, 4) = %s"
                 params.append(responsible_grade)
         
         # 添加排序
-        sql += " ORDER BY sl.start_time DESC"
+        sql += " ORDER BY sl.leave_start_time DESC"
         
         cursor.execute(sql, params)
         leave_requests = cursor.fetchall()
@@ -1764,15 +1709,15 @@ def get_leave_statistics():
         responsible_grade = session['user_info'].get('responsible_grade', '')
         
         sql = """
-            SELECT sl.leave_id, sl.student_id, si.student_name, sl.sort,
-                   sl.start_time, sl.end_time, sl.approval_status
+            SELECT sl.leave_id, sl.leave_student_id as student_id, si.student_name, sl.sort,
+                   sl.leave_start_time as start_time, sl.leave_end_time as end_time, sl.approval_status
             FROM student_leave sl
-            LEFT JOIN student_info si ON sl.student_id = si.student_id
+            LEFT JOIN student_info si ON sl.leave_student_id = si.student_id
             WHERE 1=1
         """
         params = []
         if responsible_grade:
-            sql += " AND LEFT(sl.student_id, 4) = %s"
+            sql += " AND LEFT(sl.leave_student_id, 4) = %s"
             params.append(responsible_grade)
         
         cursor.execute(sql, params)
@@ -1891,7 +1836,7 @@ def teacher_approve_leave():
                 # 使用FIND_IN_SET函数检查教师是否负责请假记录中的任一课程
                 EXISTS (SELECT 1 FROM teacher_courses tc 
                         WHERE tc.teacher_id = %s 
-                        AND FIND_IN_SET(tc.course_id, sl.course_code))
+                        AND FIND_IN_SET(tc.course_id, sl.leave_course_id))
                 OR sl.approver_id = %s
             )
         """
@@ -1912,7 +1857,7 @@ def teacher_approve_leave():
         
         # 3. 获取学生ID（用于更新times字段）
         sql_get_student_id = """
-            SELECT student_id FROM student_leave WHERE leave_id = %s
+            SELECT leave_student_id FROM student_leave WHERE leave_id = %s
         """
         cursor.execute(sql_get_student_id, (leave_id,))
         student_id_result = cursor.fetchone()
@@ -1936,7 +1881,7 @@ def teacher_approve_leave():
         if action == "approve" and student_id:
             sql_update_student = """
                 UPDATE student_info
-                SET times = times + 1, update_time = %s
+                SET times = times + 1, student_update_time = %s
                 WHERE student_id = %s
             """
             cursor.execute(sql_update_student, (approval_time, student_id))
@@ -1971,7 +1916,7 @@ def api_teacher_leave_records():
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         
         # 查询学生所选课程的老师请假记录
-        # 通过student_course_selection表关联，只返回学生选课的课程对应的老师请假信息
+        # 通过student_course表关联，只返回学生选课的课程对应的老师请假信息
         cursor.execute("""
             SELECT 
                 t_leave.teacher_id,
@@ -1988,7 +1933,7 @@ def api_teacher_leave_records():
             LEFT JOIN
                 course_info ci ON t_leave.course_id = ci.course_id
             INNER JOIN
-                student_course_selection scs ON t_leave.course_id = scs.course_id
+                student_course scs ON t_leave.course_id = scs.course_id
             WHERE
                 scs.student_id = %s
             ORDER BY 
@@ -2024,7 +1969,7 @@ def api_get_courses():
         cursor.execute("""
             SELECT ci.course_id, ci.course_name 
             FROM course_info ci
-            JOIN student_course_selection scs ON ci.course_id = scs.course_id
+            JOIN student_course scs ON ci.course_id = scs.course_id
             WHERE scs.student_id = %s
             ORDER BY ci.course_id
         """, (student_id,))
@@ -2151,14 +2096,14 @@ def api_student_leave():
         cursor = conn.cursor()
 
         # 获取学生姓名与部门
-        cursor.execute("SELECT student_name, dept FROM student_info WHERE student_id = %s", (student_account,))
+        cursor.execute("SELECT student_name, dept_name FROM student_info WHERE student_id = %s", (student_account,))
         stu = cursor.fetchone()
         if not stu:
             return jsonify({"success": False, "message": "学生信息不存在"})
         student_name, dept = stu[0], stu[1]
 
         # 计算已批准请假次数
-        cursor.execute("SELECT COUNT(*) FROM student_leave WHERE student_id = %s AND approval_status = '已批准'", (student_account,))
+        cursor.execute("SELECT COUNT(*) FROM student_leave WHERE leave_student_id = %s AND approval_status = '已批准'", (student_account,))
         approved_times = cursor.fetchone()[0]
         current_times = approved_times + 1
         approval_status = '待审批'
@@ -2171,7 +2116,7 @@ def api_student_leave():
         # 创建单条请假记录，包含所有课程和教师信息
         cursor.execute('''
             INSERT INTO student_leave
-            (student_id, student_name, dept, course_id, teacher_id, leave_reason, start_time, end_time, approval_status, times, sort)
+            (leave_student_id, leave_student_name, leave_dept, leave_course_id, leave_teacher_id, leave_reason, leave_start_time, leave_end_time, approval_status, leave_times, sort)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (student_account, student_name, dept, course_codes, teacher_ids, leave_reason, start_time, end_time, approval_status, current_times, leave_type))
         
@@ -2220,10 +2165,10 @@ def api_student_leave_records():
         cursor.execute("""
             SELECT 
                 leave_id,
-                course_id, 
-                teacher_id, 
-                start_time, 
-                end_time, 
+                leave_course_id as course_id, 
+                leave_teacher_id as teacher_id, 
+                leave_start_time as start_time, 
+                leave_end_time as end_time, 
                 leave_reason, 
                 approval_status, 
                 sort,
@@ -2231,8 +2176,8 @@ def api_student_leave_records():
                 approver_name,
                 approval_time
             FROM student_leave 
-            WHERE student_id = %s 
-            ORDER BY start_time DESC
+            WHERE leave_student_id = %s 
+            ORDER BY leave_start_time DESC
         """, (student_id,))
         
         records = cursor.fetchall()
@@ -2282,12 +2227,12 @@ def get_leave_detail(leave_id):
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         
         cursor.execute("""
-            SELECT sl.leave_id, sl.student_id, sl.course_id, sl.teacher_id,
-                   sl.start_time, sl.end_time, sl.leave_reason, sl.approval_status,
+            SELECT sl.leave_id, sl.leave_student_id as student_id, sl.leave_course_id as course_id, sl.leave_teacher_id as teacher_id,
+                   sl.leave_start_time as start_time, sl.leave_end_time as end_time, sl.leave_reason, sl.approval_status,
                    sl.sort, sl.approver_id, sl.approver_name, sl.approval_time, sl.attachment,
-                   si.student_name, si.major, si.class_num, si.dept, si.contact as student_contact
+                   si.student_name, si.major, si.class_num, si.dept_name as dept, si.student_contact as student_contact
             FROM student_leave sl
-            LEFT JOIN student_info si ON sl.student_id = si.student_id
+            LEFT JOIN student_info si ON sl.leave_student_id = si.student_id
             WHERE sl.leave_id = %s
         """, (leave_id,))
         
@@ -2315,6 +2260,12 @@ def get_leave_detail(leave_id):
         signature_folder = os.path.join(app.root_path, 'data', 'signatures')
         student_sign = f"{leave['student_id']}_{leave_id}.png"
         counselor_sign = f"{leave.get('approver_id', '')}_{leave_id}.png" if leave.get('approver_id') else ''
+        
+        # 调试日志
+        print(f"[签名检查] leave_id={leave_id}, approver_id={leave.get('approver_id')}")
+        print(f"[签名检查] 辅导员签名文件: {os.path.join(signature_folder, counselor_sign)}")
+        print(f"[签名检查] 文件是否存在: {os.path.exists(os.path.join(signature_folder, counselor_sign)) if counselor_sign else 'N/A'}")
+        
         leave['student_signature'] = f"/qianzi/{student_sign}" if os.path.exists(os.path.join(signature_folder, student_sign)) else None
         leave['counselor_signature'] = f"/qianzi/{counselor_sign}" if counselor_sign and os.path.exists(os.path.join(signature_folder, counselor_sign)) else None
         
@@ -2348,13 +2299,13 @@ def get_student_chat_contacts():
         grade = student_id[:4]
         
         # 获取当前学生头像
-        cursor.execute("SELECT avatar FROM student_info WHERE student_id = %s", (student_id,))
+        cursor.execute("SELECT student_avatar FROM student_info WHERE student_id = %s", (student_id,))
         student_row = cursor.fetchone()
-        student_avatar = student_row['avatar'] if student_row and student_row.get('avatar') else None
+        student_avatar = student_row['student_avatar'] if student_row and student_row.get('student_avatar') else None
         
         # 获取本年级的辅导员（含头像）
         cursor.execute("""
-            SELECT counselor_id as id, counselor_name as name, '辅导员' as role, contact, avatar
+            SELECT counselor_id as id, counselor_name as name, '辅导员' as role, counselor_contact as contact, counselor_avatar as avatar
             FROM counselor_info 
             WHERE responsible_grade = %s
         """, (grade,))
@@ -2362,14 +2313,14 @@ def get_student_chat_contacts():
         
         # 获取学生选课的讲师（去重，含头像）
         cursor.execute("""
-            SELECT DISTINCT ti.teacher_id as id, ti.teacher_name as name, '讲师' as role, ti.contact, ti.avatar,
+            SELECT DISTINCT ti.teacher_id as id, ti.teacher_name as name, '讲师' as role, ti.teacher_contact as contact, ti.teacher_avatar as avatar,
                    GROUP_CONCAT(ci.course_name SEPARATOR ', ') as courses
-            FROM student_course_selection scs
+            FROM student_course scs
             JOIN teacher_course tc ON scs.course_id = tc.course_id
             JOIN teacher_info ti ON tc.teacher_id = ti.teacher_id
             JOIN course_info ci ON scs.course_id = ci.course_id
             WHERE scs.student_id = %s
-            GROUP BY ti.teacher_id, ti.teacher_name, ti.contact, ti.avatar
+            GROUP BY ti.teacher_id, ti.teacher_name, ti.teacher_contact, ti.teacher_avatar
         """, (student_id,))
         teachers = cursor.fetchall()
         
@@ -2385,6 +2336,7 @@ def get_student_chat_contacts():
     except Exception as e:
         print(f"获取联系人列表失败: {str(e)}")
         return jsonify({"success": False, "message": f"获取联系人失败: {str(e)}"})
+
 # 学生聊天API
 @app.route('/api/student/chat/messages', methods=['GET'])
 @login_required(role='学生')
@@ -2582,7 +2534,7 @@ def upload_leave_attachment():
         # 验证假条属于该学生
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT student_id FROM student_leave WHERE leave_id = %s", (leave_id,))
+        cursor.execute("SELECT leave_student_id FROM student_leave WHERE leave_id = %s", (leave_id,))
         row = cursor.fetchone()
         if not row or row[0] != student_id:
             cursor.close()
@@ -2644,7 +2596,7 @@ def save_student_signature():
         # 验证该假条属于该学生
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT student_id FROM student_leave WHERE leave_id = %s", (leave_id,))
+        cursor.execute("SELECT leave_student_id FROM student_leave WHERE leave_id = %s", (leave_id,))
         row = cursor.fetchone()
         if not row or row[0] != student_id:
             cursor.close()
@@ -2670,9 +2622,58 @@ def save_student_signature():
         with open(filepath, 'wb') as f:
             f.write(image_data)
         
-        return jsonify({"success": True, "message": "签名保存成功", "filename": filename})
+        return jsonify({"success": True, "message": "签名保存成功", "imagePath": filename})
     except Exception as e:
-        print(f"保存签名失败: {str(e)}")
+        print(f"保存学生签名失败: {str(e)}")
+        return jsonify({"success": False, "message": f"保存签名失败: {str(e)}"})
+
+# 辅导员保存签名图片API
+@app.route('/api/save_signature', methods=['POST'])
+@login_required(role='辅导员')
+def save_counselor_signature():
+    """保存辅导员签名图片"""
+    try:
+        data = request.json or {}
+        signature_data = data.get('imageData', '')
+        leave_id = data.get('leave_id', '')
+        
+        if not signature_data or not leave_id:
+            return jsonify({"success": False, "message": "缺少签名数据或假条ID"})
+        
+        counselor_id = session['user_info']['user_account']
+        
+        # 验证假条存在
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT leave_id FROM student_leave WHERE leave_id = %s", (leave_id,))
+        row = cursor.fetchone()
+        if not row:
+            cursor.close()
+            conn.close()
+            return jsonify({"success": False, "message": "假条不存在"})
+        cursor.close()
+        conn.close()
+        
+        # 解码base64并保存图片
+        if ',' in signature_data:
+            signature_data = signature_data.split(',')[1]
+        
+        image_data = base64.b64decode(signature_data)
+        
+        # 保存文件
+        signature_folder = os.path.join(app.root_path, 'data', 'signatures')
+        if not os.path.exists(signature_folder):
+            os.makedirs(signature_folder)
+        
+        filename = f"{counselor_id}_{leave_id}.png"
+        filepath = os.path.join(signature_folder, filename)
+        
+        with open(filepath, 'wb') as f:
+            f.write(image_data)
+        
+        return jsonify({"success": True, "message": "签名保存成功", "imagePath": filename})
+    except Exception as e:
+        print(f"保存辅导员签名失败: {str(e)}")
         return jsonify({"success": False, "message": f"保存签名失败: {str(e)}"})
 
 # 辅导员个人信息接口
@@ -2687,8 +2688,8 @@ def get_counselor_info():
 
         counselor_id = session['user_info']['user_account']
         sql = """
-            SELECT counselor_id, password, counselor_name, dept,
-                   responsible_grade, responsible_major, contact
+            SELECT counselor_id, counselor_password, counselor_name, counselor_dept,
+                   responsible_grade, responsible_major, counselor_contact
             FROM counselor_info
             WHERE counselor_id = %s
         """
@@ -2698,8 +2699,8 @@ def get_counselor_info():
         if not info:
             return jsonify({"success": False, "message": "未找到个人信息"})
 
-        password = info.get('password') or ''
-        info['password'] = '*' * len(password) if password else ''
+        password = info.get('counselor_password') or ''
+        info['counselor_password'] = '*' * len(password) if password else ''
 
         return jsonify({"success": True, "data": info})
     except pymysql.MySQLError as e:
@@ -2736,14 +2737,14 @@ def get_avatars():
 def update_student_contact():
     """更新学生联系方式"""
     try:
-        data = request.json or {}
+        data = request.json
         contact = data.get('contact', '').strip()
         
         conn = get_db_connection()
         cursor = conn.cursor()
         
         student_id = session['user_info']['user_account']
-        cursor.execute("UPDATE student_info SET contact = %s WHERE student_id = %s", (contact, student_id))
+        cursor.execute("UPDATE student_info SET student_contact = %s WHERE student_id = %s", (contact, student_id))
         conn.commit()
         
         cursor.close()
@@ -2761,7 +2762,7 @@ def update_user_avatar():
     if 'user_info' not in session:
         return jsonify({"success": False, "message": "请先登录"})
 
-    data = request.json or {}
+    data = request.json
     avatar = (data.get('avatar') or '').strip()
     if not avatar:
         return jsonify({"success": False, "message": "未选择头像"})
@@ -2798,8 +2799,15 @@ def update_user_avatar():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        sql = f"UPDATE {table_name} SET avatar = %s, update_time = %s WHERE {id_field} = %s"
-        cursor.execute(sql, (avatar, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), user_account))
+        if table_name == 'student_info':
+            sql = f"UPDATE {table_name} SET student_avatar = %s, student_update_time = %s WHERE {id_field} = %s"
+        elif table_name == 'counselor_info':
+            sql = f"UPDATE {table_name} SET counselor_avatar = %s, counselor_update_time = %s WHERE {id_field} = %s"
+        elif table_name == 'teacher_info':
+            sql = f"UPDATE {table_name} SET teacher_avatar = %s WHERE {id_field} = %s"
+        else:
+            sql = f"UPDATE {table_name} SET admin_avatar = %s WHERE {id_field} = %s"
+        cursor.execute(sql, (avatar, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), user_account) if table_name in ['student_info', 'counselor_info'] else (avatar, user_account))
         conn.commit()
     except pymysql.MySQLError as e:
         return jsonify({"success": False, "message": f"保存失败：{str(e)}"})
@@ -2877,8 +2885,15 @@ def upload_user_avatar():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        sql = f"UPDATE {table_name} SET avatar = %s, update_time = %s WHERE {id_field} = %s"
-        cursor.execute(sql, (filename, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), user_id))
+        if table_name == 'student_info':
+            sql = f"UPDATE {table_name} SET student_avatar = %s, student_update_time = %s WHERE {id_field} = %s"
+        elif table_name == 'counselor_info':
+            sql = f"UPDATE {table_name} SET counselor_avatar = %s, counselor_update_time = %s WHERE {id_field} = %s"
+        elif table_name == 'teacher_info':
+            sql = f"UPDATE {table_name} SET teacher_avatar = %s WHERE {id_field} = %s"
+        else:
+            sql = f"UPDATE {table_name} SET admin_avatar = %s WHERE {id_field} = %s"
+        cursor.execute(sql, (filename, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), user_id) if table_name in ['student_info', 'counselor_info'] else (filename, user_id))
         conn.commit()
         cursor.close()
         conn.close()
@@ -2908,7 +2923,7 @@ def student_profile_page():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT avatar FROM student_info WHERE student_id = %s", 
+        cursor.execute("SELECT student_avatar FROM student_info WHERE student_id = %s", 
                       (session['user_info']['user_account'],))
         row = cursor.fetchone()
         db_avatar = row[0] if row and row[0] else None
@@ -2937,7 +2952,7 @@ def get_student_info():
         
         student_id = session['user_info']['user_account']
         sql = """
-            SELECT student_id, password, student_name, dept, major, class_num, contact
+            SELECT student_id, student_password, student_name, dept_name, major, class_num, student_contact
             FROM student_info
             WHERE student_id = %s
         """
@@ -2948,8 +2963,8 @@ def get_student_info():
             return jsonify({"success": False, "message": "未找到个人信息"})
         
         # 隐藏密码
-        password = info.get('password') or ''
-        info['password'] = '*' * len(password) if password else ''
+        password = info.get('student_password') or ''
+        info['student_password'] = '*' * len(password) if password else ''
         
         return jsonify({"success": True, "data": info})
     except pymysql.MySQLError as e:
@@ -2971,23 +2986,23 @@ def export_leaves_excel():
         status_filter = request.args.get('status', '')
         
         sql = """
-            SELECT sl.leave_id as 假条编号, sl.student_id as 学号, si.student_name as 姓名,
+            SELECT sl.leave_id as 假条编号, sl.leave_student_id as 学号, si.student_name as 姓名,
                    si.major as 专业, sl.sort as 请假类型,
-                   sl.start_time as 开始时间, sl.end_time as 结束时间,
+                   sl.leave_start_time as 开始时间, sl.leave_end_time as 结束时间,
                    sl.leave_reason as 请假原因, sl.approval_status as 审批状态,
                    sl.approver_name as 审批人
             FROM student_leave sl
-            LEFT JOIN student_info si ON sl.student_id = si.student_id
+            LEFT JOIN student_info si ON sl.leave_student_id = si.student_id
             WHERE 1=1
         """
         params = []
         if responsible_grade:
-            sql += " AND LEFT(sl.student_id, 4) = %s"
+            sql += " AND LEFT(sl.leave_student_id, 4) = %s"
             params.append(responsible_grade)
         if status_filter:
             sql += " AND sl.approval_status = %s"
             params.append(status_filter)
-        sql += " ORDER BY sl.start_time DESC"
+        sql += " ORDER BY sl.leave_start_time DESC"
         
         cursor.execute(sql, params)
         records = cursor.fetchall()
@@ -3116,7 +3131,7 @@ def update_counselor_contact():
         # 更新联系方式
         sql = """
             UPDATE counselor_info 
-            SET contact = %s, update_time = %s 
+            SET counselor_contact = %s, update_time = %s 
             WHERE counselor_id = %s
         """
         update_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

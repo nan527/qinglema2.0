@@ -116,14 +116,14 @@ class TeacherService:
         
         # 构建SQL查询条件
         conditions = [
-            "sl.teacher_id = %s",
+            "FIND_IN_SET(%s, sl.leave_teacher_id) > 0",
             f"sl.approval_status IN ({placeholders})"
         ]
         params = [teacher_id, *status_list]
         
         # 添加日期筛选：如果选定日期在请假时间范围内（start_time <= 选定日期 <= end_time）
         if filter_date:
-            conditions.append("DATE(sl.start_time) <= %s AND DATE(sl.end_time) >= %s")
+            conditions.append("DATE(sl.leave_start_time) <= %s AND DATE(sl.leave_end_time) >= %s")
             params.append(filter_date)
             params.append(filter_date)
         
@@ -133,19 +133,19 @@ class TeacherService:
         sql = f"""
             SELECT
                 sl.leave_id,
-                sl.student_id,
-                sl.student_name,
-                sl.dept,
-                sl.course_code,
+                sl.leave_student_id as student_id,
+                sl.leave_student_name as student_name,
+                sl.leave_dept as dept,
+                sl.leave_course_id as course_code,
                 sl.leave_reason,
-                sl.start_time,
-                sl.end_time,
+                sl.leave_start_time as start_time,
+                sl.leave_end_time as end_time,
                 sl.approval_status,
                 sl.approval_time,
-                sl.times
+                sl.leave_times as times
             FROM {STUDENT_LEAVE_TABLE} sl
             WHERE {where_clause}
-            ORDER BY sl.approval_time DESC, sl.start_time DESC
+            ORDER BY sl.approval_time DESC, sl.leave_start_time DESC
         """
         try:
             with self._connect() as conn:

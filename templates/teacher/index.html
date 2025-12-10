@@ -531,7 +531,10 @@
               </div>
             </div>
             <input type="file" id="avatarInput" accept="image/*" class="hidden" onchange="uploadAvatar(this)">
-            <p class="text-xs text-gray-400 mb-2">点击头像更换</p>
+            <p class="text-xs text-gray-400 mb-2">点击头像上传自定义</p>
+            <button onclick="openAvatarModal()" class="text-xs text-primary hover:text-primary/80 mb-2">
+              <i class="fa-solid fa-images mr-1"></i>选择预设头像
+            </button>
             <h4 class="font-bold text-xl text-gray-800">{{ user_info.user_name }}</h4>
             <p class="text-primary font-medium">{{ user_info.role_name }}</p>
             <div class="mt-4 pt-4 border-t border-gray-100">
@@ -560,6 +563,26 @@
       </div>
     </div>
   </main>
+
+  <!-- 预设头像选择模态框 -->
+  <div id="avatarModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 max-h-[80vh] overflow-hidden">
+      <div class="bg-gradient-to-r from-primary to-accent p-4 text-white flex items-center justify-between">
+        <h3 class="font-bold text-lg"><i class="fa-solid fa-images mr-2"></i>选择预设头像</h3>
+        <button onclick="closeAvatarModal()" class="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="p-6">
+        <div id="avatarGrid" class="grid grid-cols-5 gap-3 max-h-64 overflow-y-auto">
+          <div class="text-center text-gray-400 col-span-5 py-8">
+            <i class="fa-solid fa-spinner fa-spin text-2xl"></i>
+            <p class="mt-2 text-sm">加载中...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script>
     let allLeaveRecords = [];
@@ -1376,6 +1399,63 @@
         showToast('上传失败', 'error');
       }
       input.value = '';
+    }
+
+    // 打开预设头像选择模态框
+    async function openAvatarModal() {
+      document.getElementById('avatarModal').classList.remove('hidden');
+      await loadAvatars();
+    }
+
+    // 关闭预设头像选择模态框
+    function closeAvatarModal() {
+      document.getElementById('avatarModal').classList.add('hidden');
+    }
+
+    // 加载预设头像列表
+    async function loadAvatars() {
+      try {
+        const res = await fetch('/api/avatars');
+        const data = await res.json();
+        if (data.success && data.data) {
+          const grid = document.getElementById('avatarGrid');
+          grid.innerHTML = data.data.map(avatar => `
+            <img src="/head_image/${avatar}" 
+                 class="w-14 h-14 rounded-full cursor-pointer object-cover border-2 border-gray-200 hover:border-primary hover:scale-110 transition-all ${teacherAvatar === avatar ? 'border-primary ring-2 ring-primary/30' : ''}"
+                 onclick="selectPresetAvatar('${avatar}')"
+                 onerror="this.style.display='none'">
+          `).join('');
+        }
+      } catch (err) {
+        console.error('加载头像失败:', err);
+        document.getElementById('avatarGrid').innerHTML = '<p class="text-center text-gray-400 col-span-5 py-4">加载失败</p>';
+      }
+    }
+
+    // 选择预设头像
+    async function selectPresetAvatar(avatar) {
+      try {
+        const res = await fetch('/api/user/avatar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ avatar })
+        });
+        const data = await res.json();
+        if (data.success) {
+          // 更新头像显示
+          const avatarImg = `<img src="/head_image/${avatar}?t=${Date.now()}" class="w-full h-full object-cover">`;
+          document.getElementById('profileAvatar').innerHTML = avatarImg;
+          document.getElementById('navAvatar').innerHTML = avatarImg;
+          teacherAvatar = avatar;
+          closeAvatarModal();
+          showToast('头像更新成功');
+        } else {
+          showToast(data.message || '更新失败', 'error');
+        }
+      } catch (err) {
+        console.error('选择头像失败:', err);
+        showToast('更新失败', 'error');
+      }
     }
 
     // 退出登录

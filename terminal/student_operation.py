@@ -59,7 +59,7 @@ class StudentOperation:
         """查看学生个人信息"""
         try:
             self.cursor.execute("""
-                SELECT student_id, student_name, dept, dept_id, grade, class_num, major, major_code, contact, create_time, update_time, times
+                SELECT student_id, student_name, dept_name, student_dept_id, student_grade, class_num, major, major_code, student_contact, student_create_time, student_update_time, times
                 FROM student_info
                 WHERE student_id = %s
             """, (self.student_id,))
@@ -92,7 +92,7 @@ class StudentOperation:
             current_password = input("请输入当前密码：").strip()
             
             # 验证当前密码
-            self.cursor.execute("SELECT password FROM student_info WHERE student_id = %s", (self.student_id,))
+            self.cursor.execute("SELECT student_password FROM student_info WHERE student_id = %s", (self.student_id,))
             result = self.cursor.fetchone()
             
             if not result or result[0] != current_password:
@@ -114,7 +114,7 @@ class StudentOperation:
             
             self.cursor.execute("""
                 UPDATE student_info 
-                SET password = %s, update_time = %s 
+                SET student_password = %s, student_update_time = %s 
                 WHERE student_id = %s
             """, (new_password, update_time, self.student_id))
             self.conn.commit()
@@ -131,7 +131,7 @@ class StudentOperation:
             self.cursor.execute("""
                 SELECT COUNT(*) 
                 FROM student_leave 
-                WHERE student_id = %s AND approval_status = '已批准'
+                WHERE leave_student_id = %s AND approval_status = '已批准'
             """, (self.student_id,))
             result = self.cursor.fetchone()
             return result[0] if result else 0
@@ -173,7 +173,7 @@ class StudentOperation:
         """添加请假信息"""
         try:
             # 获取学生基本信息
-            self.cursor.execute("SELECT student_name, dept FROM student_info WHERE student_id = %s", (self.student_id,))
+            self.cursor.execute("SELECT student_name, dept_name FROM student_info WHERE student_id = %s", (self.student_id,))
             student_info = self.cursor.fetchone()
             
             if not student_info:
@@ -253,7 +253,7 @@ class StudentOperation:
             # 插入请假信息 - 包含 times 字段
             self.cursor.execute("""
                 INSERT INTO student_leave
-                (student_id, student_name, dept, course_id, teacher_id, leave_reason, start_time, end_time, approval_status, times)
+                (leave_student_id, leave_student_name, leave_dept, leave_course_id, leave_teacher_id, leave_reason, leave_start_time, leave_end_time, approval_status, leave_times)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (self.student_id, student_name, dept, course_id, teacher_id, leave_reason, start_time, end_time, approval_status, current_times))
             
@@ -273,11 +273,11 @@ class StudentOperation:
         try:
             # 查询字段与数据库表结构一致
             self.cursor.execute("""
-                SELECT leave_id, course_id, teacher_id, leave_reason, start_time, end_time, 
-                       approval_status, approver_id, approver_name, approval_time, times
+                SELECT leave_id, leave_course_id, leave_teacher_id, leave_reason, leave_start_time, leave_end_time, 
+                       approval_status, approver_id, approver_name, approval_time, leave_times
                 FROM student_leave
-                WHERE student_id = %s
-                ORDER BY start_time DESC
+                WHERE leave_student_id = %s
+                ORDER BY leave_start_time DESC
             """, (self.student_id,))
             
             leave_records = self.cursor.fetchall()
@@ -339,7 +339,7 @@ class StudentOperation:
             try:
                 self.cursor.execute("""
                     SELECT scs.course_id, ci.course_name
-                    FROM student_course_selection scs
+                    FROM student_course scs
                     JOIN course_info ci ON scs.course_id = ci.course_id
                     WHERE scs.student_id = %s
                     ORDER BY scs.course_id
@@ -348,7 +348,7 @@ class StudentOperation:
                 # 如果 course_id 字段不存在，尝试使用其他可能的字段名
                 self.cursor.execute("""
                     SELECT scs.course_id, ci.course_name
-                    FROM student_course_selection scs
+                    FROM student_course scs
                     JOIN course_info ci ON scs.course_id = ci.course_id
                     WHERE scs.student_id = %s
                     ORDER BY scs.course_id

@@ -15,28 +15,28 @@ class AdminOperation:
                 'table': 'student_info',
                 'account': 'student_id',
                 'name': 'student_name',
-                'password': 'password',
+                'password': 'student_password',
                 'role_name': '学生'
             },
             2: {  # 辅导员
                 'table': 'counselor_info',
                 'account': 'counselor_id',
                 'name': 'counselor_name',
-                'password': 'password',
+                'password': 'counselor_password',
                 'role_name': '辅导员'
             },
             3: {  # 教师
                 'table': 'teacher_info',
                 'account': 'teacher_id',
                 'name': 'teacher_name',
-                'password': 'password',
+                'password': 'teacher_password',
                 'role_name': '讲师'
             },
             4: {  # 管理员
                 'table': 'admin_info',
                 'account': 'admin_id',
                 'name': 'admin_name',
-                'password': 'password',
+                'password': 'admin_password',
                 'role_name': '管理员'
             }
         }
@@ -103,7 +103,7 @@ class AdminOperation:
         """查看所有学生（student_info表）"""
         try:
             self.cursor.execute("""
-                SELECT student_id, password, student_name, dept, dept_id, grade, class_num, major, major_code, contact, create_time, update_time, times
+                SELECT student_id, student_password, student_name, dept_name, student_dept_id, student_grade, class_num, major, major_code, student_contact, student_create_time, student_update_time, times
                 FROM student_info
                 ORDER BY student_id
             """)
@@ -138,7 +138,7 @@ class AdminOperation:
 
             self.cursor.execute("""
                 INSERT INTO student_info 
-                (student_id, password, student_name, dept, dept_id, grade, class_num, major, major_code, contact, create_time, update_time, times)
+                (student_id, student_password, student_name, dept_name, student_dept_id, student_grade, class_num, major, major_code, student_contact, student_create_time, student_update_time, times)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (student_id, password, student_name, dept, dept_id, grade, class_num, major, major_code, contact, create_time, update_time, times))
             self.conn.commit()
@@ -164,15 +164,15 @@ class AdminOperation:
             update_fields = []
             params = []
             if password:
-                update_fields.append("password = %s")
+                update_fields.append("student_password = %s")
                 params.append(password)
             if student_name:
                 update_fields.append("student_name = %s")
                 params.append(student_name)
             if contact:
-                update_fields.append("contact = %s")
+                update_fields.append("student_contact = %s")
                 params.append(contact)
-            update_fields.append("update_time = %s")
+            update_fields.append("student_update_time = %s")
             params.append(update_time)
             params.append(student_id)
 
@@ -213,7 +213,7 @@ class AdminOperation:
         """查看所有教师（teacher_info表）"""
         try:
             self.cursor.execute("""
-                SELECT teacher_id, password, teacher_name, dept, contact, create_time, update_time
+                SELECT teacher_id, teacher_password, teacher_name, teacher_dept, teacher_contact, teacher_create_time, teacher_update_time
                 FROM teacher_info
                 ORDER BY teacher_id
             """)
@@ -242,7 +242,7 @@ class AdminOperation:
 
             self.cursor.execute("""
                 INSERT INTO teacher_info 
-                (teacher_id, password, teacher_name, dept, contact, create_time, update_time)
+                (teacher_id, teacher_password, teacher_name, teacher_dept, teacher_contact, teacher_create_time, teacher_update_time)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
             """, (teacher_id, password, teacher_name, dept, contact, create_time, update_time))
             self.conn.commit()
@@ -256,9 +256,9 @@ class AdminOperation:
         """查看所有辅导员信息"""
         try:
             self.cursor.execute("""
-                SELECT counselor_id, password, counselor_name, dept, 
-                       responsible_grade, responsible_major, contact,
-                       create_time, update_time
+                SELECT counselor_id, counselor_password, counselor_name, counselor_dept, 
+                       responsible_grade, responsible_major, counselor_contact,
+                       counselor_create_time, counselor_update_time
                 FROM counselor_info
                 ORDER BY counselor_id
             """)
@@ -274,12 +274,97 @@ class AdminOperation:
         except pymysql.MySQLError as e:
             print(f"❌ 查询失败：{e}")
 
+    def _add_counselor(self):
+        """添加辅导员（终端）"""
+        try:
+            counselor_id = input("请输入辅导员工号：").strip()
+            password = input("请输入密码（默认123456）：").strip() or "123456"
+            counselor_name = input("请输入辅导员姓名：").strip()
+            dept = input("请输入所属部门：").strip()
+            responsible_grade = input("请输入负责年级：").strip()
+            responsible_major = input("请输入负责专业：").strip()
+            contact = input("请输入联系方式：").strip()
+            create_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            update_time = create_time
+
+            self.cursor.execute("""
+                INSERT INTO counselor_info 
+                (counselor_id, counselor_password, counselor_name, counselor_dept, responsible_grade, responsible_major, counselor_contact, counselor_create_time, counselor_update_time)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (counselor_id, password, counselor_name, dept, responsible_grade, responsible_major, contact, create_time, update_time))
+            self.conn.commit()
+            print("辅导员添加成功")
+        except pymysql.MySQLError as e:
+            self.conn.rollback()
+            print(f"添加失败：{e}")
+
+    def _update_counselor(self):
+        """修改辅导员信息（终端）"""
+        try:
+            counselor_id = input("请输入要修改的辅导员工号：").strip()
+            self.cursor.execute("SELECT * FROM counselor_info WHERE counselor_id = %s", (counselor_id,))
+            if not self.cursor.fetchone():
+                print("该辅导员不存在")
+                return
+
+            password = input("请输入新密码（不修改按回车）：").strip()
+            counselor_name = input("请输入新姓名（不修改按回车）：").strip()
+            contact = input("请输入新联系方式（不修改按回车）：").strip()
+            update_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            update_fields = []
+            params = []
+            if password:
+                update_fields.append("counselor_password = %s")
+                params.append(password)
+            if counselor_name:
+                update_fields.append("counselor_name = %s")
+                params.append(counselor_name)
+            if contact:
+                update_fields.append("counselor_contact = %s")
+                params.append(contact)
+            update_fields.append("counselor_update_time = %s")
+            params.append(update_time)
+            params.append(counselor_id)
+
+            if not update_fields:
+                print("未输入任何修改内容")
+                return
+
+            sql = f"UPDATE counselor_info SET {', '.join(update_fields)} WHERE counselor_id = %s"
+            self.cursor.execute(sql, params)
+            self.conn.commit()
+            print("辅导员信息修改成功")
+        except pymysql.MySQLError as e:
+            self.conn.rollback()
+            print(f"修改失败：{e}")
+
+    def _delete_counselor(self):
+        """删除辅导员（终端）"""
+        try:
+            counselor_id = input("请输入要删除的辅导员工号：").strip()
+            self.cursor.execute("SELECT * FROM counselor_info WHERE counselor_id = %s", (counselor_id,))
+            if not self.cursor.fetchone():
+                print("该辅导员不存在")
+                return
+
+            confirm = input("确定删除吗？(y/n)：").strip().lower()
+            if confirm != "y":
+                return
+
+            self.cursor.execute("DELETE FROM counselor_info WHERE counselor_id = %s", (counselor_id,))
+            self.conn.commit()
+            print("辅导员删除成功")
+        except pymysql.MySQLError as e:
+            self.conn.rollback()
+            print(f"删除失败：{e}")
+
     # ---------------------------- 管理员信息管理（补充实现） ----------------------------
     def _show_all_admins(self):
         """查看所有管理员信息"""
         try:
             self.cursor.execute("""
-                SELECT admin_id, password, admin_name, create_time, update_time
+                SELECT admin_id, admin_password, admin_name, admin_create_time, admin_update_time
                 FROM admin_info
                 ORDER BY admin_id
             """)
@@ -424,7 +509,7 @@ class AdminOperation:
             if role_type == 2:  # 辅导员表特殊处理
                 sql = f"""
                     INSERT INTO {table} 
-                    ({account_field}, {password_field}, {name_field}, dept, responsible_grade, responsible_major, contact)
+                    ({account_field}, {password_field}, {name_field}, counselor_dept, responsible_grade, responsible_major, counselor_contact)
                     VALUES (%s, %s, %s, '', '', '', '')
                 """
                 cursor.execute(sql, (account, password, user_name))
@@ -489,7 +574,7 @@ class AdminOperation:
                 if new_role == 2:  # 辅导员特殊处理
                     insert_sql = f"""
                         INSERT INTO {new_mapping['table']} 
-                        ({new_mapping['account']}, {new_mapping['password']}, {new_mapping['name']}, dept, responsible_grade, responsible_major, contact)
+                        ({new_mapping['account']}, {new_mapping['password']}, {new_mapping['name']}, counselor_dept, responsible_grade, responsible_major, counselor_contact)
                         VALUES (%s, %s, %s, '', '', '', '')
                     """
                     cursor.execute(insert_sql, (account, pwd, name))
@@ -572,92 +657,6 @@ class AdminOperation:
             if conn and conn.open:
                 conn.close()
 
-    # ---------------------------- 补充实现的辅导员和管理员操作方法 ----------------------------
-    def _add_counselor(self):
-        """添加辅导员（终端）"""
-        try:
-            counselor_id = input("请输入辅导员工号：").strip()
-            password = input("请输入密码（默认123456）：").strip() or "123456"
-            counselor_name = input("请输入辅导员姓名：").strip()
-            dept = input("请输入所属部门：").strip()
-            responsible_grade = input("请输入负责年级：").strip()
-            responsible_major = input("请输入负责专业：").strip()
-            contact = input("请输入联系方式：").strip()
-            create_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            update_time = create_time
-
-            self.cursor.execute("""
-                INSERT INTO counselor_info 
-                (counselor_id, password, counselor_name, dept, responsible_grade, responsible_major, contact, create_time, update_time)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (counselor_id, password, counselor_name, dept, responsible_grade, responsible_major, contact, create_time, update_time))
-            self.conn.commit()
-            print("辅导员添加成功")
-        except pymysql.MySQLError as e:
-            self.conn.rollback()
-            print(f"添加失败：{e}")
-
-    def _update_counselor(self):
-        """修改辅导员信息（终端）"""
-        try:
-            counselor_id = input("请输入要修改的辅导员工号：").strip()
-            self.cursor.execute("SELECT * FROM counselor_info WHERE counselor_id = %s", (counselor_id,))
-            if not self.cursor.fetchone():
-                print("该辅导员不存在")
-                return
-
-            password = input("请输入新密码（不修改按回车）：").strip()
-            counselor_name = input("请输入新姓名（不修改按回车）：").strip()
-            contact = input("请输入新联系方式（不修改按回车）：").strip()
-            update_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-            update_fields = []
-            params = []
-            if password:
-                update_fields.append("password = %s")
-                params.append(password)
-            if counselor_name:
-                update_fields.append("counselor_name = %s")
-                params.append(counselor_name)
-            if contact:
-                update_fields.append("contact = %s")
-                params.append(contact)
-            update_fields.append("update_time = %s")
-            params.append(update_time)
-            params.append(counselor_id)
-
-            if not update_fields:
-                print("未输入任何修改内容")
-                return
-
-            sql = f"UPDATE counselor_info SET {', '.join(update_fields)} WHERE counselor_id = %s"
-            self.cursor.execute(sql, params)
-            self.conn.commit()
-            print("辅导员信息修改成功")
-        except pymysql.MySQLError as e:
-            self.conn.rollback()
-            print(f"修改失败：{e}")
-
-    def _delete_counselor(self):
-        """删除辅导员（终端）"""
-        try:
-            counselor_id = input("请输入要删除的辅导员工号：").strip()
-            self.cursor.execute("SELECT * FROM counselor_info WHERE counselor_id = %s", (counselor_id,))
-            if not self.cursor.fetchone():
-                print("该辅导员不存在")
-                return
-
-            confirm = input("确定删除吗？(y/n)：").strip().lower()
-            if confirm != "y":
-                return
-
-            self.cursor.execute("DELETE FROM counselor_info WHERE counselor_id = %s", (counselor_id,))
-            self.conn.commit()
-            print("辅导员删除成功")
-        except pymysql.MySQLError as e:
-            self.conn.rollback()
-            print(f"删除失败：{e}")
-
     def _add_admin(self):
         """添加管理员（终端）"""
         try:
@@ -669,7 +668,7 @@ class AdminOperation:
 
             self.cursor.execute("""
                 INSERT INTO admin_info 
-                (admin_id, password, admin_name, create_time, update_time)
+                (admin_id, admin_password, admin_name, admin_create_time, admin_update_time)
                 VALUES (%s, %s, %s, %s, %s)
             """, (admin_id, password, admin_name, create_time, update_time))
             self.conn.commit()
@@ -694,12 +693,12 @@ class AdminOperation:
             update_fields = []
             params = []
             if password:
-                update_fields.append("password = %s")
+                update_fields.append("admin_password = %s")
                 params.append(password)
             if admin_name:
                 update_fields.append("admin_name = %s")
                 params.append(admin_name)
-            update_fields.append("update_time = %s")
+            update_fields.append("admin_update_time = %s")
             params.append(update_time)
             params.append(admin_id)
 

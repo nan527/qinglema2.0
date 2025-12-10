@@ -65,9 +65,9 @@ class CounselorOperation:
         try:
             # 查询counselor_info表中当前辅导员的所有字段
             sql = """
-                SELECT counselor_id, password, counselor_name, dept, 
-                       responsible_grade, responsible_major, contact,
-                       create_time, update_time
+                SELECT counselor_id, counselor_password, counselor_name, counselor_dept, 
+                       responsible_grade, responsible_major, counselor_contact,
+                       counselor_create_time, counselor_update_time
                 FROM counselor_info
                 WHERE counselor_id = %s
             """
@@ -79,21 +79,21 @@ class CounselorOperation:
                 return
 
             # 解析查询结果（对应表中所有字段）
-            counselor_id, password, counselor_name, dept, \
-            responsible_grade, responsible_major, contact, \
-            create_time, update_time = info
+            counselor_id, counselor_password, counselor_name, counselor_dept, \
+            responsible_grade, responsible_major, counselor_contact, \
+            counselor_create_time, counselor_update_time = info
 
             # 格式化显示（密码显示为***保护隐私）
             print("\n===== 个人信息详情 =====")
             print(f"辅导员工号：{counselor_id}")
-            print(f"登录密码：{'*' * len(password)}（已加密显示）")
+            print(f"登录密码：{'*' * len(counselor_password)}（已加密显示）")
             print(f"姓名：{counselor_name}")
-            print(f"所属部门：{dept}")
+            print(f"所属部门：{counselor_dept}")
             print(f"负责年级：{responsible_grade}级")
             print(f"负责专业：{responsible_major}")
-            print(f"联系方式：{contact}")
-            print(f"记录创建时间：{create_time}")
-            print(f"最后更新时间：{update_time}")
+            print(f"联系方式：{counselor_contact}")
+            print(f"记录创建时间：{counselor_create_time}")
+            print(f"最后更新时间：{counselor_update_time}")
             print("=======================")
 
         except pymysql.MySQLError as e:
@@ -104,12 +104,12 @@ class CounselorOperation:
         """查看负责年级中状态为“待审批”的请假记录"""
         try:
             sql = """
-                SELECT sl.leave_id, sl.student_id, sl.student_name, sl.course_code, 
-                       sl.leave_reason, sl.start_time, sl.end_time, sl.approval_status
+                SELECT sl.leave_id, sl.leave_student_id, sl.leave_student_name, sl.leave_course_id, 
+                       sl.leave_reason, sl.leave_start_time, sl.leave_end_time, sl.approval_status
                 FROM student_leave sl
-                WHERE LEFT(sl.student_id, 4) = %s
+                WHERE LEFT(sl.leave_student_id, 4) = %s
                   AND sl.approval_status = '待审批'
-                ORDER BY sl.start_time DESC
+                ORDER BY sl.leave_start_time DESC
             """
             self.cursor.execute(sql, (self.responsible_grade,))
             leaves = self.cursor.fetchall()
@@ -133,11 +133,11 @@ class CounselorOperation:
         """查看负责年级所有请假记录（含已批准/已拒绝）"""
         try:
             sql = """
-                SELECT sl.leave_id, sl.student_id, sl.student_name, sl.course_code, 
+                SELECT sl.leave_id, sl.leave_student_id, sl.leave_student_name, sl.leave_course_id, 
                        sl.approval_status, sl.approver_id, sl.approver_name, sl.approval_time
                 FROM student_leave sl
-                WHERE LEFT(sl.student_id, 4) = %s
-                ORDER BY sl.approval_time DESC, sl.start_time DESC
+                WHERE LEFT(sl.leave_student_id, 4) = %s
+                ORDER BY sl.approval_time DESC, sl.leave_start_time DESC
             """
             self.cursor.execute(sql, (self.responsible_grade,))
             leaves = self.cursor.fetchall()
@@ -166,11 +166,11 @@ class CounselorOperation:
             leave_id = input("\n请输入要审批的请假ID：").strip()
             # 1. 校验请假记录归属 + 查询学生当前请假次数
             sql_check = """
-                SELECT sl.leave_id, sl.student_id, sl.approval_status, si.times
+                SELECT sl.leave_id, sl.leave_student_id, sl.approval_status, si.times
                 FROM student_leave sl
-                LEFT JOIN student_info si ON sl.student_id = si.student_id
+                LEFT JOIN student_info si ON sl.leave_student_id = si.student_id
                 WHERE sl.leave_id = %s
-                  AND LEFT(sl.student_id, 4) = %s
+                  AND LEFT(sl.leave_student_id, 4) = %s
             """
             self.cursor.execute(sql_check, (leave_id, self.responsible_grade))
             result = self.cursor.fetchone()
@@ -185,6 +185,8 @@ class CounselorOperation:
                 return
 
             # 2. 学生请假次数≥5时弹出警告
+            if student_times is None:
+                student_times = 0
             if student_times >= 5:
                 print(f"\n⚠️ 警告：学生{student_id}当前已请假{student_times}次，请慎重审批！")
                 confirm = input("是否继续审批？(y/n)：").strip().lower()
@@ -223,7 +225,7 @@ class CounselorOperation:
             if approve_choice == "1":
                 sql_update_student = """
                     UPDATE student_info
-                    SET times = times + 1, update_time = %s
+                    SET times = times + 1, student_update_time = %s
                     WHERE student_id = %s
                 """
                 self.cursor.execute(sql_update_student, (approval_time, student_id))
@@ -243,7 +245,7 @@ class CounselorOperation:
             # 1. 验证原密码
             old_pwd = input("\n请输入原密码：").strip()
             sql_check = """
-                SELECT password FROM counselor_info
+                SELECT counselor_password FROM counselor_info
                 WHERE counselor_id = %s
             """
             self.cursor.execute(sql_check, (self.counselor_id,))
@@ -268,7 +270,7 @@ class CounselorOperation:
             update_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             sql_update = """
                 UPDATE counselor_info
-                SET password = %s, update_time = %s
+                SET counselor_password = %s, counselor_update_time = %s
                 WHERE counselor_id = %s
             """
             self.cursor.execute(sql_update, (new_pwd, update_time, self.counselor_id))
@@ -285,11 +287,11 @@ class CounselorOperation:
         try:
             # 1. 校验请假记录归属 + 查询学生当前请假次数
             sql_check = """
-                SELECT sl.leave_id, sl.student_id, sl.approval_status, si.times
+                SELECT sl.leave_id, sl.leave_student_id, sl.approval_status, si.times
                 FROM student_leave sl
-                LEFT JOIN student_info si ON sl.student_id = si.student_id
+                LEFT JOIN student_info si ON sl.leave_student_id = si.student_id
                 WHERE sl.leave_id = %s
-                  AND LEFT(sl.student_id, 4) = %s
+                  AND LEFT(sl.leave_student_id, 4) = %s
             """
             self.cursor.execute(sql_check, (leave_id, self.responsible_grade))
             result = self.cursor.fetchone()
@@ -302,6 +304,9 @@ class CounselorOperation:
                 return {"success": False, "message": f"该请假记录状态为「{approval_status}」，无需重复审批"}
 
             # 2. 学生请假次数≥5时仍可审批，但会在日志中记录
+            # 处理times可能为None的情况
+            if student_times is None:
+                student_times = 0
             if student_times >= 5:
                 print(f"⚠️ 警告：学生{student_id}当前已请假{student_times}次")
 
@@ -333,7 +338,7 @@ class CounselorOperation:
             if action == "approve":
                 sql_update_student = """
                     UPDATE student_info
-                    SET times = times + 1, update_time = %s
+                    SET times = times + 1, student_update_time = %s
                     WHERE student_id = %s
                 """
                 self.cursor.execute(sql_update_student, (approval_time, student_id))
